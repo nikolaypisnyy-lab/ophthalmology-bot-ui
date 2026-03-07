@@ -1,3 +1,4 @@
+<!-- medeye_picker.html -->
 <!DOCTYPE html>
 <html lang="ru">
 <head>
@@ -44,7 +45,7 @@
         .col { flex: 1; display: flex; flex-direction: column; }
         .label { font-size: 12px; color: var(--tg-theme-hint-color); margin-bottom: 4px; margin-left: 2px; }
         
-        /* Native Select styling to look good */
+        /* Native Select styling */
         select, input {
             width: 100%; box-sizing: border-box; padding: 10px; border: none;
             border-radius: 8px; background: var(--tg-theme-secondary-bg-color);
@@ -130,16 +131,34 @@
 
             <div class="section-title">Автореф (Узкий)</div>
             <div class="row">
-                <div class="col"><input type="text" id="od_n_sph" inputmode="decimal" placeholder="Sph"></div>
-                <div class="col"><input type="text" id="od_n_cyl" inputmode="decimal" placeholder="Cyl"></div>
-                <div class="col"><input type="text" id="od_n_ax" inputmode="numeric" placeholder="Ax"></div>
+                <div class="col" style="flex:1.2">
+                    <div class="label">Sph</div>
+                    <select id="od_n_sph"></select>
+                </div>
+                <div class="col" style="flex:1.2">
+                    <div class="label">Cyl</div>
+                    <select id="od_n_cyl"></select>
+                </div>
+                <div class="col" style="flex:1">
+                    <div class="label">Ax</div>
+                    <select id="od_n_ax"></select>
+                </div>
             </div>
 
             <div class="section-title">Автореф (Широкий)</div>
             <div class="row">
-                <div class="col"><input type="text" id="od_c_sph" inputmode="decimal" placeholder="Sph"></div>
-                <div class="col"><input type="text" id="od_c_cyl" inputmode="decimal" placeholder="Cyl"></div>
-                <div class="col"><input type="text" id="od_c_ax" inputmode="numeric" placeholder="Ax"></div>
+                <div class="col" style="flex:1.2">
+                    <div class="label">Sph</div>
+                    <select id="od_c_sph"></select>
+                </div>
+                <div class="col" style="flex:1.2">
+                    <div class="label">Cyl</div>
+                    <select id="od_c_cyl"></select>
+                </div>
+                <div class="col" style="flex:1">
+                    <div class="label">Ax</div>
+                    <select id="od_c_ax"></select>
+                </div>
             </div>
 
             <div class="section-title">Кератометрия / Биометрия</div>
@@ -206,16 +225,34 @@
 
             <div class="section-title">Автореф (Узкий)</div>
             <div class="row">
-                <div class="col"><input type="text" id="os_n_sph" inputmode="decimal" placeholder="Sph"></div>
-                <div class="col"><input type="text" id="os_n_cyl" inputmode="decimal" placeholder="Cyl"></div>
-                <div class="col"><input type="text" id="os_n_ax" inputmode="numeric" placeholder="Ax"></div>
+                <div class="col" style="flex:1.2">
+                    <div class="label">Sph</div>
+                    <select id="os_n_sph"></select>
+                </div>
+                <div class="col" style="flex:1.2">
+                    <div class="label">Cyl</div>
+                    <select id="os_n_cyl"></select>
+                </div>
+                <div class="col" style="flex:1">
+                    <div class="label">Ax</div>
+                    <select id="os_n_ax"></select>
+                </div>
             </div>
 
             <div class="section-title">Автореф (Широкий)</div>
             <div class="row">
-                <div class="col"><input type="text" id="os_c_sph" inputmode="decimal" placeholder="Sph"></div>
-                <div class="col"><input type="text" id="os_c_cyl" inputmode="decimal" placeholder="Cyl"></div>
-                <div class="col"><input type="text" id="os_c_ax" inputmode="numeric" placeholder="Ax"></div>
+                <div class="col" style="flex:1.2">
+                    <div class="label">Sph</div>
+                    <select id="os_c_sph"></select>
+                </div>
+                <div class="col" style="flex:1.2">
+                    <div class="label">Cyl</div>
+                    <select id="os_c_cyl"></select>
+                </div>
+                <div class="col" style="flex:1">
+                    <div class="label">Ax</div>
+                    <select id="os_c_ax"></select>
+                </div>
             </div>
 
             <div class="section-title">Кератометрия / Биометрия</div>
@@ -282,6 +319,22 @@
         fillSelect('od_ax', 0, 180, 5, "180");
         fillSelect('os_ax', 0, 180, 5, "180");
 
+        // Autoref Narrow
+        fillSelect('od_n_sph', -20, 10, 0.25, "-2.00");
+        fillSelect('os_n_sph', -20, 10, 0.25, "-2.00");
+        fillSelect('od_n_cyl', -10, 6, 0.25, "-0.75");
+        fillSelect('os_n_cyl', -10, 6, 0.25, "-0.75");
+        fillSelect('od_n_ax', 0, 180, 5, "180");
+        fillSelect('os_n_ax', 0, 180, 5, "180");
+
+        // Autoref Cyclo
+        fillSelect('od_c_sph', -20, 10, 0.25, "-2.00");
+        fillSelect('os_c_sph', -20, 10, 0.25, "-2.00");
+        fillSelect('od_c_cyl', -10, 6, 0.25, "-0.75");
+        fillSelect('os_c_cyl', -10, 6, 0.25, "-0.75");
+        fillSelect('od_c_ax', 0, 180, 5, "180");
+        fillSelect('os_c_ax', 0, 180, 5, "180");
+
         // --- Copy Logic ---
         window.copyToOS = function() {
             ['sph', 'cyl', 'ax', 'uva', 'bcva', 
@@ -303,7 +356,13 @@
             const defaults = {
                 'od_sph': '-2.00', 'os_sph': '-2.00',
                 'od_cyl': '-0.75', 'os_cyl': '-0.75',
-                'od_ax': '180', 'os_ax': '180'
+                'od_ax': '180', 'os_ax': '180',
+                'od_n_sph': '-2.00', 'os_n_sph': '-2.00',
+                'od_n_cyl': '-0.75', 'os_n_cyl': '-0.75',
+                'od_n_ax': '180', 'os_n_ax': '180',
+                'od_c_sph': '-2.00', 'os_c_sph': '-2.00',
+                'od_c_cyl': '-0.75', 'os_c_cyl': '-0.75',
+                'od_c_ax': '180', 'os_c_ax': '180'
             };
             for (const [id, val] of Object.entries(defaults)) {
                 const el = document.getElementById(id);
