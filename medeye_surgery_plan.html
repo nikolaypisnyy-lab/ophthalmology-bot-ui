@@ -1,0 +1,706 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>Surgery Plan</title>
+    <script src="https://telegram.org/js/telegram-web-app.js"></script>
+    <style>
+        :root {
+            --tg-theme-bg-color: #fff;
+            --tg-theme-text-color: #000;
+            --tg-theme-hint-color: #999;
+            --tg-theme-link-color: #2481cc;
+            --tg-theme-button-color: #2481cc;
+            --tg-theme-button-text-color: #fff;
+            --tg-theme-secondary-bg-color: #efeff4;
+        }
+        body {
+            background-color: var(--tg-theme-secondary-bg-color);
+            color: var(--tg-theme-text-color);
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+            margin: 0; padding: 0;
+            -webkit-tap-highlight-color: transparent;
+        }
+        .container { padding: 16px; padding-bottom: 100px; }
+        .card {
+            background: var(--tg-theme-bg-color);
+            border-radius: 12px;
+            padding: 16px;
+            margin-bottom: 16px;
+            box-shadow: 0 1px 2px rgba(0,0,0,0.05);
+        }
+        .card-header {
+            font-weight: 600; font-size: 17px; margin-bottom: 12px;
+            color: var(--tg-theme-link-color);
+            display: flex; justify-content: space-between; align-items: center;
+        }
+        .section-title {
+            margin-top: 12px; margin-bottom: 6px; font-weight: 600; font-size: 13px; color: var(--tg-theme-hint-color); text-transform: uppercase; letter-spacing: 0.5px;
+        }
+        .row { display: flex; gap: 10px; margin-bottom: 12px; }
+        .col { flex: 1; display: flex; flex-direction: column; }
+        .label { font-size: 12px; color: var(--tg-theme-hint-color); margin-bottom: 4px; margin-left: 2px; }
+        select, input {
+            width: 100%; box-sizing: border-box; padding: 10px; border: none;
+            border-radius: 8px; background: var(--tg-theme-secondary-bg-color);
+            color: var(--tg-theme-text-color); font-size: 16px; text-align: center;
+            -webkit-appearance: none; appearance: none;
+            font-weight: 500;
+        }
+        select {
+            background-image: url("data:image/svg+xml;charset=US-ASCII,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%22292.4%22%20height%3D%22292.4%22%3E%3Cpath%20fill%3D%22%23007AFF%22%20d%3D%22M287%2069.4a17.6%2017.6%200%200%200-13-5.4H18.4c-5%200-9.3%201.8-12.9%205.4A17.6%2017.6%200%200%200%200%2082.2c0%205%201.8%209.3%205.4%2012.9l128%20127.9c3.6%203.6%207.8%205.4%2012.8%205.4s9.2-1.8%2012.8-5.4L287%2095c3.5-3.5%205.4-7.8%205.4-12.8%200-5-1.9-9.2-5.5-12.8z%22%2F%3E%3C%2Fsvg%3E");
+            background-repeat: no-repeat;
+            background-position: right .7em top 50%;
+            background-size: .65em auto;
+            padding-right: 1.5em;
+        }
+        .main-btn {
+            position: fixed; bottom: 20px; left: 16px; right: 16px;
+            background-color: var(--tg-theme-button-color);
+            color: var(--tg-theme-button-text-color);
+            padding: 16px; border-radius: 14px;
+            text-align: center; font-weight: 600; font-size: 17px;
+            cursor: pointer; box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+            z-index: 100;
+        }
+        .main-btn:active { transform: scale(0.98); opacity: 0.9; }
+        .ref-data {
+            font-size: 14px; color: var(--tg-theme-text-color);
+            background: var(--tg-theme-secondary-bg-color);
+            padding: 8px; border-radius: 8px; margin-bottom: 8px;
+        }
+        .ref-label { font-weight: 600; font-size: 12px; color: var(--tg-theme-hint-color); margin-bottom: 2px; }
+        .val-box {
+            background: var(--tg-theme-secondary-bg-color);
+            border: 1px solid rgba(0,0,0,0.05);
+            border-radius: 8px;
+            padding: 8px 4px;
+            text-align: center;
+            font-weight: 500;
+            font-size: 15px;
+            color: var(--tg-theme-text-color);
+            min-height: 18px;
+        }
+        .ref-row-label { font-size: 12px; color: var(--tg-theme-hint-color); margin-bottom: 4px; margin-left: 2px; margin-top: 8px; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div id="pat_header" style="margin-bottom: 16px; padding: 0 4px;">
+            <div id="pat_name" style="font-size: 20px; font-weight: 700; line-height: 1.2;"></div>
+            <div id="pat_info" style="font-size: 14px; color: var(--tg-theme-hint-color); margin-top: 4px;"></div>
+        </div>
+
+        <!-- Reference Data -->
+        <div class="card">
+            <div class="card-header">Рефракционный контроль</div>
+            
+            <div class="section-title">OD (Правый)</div>
+            <div class="ref-row-label">Манифест</div>
+            <div class="row">
+                <div class="col" style="flex:1.2"><div class="val-box" id="od_man_sph">-</div></div>
+                <div class="col" style="flex:1.2"><div class="val-box" id="od_man_cyl">-</div></div>
+                <div class="col" style="flex:1"><div class="val-box" id="od_man_ax">-</div></div>
+                <div class="col" style="flex:1"><div class="val-box" id="od_man_bcva">-</div></div>
+            </div>
+            <div class="ref-row-label">Циклоплегия (Широкий)</div>
+            <div class="row">
+                <div class="col" style="flex:1.2"><div class="val-box" id="od_cyc_sph">-</div></div>
+                <div class="col" style="flex:1.2"><div class="val-box" id="od_cyc_cyl">-</div></div>
+                <div class="col" style="flex:1"><div class="val-box" id="od_cyc_ax">-</div></div>
+            </div>
+            <div class="ref-row-label" style="margin-top:8px;">Очки</div>
+            <div class="row">
+                <div class="col" style="flex:1.2"><div class="val-box" id="od_gl_sph">-</div></div>
+                <div class="col" style="flex:1.2"><div class="val-box" id="od_gl_cyl">-</div></div>
+                <div class="col" style="flex:1"><div class="val-box" id="od_gl_ax">-</div></div>
+                <div class="col" style="flex:1"><div class="val-box" id="od_gl_va">-</div></div>
+            </div>
+
+            <div class="section-title">OS (Левый)</div>
+            <div class="ref-row-label">Манифест</div>
+            <div class="row">
+                <div class="col" style="flex:1.2"><div class="val-box" id="os_man_sph">-</div></div>
+                <div class="col" style="flex:1.2"><div class="val-box" id="os_man_cyl">-</div></div>
+                <div class="col" style="flex:1"><div class="val-box" id="os_man_ax">-</div></div>
+                <div class="col" style="flex:1"><div class="val-box" id="os_man_bcva">-</div></div>
+            </div>
+            <div class="ref-row-label">Циклоплегия (Широкий)</div>
+            <div class="row">
+                <div class="col" style="flex:1.2"><div class="val-box" id="os_cyc_sph">-</div></div>
+                <div class="col" style="flex:1.2"><div class="val-box" id="os_cyc_cyl">-</div></div>
+                <div class="col" style="flex:1"><div class="val-box" id="os_cyc_ax">-</div></div>
+            </div>
+            <div class="ref-row-label" style="margin-top:8px;">Очки</div>
+            <div class="row">
+                <div class="col" style="flex:1.2"><div class="val-box" id="os_gl_sph">-</div></div>
+                <div class="col" style="flex:1.2"><div class="val-box" id="os_gl_cyl">-</div></div>
+                <div class="col" style="flex:1"><div class="val-box" id="os_gl_ax">-</div></div>
+                <div class="col" style="flex:1"><div class="val-box" id="os_gl_va">-</div></div>
+            </div>
+        </div>
+        <div id="debug_info" style="font-size:10px; color:#555; text-align:center; margin:10px 0; word-break:break-all; background:#f0f0f0; padding:5px; border-radius:4px;">Loading...</div>
+
+        <!-- Input Form -->
+        <div class="card">
+            <div class="card-header">План операции</div>
+            
+            <div class="row">
+                <div class="col">
+                    <div class="label">Лазер / Номограмма</div>
+                    <select id="laser_type">
+                        <option value="ex500">Alcon EX500 (WFO)</option>
+                        <option value="visx_s4ir">VISX Star S4 IR</option>
+                        <option value="visumax_800">Zeiss VisuMax 800 (SMILE Pro)</option>
+                        <option value="visumax_500">Zeiss VisuMax 500 (SMILE)</option>
+                        <option value="mel90">Zeiss MEL 90</option>
+                    </select>
+                </div>
+            </div>
+
+            <div class="section-title">OD (Правый)</div>
+            <div class="row">
+                <div class="col" style="flex:1.2"><div class="label">Sph</div><select id="od_sph"></select></div>
+                <div class="col" style="flex:1.2"><div class="label">Cyl</div><select id="od_cyl"></select></div>
+                <div class="col" style="flex:1"><div class="label">Ax</div><input type="text" id="od_ax" inputmode="numeric" placeholder="180"></div>
+            </div>
+            <div class="row">
+                <div class="col"><div class="label">Flap Th (µm)</div><select id="od_flap_th"></select></div>
+                <div class="col"><div class="label">Flap D (mm)</div><select id="od_flap_d"></select></div>
+                <div class="col"><div class="label">OZ (mm)</div><select id="od_oz"></select></div>
+            </div>
+
+            <div class="section-title">OS (Левый)</div>
+            <div class="row">
+                <div class="col" style="flex:1.2"><div class="label">Sph</div><select id="os_sph"></select></div>
+                <div class="col" style="flex:1.2"><div class="label">Cyl</div><select id="os_cyl"></select></div>
+                <div class="col" style="flex:1"><div class="label">Ax</div><input type="text" id="os_ax" inputmode="numeric" placeholder="180"></div>
+            </div>
+            <div class="row">
+                <div class="col"><div class="label">Flap Th (µm)</div><select id="os_flap_th"></select></div>
+                <div class="col"><div class="label">Flap D (mm)</div><select id="os_flap_d"></select></div>
+                <div class="col"><div class="label">OZ (mm)</div><select id="os_oz"></select></div>
+            </div>
+        </div>
+
+        <div style="text-align: center; color: #999; font-size: 12px; margin-top: 20px; margin-bottom: 40px;">
+            MedEye Plan v38
+        </div>
+    </div>
+
+    <div class="main-btn" onclick="sendData()">Сохранить план</div>
+
+    <script>
+        // Wrap everything in a try-catch to display any error
+        try {
+            // Global error handler
+            window.onerror = function(msg, url, line) {
+                const dbg = document.getElementById('debug_info');
+                if(dbg) dbg.innerHTML += `<br><span style="color:red">ERR: ${msg} (line ${line})</span>`;
+            };
+
+            // 1. Parse Params
+            const params = new URLSearchParams(window.location.search);
+            const dbg = document.getElementById('debug_info');
+            if (dbg) {
+                const entries = Array.from(params.entries());
+                dbg.innerHTML = `<b>v38 Init:</b> ${entries.length} params.<br>PID: ${params.get('pid') || 'N/A'}`;
+                if (params.has('od_man_sph')) dbg.innerHTML += `<br>OD_MAN_SPH: ${params.get('od_man_sph')}`;
+                else dbg.innerHTML += `<br>OD_MAN_SPH: Not found`;
+            }
+
+            // 2. Safe Telegram Init
+            let tg = null;
+            try {
+                if (window.Telegram && window.Telegram.WebApp) {
+                    tg = window.Telegram.WebApp;
+                    tg.expand();
+                } else {
+                    if(dbg) dbg.innerHTML += "<br><span style='color:orange'>Warn: Telegram API not found</span>";
+                }
+            } catch (e) {
+                if(dbg) dbg.innerHTML += `<br><span style='color:red'>TG Init Err: ${e.message}</span>`;
+            }
+
+            // --- Auto-replace comma with dot on input ---
+            document.addEventListener('input', function(e) {
+                if (e.target.tagName === 'INPUT') {
+                    if (e.target.value.includes(',')) {
+                        const start = e.target.selectionStart;
+                        const end = e.target.selectionEnd;
+                        e.target.value = e.target.value.replace(/,/g, '.');
+                        if (e.target.setSelectionRange) e.target.setSelectionRange(start, end);
+                    }
+                }
+            });
+
+            function fillSelect(id, start, end, step, def) {
+                const el = document.getElementById(id);
+                if (!el) return;
+                let html = '';
+                const addOption = (i) => {
+                    let val = (Math.round(i * 100) / 100).toFixed(2);
+                    if (Math.abs(step) >= 1) val = (Math.round(i)).toString();
+                    if (val > 0 && Math.abs(step) < 1) val = "+" + val;
+                    if (parseFloat(val) === 0) val = "0.00";
+                    const selected = (val == def || parseFloat(val) == parseFloat(def)) ? 'selected' : '';
+                    html += `<option value="${val}" ${selected}>${val}</option>`;
+                };
+                if (step > 0) { for(let i=start; i<=end; i+=step) addOption(i); } 
+                else { for(let i=start; i>=end; i+=step) addOption(i); }
+                el.innerHTML = html; el.value = def;
+            }
+
+            function fillValues(id, values, def) {
+                const el = document.getElementById(id);
+                if (!el) return;
+                let html = '';
+                values.forEach(v => {
+                    const selected = (v == def) ? 'selected' : '';
+                    html += `<option value="${v}" ${selected}>${v}</option>`;
+                });
+                el.innerHTML = html; el.value = def;
+            }
+
+            function fillSelectOZ(id, start, end, step, def) {
+                const el = document.getElementById(id);
+                if (!el) return;
+                let html = '';
+                for(let i=start; i <= end + 0.0001; i+=step) {
+                     let val = (Math.round(i * 100) / 100).toFixed(2);
+                     const selected = (Math.abs(parseFloat(val) - parseFloat(def)) < 0.01) ? 'selected' : '';
+                     html += `<option value="${val}" ${selected}>${val}</option>`;
+                }
+                el.innerHTML = html;
+                el.value = def;
+            }
+
+            fillSelect('od_sph', -20, 10, 0.25, "0.00"); fillSelect('os_sph', -20, 10, 0.25, "0.00");
+            fillSelect('od_cyl', 0, -10, -0.25, "0.00"); fillSelect('os_cyl', 0, -10, -0.25, "0.00");
+
+            const th_opts = [90, 100, 110];
+            fillValues('od_flap_th', th_opts, 100); fillValues('os_flap_th', th_opts, 100);
+            
+            const d_opts = [8.5, 8.6, 8.7, 8.8, 8.9, 9.0, 9.1];
+            fillValues('od_flap_d', d_opts, 9.0); fillValues('os_flap_d', d_opts, 9.0);
+
+            fillSelectOZ('od_oz', 6.5, 7.0, 0.1, "6.50"); fillSelectOZ('os_oz', 6.5, 7.0, 0.1, "6.50");
+
+            if (params.has('name')) document.getElementById('pat_name').innerText = params.get('name');
+            if (params.has('age')) document.getElementById('pat_info').innerText = params.get('age') + ' лет';
+            if (params.has('pid')) { const info = document.getElementById('pat_info').innerText; document.getElementById('pat_info').innerText = info ? (info + ' · ID: ' + params.get('pid')) : ('ID: ' + params.get('pid')); }
+            
+            ['od', 'os'].forEach(side => {
+                const setInnerText = (id, val) => { const el = document.getElementById(id); if (el) el.innerText = val; };
+                const setValue = (id, val) => { const el = document.getElementById(id); if (el) el.value = val; };
+                
+                if(params.has(`${side}_man_sph`)) setInnerText(`${side}_man_sph`, params.get(`${side}_man_sph`));
+                if(params.has(`${side}_man_cyl`)) setInnerText(`${side}_man_cyl`, params.get(`${side}_man_cyl`));
+                if(params.has(`${side}_man_ax`)) setInnerText(`${side}_man_ax`, params.get(`${side}_man_ax`));
+                if(params.has(`${side}_man_bcva`)) setInnerText(`${side}_man_bcva`, params.get(`${side}_man_bcva`));
+                
+                if(params.has(`${side}_cyc_sph`)) setInnerText(`${side}_cyc_sph`, params.get(`${side}_cyc_sph`));
+                if(params.has(`${side}_cyc_cyl`)) setInnerText(`${side}_cyc_cyl`, params.get(`${side}_cyc_cyl`));
+                if(params.has(`${side}_cyc_ax`)) setInnerText(`${side}_cyc_ax`, params.get(`${side}_cyc_ax`));
+                
+                if(params.has(`${side}_gl_sph`)) setInnerText(`${side}_gl_sph`, params.get(`${side}_gl_sph`));
+                if(params.has(`${side}_gl_cyl`)) setInnerText(`${side}_gl_cyl`, params.get(`${side}_gl_cyl`));
+                if(params.has(`${side}_gl_ax`)) setInnerText(`${side}_gl_ax`, params.get(`${side}_gl_ax`));
+                if(params.has(`${side}_gl_va`)) setInnerText(`${side}_gl_va`, params.get(`${side}_gl_va`));
+
+                if(params.has(`${side}_sph`)) setValue(`${side}_sph`, params.get(`${side}_sph`));
+                if(params.has(`${side}_cyl`)) setValue(`${side}_cyl`, params.get(`${side}_cyl`));
+                if(params.has(`${side}_ax`)) setValue(`${side}_ax`, params.get(`${side}_ax`));
+                if(params.has(`${side}_flap_th`)) setValue(`${side}_flap_th`, params.get(`${side}_flap_th`));
+                if(params.has(`${side}_flap_d`)) setValue(`${side}_flap_d`, params.get(`${side}_flap_d`));
+                if(params.has(`${side}_oz`)) setValue(`${side}_oz`, params.get(`${side}_oz`));
+            });
+            
+            if(params.has('laser_type')) document.getElementById('laser_type').value = params.get('laser_type');
+
+            // --- NOMOGRAM DATA (Shared for VISX & EX500) ---
+            const NOMOGRAM_DATA = {
+                "20": {"6.0": 5.3, "5.5": 4.8, "5.0": 4.3, "4.5": 3.9, "4.0": 3.4, "3.5": 2.9, "3.0": 2.4, "2.5": 2.0, "1.5": 1.0, "1.0": 0.5, "0.5": 0.1, "0.0": 0.0, "-0.5": -0.9, "-1.0": -1.4, "-1.5": -1.8, "-2.0": -2.2, "-2.5": -2.6, "-3.0": -3.1, "-3.5": -3.5, "-4.0": -3.9, "-4.5": -4.3, "-5.0": -4.8, "-5.5": -5.2, "-6.0": -5.6, "-6.5": -6.0, "-7.0": -6.5, "-7.5": -6.9, "-8.0": -7.3, "-8.5": -7.7, "-9.0": -8.2, "-9.5": -8.6, "-10.0": -9.0, "-10.5": -9.4, "-11.0": -9.9, "-11.5": -10.3, "-12.0": -10.7, "-12.5": -11.1, "-13.0": -11.6, "-13.5": -12.0, "-14.0": -12.4},
+                "25": {"6.0": 5.4, "5.5": 4.9, "5.0": 4.4, "4.5": 3.9, "4.0": 3.5, "3.5": 3.0, "3.0": 2.5, "2.5": 2.0, "2.0": 1.6, "1.5": 1.1, "1.0": 0.6, "0.5": 0.1, "0.0": -0.1, "-0.5": -0.9, "-1.0": -1.3, "-1.5": -1.7, "-2.0": -2.2, "-2.5": -2.6, "-3.0": -3.0, "-3.5": -3.4, "-4.0": -3.9, "-4.5": -4.3, "-5.0": -4.7, "-5.5": -5.1, "-6.0": -5.6, "-6.5": -6.0, "-7.0": -6.4, "-7.5": -6.8, "-8.0": -7.3, "-8.5": -7.7, "-9.0": -8.1, "-9.5": -8.5, "-10.0": -9.0, "-10.5": -9.4, "-11.0": -9.8, "-11.5": -10.2, "-12.0": -10.7, "-12.5": -11.1, "-13.0": -11.5, "-13.5": -11.9, "-14.0": -12.4},
+                "30": {"6.0": 5.5, "5.5": 5.0, "5.0": 4.5, "4.5": 4.0, "4.0": 3.6, "3.5": 3.1, "3.0": 2.6, "2.5": 2.1, "2.0": 1.7, "1.5": 1.2, "1.0": 0.6, "0.5": 0.1, "0": -0.2, "-0.5": -0.8, "-1.0": -1.2, "-1.5": -1.6, "-2.0": -2.0, "-2.5": -2.5, "-3.0": -2.9, "-3.5": -3.3, "-4.0": -3.7, "-4.5": -4.2, "-5.0": -4.6, "-5.5": -5.0, "-6.0": -5.4, "-6.5": -5.9, "-7.0": -6.3, "-7.5": -6.7, "-8.0": -7.1, "-8.5": -7.6, "-9.0": -8.0, "-9.5": -8.4, "-10.0": -8.8, "-10.5": -9.3, "-11.0": -9.7, "-11.5": -10.1, "-12.0": -10.5, "-12.5": -11.0, "-13.0": -11.4, "-13.5": -11.8, "-14.0": -12.2},
+                "35": {"6.0": 5.6, "5.5": 5.1, "5.0": 4.7, "4.5": 4.2, "4.0": 3.7, "3.5": 3.2, "3.0": 2.8, "2.5": 2.3, "2.0": 1.8, "1.5": 1.3, "1.0": 0.9, "0.5": 0.4, "0": -0.2, "-0.5": -0.7, "-1.0": -1.1, "-1.5": -1.6, "-2.0": -2.0, "-2.5": -2.4, "-3.0": -2.8, "-3.5": -3.3, "-4.0": -3.7, "-4.5": -4.1, "-5.0": -4.5, "-5.5": -5.0, "-6.0": -5.4, "-6.5": -5.8, "-7.0": -6.2, "-7.5": -6.7, "-8.0": -7.1, "-8.5": -7.5, "-9.0": -7.9, "-9.5": -8.4, "-10.0": -8.8, "-10.5": -9.2, "-11.0": -9.6, "-11.5": -10.1, "-12.0": -10.5, "-12.5": -10.9, "-13.0": -11.3, "-13.5": -11.8, "-14.0": -12.2},
+                "40": {"6.0": 5.7, "5.5": 5.2, "5.0": 4.8, "4.5": 4.3, "4.0": 3.8, "3.5": 3.3, "3.0": 2.9, "2.5": 2.4, "2.0": 1.9, "1.5": 1.4, "1.0": 1.0, "0.5": 0.5, "0": -0.1, "-0.5": -0.6, "-1.0": -1.0, "-1.5": -1.5, "-2.0": -1.9, "-2.5": -2.3, "-3.0": -2.7, "-3.5": -3.2, "-4.0": -3.6, "-4.5": -4.0, "-5.0": -4.4, "-5.5": -4.9, "-6.0": -5.3, "-6.5": -5.7, "-7.0": -6.1, "-7.5": -6.6, "-8.0": -7.0, "-8.5": -7.4, "-9.0": -7.9, "-9.5": -8.3, "-10.0": -8.7, "-10.5": -9.1, "-11.0": -9.5, "-11.5": -10.0, "-12.0": -10.4, "-12.5": -10.8, "-13.0": -11.2, "-13.5": -11.7, "-14.0": -12.1},
+                "45": {"6.0": 5.7, "5.5": 5.2, "5.0": 4.8, "4.5": 4.3, "4.0": 3.8, "3.5": 3.3, "3.0": 2.9, "2.5": 2.4, "2.0": 1.9, "1.5": 1.4, "1.0": 1.0, "0.5": 0.5, "0": -0.1, "-0.5": -0.6, "-1.0": -1.0, "-1.5": -1.5, "-2.0": -1.9, "-2.5": -2.3, "-3.0": -2.7, "-3.5": -3.2, "-4.0": -3.6, "-4.5": -4.0, "-5.0": -4.4, "-5.5": -4.9, "-6.0": -5.3, "-6.5": -5.7, "-7.0": -6.1, "-7.5": -6.6, "-8.0": -7.0, "-8.5": -7.4, "-9.0": -7.9, "-9.5": -8.3, "-10.0": -8.7, "-10.5": -9.1, "-11.0": -9.5, "-11.5": -10.0, "-12.0": -10.4, "-12.5": -10.8, "-13.0": -11.2, "-13.5": -11.7, "-14.0": -12.1},
+                "50": {"6.0": 5.7, "5.5": 5.2, "5.0": 4.8, "4.5": 4.3, "4.0": 3.8, "3.5": 3.3, "3.0": 2.9, "2.5": 2.4, "2.0": 1.9, "1.5": 1.4, "1.0": 1.0, "0.5": 0.5, "0": -0.1, "-0.5": -0.6, "-1.0": -1.0, "-1.5": -1.5, "-2.0": -1.9, "-2.5": -2.3, "-3.0": -2.7, "-3.5": -3.2, "-4.0": -3.6, "-4.5": -4.0, "-5.0": -4.4, "-5.5": -4.9, "-6.0": -5.3, "-6.5": -5.7, "-7.0": -6.1, "-7.5": -6.6, "-8.0": -7.0, "-8.5": -7.4, "-9.0": -7.9, "-9.5": -8.3, "-10.0": -8.7, "-10.5": -9.1, "-11.0": -9.5, "-11.5": -10.0, "-12.0": -10.4, "-12.5": -10.8, "-13.0": -11.2, "-13.5": -11.7, "-14.0": -12.1},
+                "55": {"6.0": 5.7, "5.5": 5.2, "5.0": 4.8, "4.5": 4.3, "4.0": 3.8, "3.5": 3.3, "3.0": 2.9, "2.5": 2.4, "2.0": 1.9, "1.5": 1.4, "1.0": 1.0, "0.5": 0.5, "0": -0.1, "-0.5": -0.6, "-1.0": -1.0, "-1.5": -1.5, "-2.0": -1.9, "-2.5": -2.3, "-3.0": -2.7, "-3.5": -3.2, "-4.0": -3.6, "-4.5": -4.0, "-5.0": -4.4, "-5.5": -4.9, "-6.0": -5.3, "-6.5": -5.7, "-7.0": -6.1, "-7.5": -6.6, "-8.0": -7.0, "-8.5": -7.4, "-9.0": -7.9, "-9.5": -8.3, "-10.0": -8.7, "-10.5": -9.1, "-11.0": -9.5, "-11.5": -10.0, "-12.0": -10.4, "-12.5": -10.8, "-13.0": -11.2, "-13.5": -11.7, "-14.0": -12.1},
+                "60": {"6.0": 5.7, "5.5": 5.2, "5.0": 4.8, "4.5": 4.3, "4.0": 3.8, "3.5": 3.3, "3.0": 2.9, "2.5": 2.4, "2.0": 1.9, "1.5": 1.4, "1.0": 1.0, "0.5": 0.5, "0": -0.1, "-0.5": -0.6, "-1.0": -1.0, "-1.5": -1.5, "-2.0": -1.9, "-2.5": -2.3, "-3.0": -2.7, "-3.5": -3.2, "-4.0": -3.6, "-4.5": -4.0, "-5.0": -4.4, "-5.5": -4.9, "-6.0": -5.3, "-6.5": -5.7, "-7.0": -6.1, "-7.5": -6.6, "-8.0": -7.0, "-8.5": -7.4, "-9.0": -7.9, "-9.5": -8.3, "-10.0": -8.7, "-10.5": -9.1, "-11.0": -9.5, "-11.5": -10.0, "-12.0": -10.4, "-12.5": -10.8, "-13.0": -11.2, "-13.5": -11.7, "-14.0": -12.1},
+                "65": {"6.0": 5.7, "5.5": 5.2, "5.0": 4.8, "4.5": 4.3, "4.0": 3.8, "3.5": 3.3, "3.0": 2.9, "2.5": 2.4, "2.0": 1.9, "1.5": 1.4, "1.0": 1.0, "0.5": 0.5, "0": -0.1, "-0.5": -0.6, "-1.0": -1.0, "-1.5": -1.5, "-2.0": -1.9, "-2.5": -2.3, "-3.0": -2.7, "-3.5": -3.2, "-4.0": -3.6, "-4.5": -4.0, "-5.0": -4.4, "-5.5": -4.9, "-6.0": -5.3, "-6.5": -5.7, "-7.0": -6.1, "-7.5": -6.6, "-8.0": -7.0, "-8.5": -7.4, "-9.0": -7.9, "-9.5": -8.3, "-10.0": -8.6, "-10.5": -9.1, "-11.0": -9.5, "-11.5": -10.0, "-12.0": -10.4, "-12.5": -10.8, "-13.0": -11.2, "-13.5": -11.7, "-14.0": -12.1}
+            };
+
+            function interpolate(x, x0, y0, x1, y1) {
+                if (Math.abs(x1 - x0) < 1e-6) return y0;
+                return y0 + (x - x0) * (y1 - y0) / (x1 - x0);
+            }
+
+            function getNomogramTarget(age, val) {
+                const ages = Object.keys(NOMOGRAM_DATA).map(Number).sort((a,b)=>a-b);
+                if(!ages.length) return val;
+                
+                let a0 = ages[0], a1 = ages[ages.length-1];
+                if (age < a0) a1 = a0; else if (age > a1) a0 = a1;
+                else { for(let i=0; i<ages.length-1; i++) { if(age >= ages[i] && age <= ages[i+1]) { a0 = ages[i]; a1 = ages[i+1]; break; } } }
+
+                const getT = (a, v) => {
+                    const map = NOMOGRAM_DATA[a];
+                    // Fix: Create a numeric map to handle keys like "6.0" vs 6
+                    const numMap = {};
+                    Object.keys(map).forEach(k => numMap[parseFloat(k)] = map[k]);
+                    
+                    const vals = Object.keys(numMap).map(Number).sort((a,b)=>a-b);
+                    
+                    let v0 = vals[0], v1 = vals[vals.length-1];
+                    
+                    if (v <= v0) return numMap[v0]; 
+                    if (v >= v1) return numMap[v1];
+                    
+                    for(let i=0; i<vals.length-1; i++) { 
+                        if(v >= vals[i] && v <= vals[i+1]) { 
+                            v0 = vals[i]; 
+                            v1 = vals[i+1]; 
+                            break; 
+                        } 
+                    }
+                    return interpolate(v, v0, numMap[v0], v1, numMap[v1]);
+                };
+
+                const t0 = getT(a0, val);
+                const t1 = getT(a1, val);
+                return interpolate(age, a0, t0, a1, t1);
+            }
+
+            // --- SMILE NOMOGRAM LOGIC (500 & 800) ---
+            function calculateSmileNomogram(modelType, sphere, cylinder) {
+                let s_coeff, c_coeff;
+                if (modelType === '800') {
+                    s_coeff = 1.05; // +5%
+                    c_coeff = 1.07; // +7%
+                } else { // '500'
+                    s_coeff = 1.10;
+                    c_coeff = 1.15;
+                }
+
+                const roundToQuarter = (v) => Math.round(v * 4) / 4;
+
+                const final_s = roundToQuarter(sphere * s_coeff);
+                const final_c = roundToQuarter(cylinder * c_coeff);
+
+                return { sph: final_s, cyl: final_c };
+            }
+
+            // --- MEL 90 NOMOGRAM LOGIC ---
+            function calculateMel90Nomogram(sphere, cylinder, age) {
+                let s_coeff = 1.03; // Base +3%
+                
+                if (age < 25) {
+                    s_coeff += 0.02; // +5% total
+                } else if (age > 40) {
+                    s_coeff -= 0.03; // 0% total
+                }
+                
+                const final_s = sphere * s_coeff;
+                const final_c = cylinder; // 1:1
+                
+                const roundToQuarter = (v) => Math.round(v * 4) / 4;
+                return { sph: roundToQuarter(final_s), cyl: roundToQuarter(final_c) };
+            }
+
+            // --- EX500 NOMOGRAM DATA (Lookup Tables) ---
+            const EX500_SPHERE_TABLE = [
+                [0.00, -0.25, -0.25, -0.25, -0.25, -0.25, -0.25, -0.25, -0.25, -0.25, -0.25, -0.25, -0.25, -0.25, -0.25, -0.25, -0.25, -0.25, -0.25, -0.25, -0.25, 0.00, 0.00, 0.00, 0.00],
+                [-0.25, -0.25, -0.25, -0.25, -0.25, -0.25, -0.25, -0.25, -0.25, -0.25, -0.25, -0.25, -0.25, -0.25, -0.25, -0.25, -0.25, -0.25, -0.25, -0.25, -0.25, 0.00, 0.00, 0.00, 0.00],
+                [-0.50, -0.25, -0.25, -0.25, -0.25, -0.25, -0.25, -0.25, -0.25, -0.25, -0.25, -0.25, -0.25, -0.25, -0.25, -0.25, -0.25, -0.25, -0.25, -0.25, -0.25, 0.00, 0.00, 0.00, 0.00],
+                [-0.75, -0.25, -0.25, -0.25, -0.25, -0.25, -0.25, -0.25, -0.25, -0.25, -0.25, -0.25, -0.25, -0.25, -0.25, -0.25, -0.25, -0.25, -0.25, -0.25, -0.25, 0.00, 0.00, 0.00, 0.00],
+                [-1.00, -0.25, -0.25, -0.25, -0.25, -0.25, -0.25, -0.25, -0.25, -0.25, -0.25, -0.25, -0.25, -0.25, -0.25, -0.25, -0.25, -0.25, -0.25, -0.25, 0.00, 0.00, 0.00, 0.00, 0.00],
+                [-1.25, -0.25, -0.25, -0.25, -0.25, -0.25, -0.25, -0.25, -0.25, -0.25, -0.25, -0.25, -0.25, -0.25, -0.25, -0.25, -0.25, -0.25, -0.25, -0.25, 0.00, 0.00, 0.00, 0.00, 0.00],
+                [-1.50, -0.25, -0.25, -0.25, -0.25, -0.25, -0.25, -0.25, -0.25, -0.25, -0.25, -0.25, -0.25, -0.25, -0.25, -0.25, -0.25, -0.25, -0.25, 0.00, 0.00, 0.00, 0.00, 0.00, 0.00],
+                [-1.75, -0.25, -0.25, -0.25, -0.25, -0.25, -0.25, -0.25, -0.25, -0.25, -0.25, -0.25, -0.25, -0.25, -0.25, -0.25, -0.25, -0.25, 0.00, 0.00, 0.00, 0.00, 0.00, 0.00, 0.00],
+                [-2.00, -0.25, -0.25, -0.25, -0.25, -0.25, -0.25, -0.25, -0.25, -0.25, -0.25, -0.25, -0.25, -0.25, -0.25, -0.25, -0.25, 0.00, 0.00, 0.00, 0.00, 0.00, 0.00, 0.00, 0.00],
+                [-2.25, -0.25, -0.25, -0.25, -0.25, -0.25, -0.25, -0.25, -0.25, -0.25, -0.25, -0.25, -0.25, -0.25, -0.25, 0.00, 0.00, 0.00, 0.00, 0.00, 0.00, 0.00, 0.00, 0.00, 0.00],
+                [-2.50, 0.00, 0.00, 0.00, 0.00, -0.25, -0.25, -0.25, -0.25, -0.25, -0.25, -0.25, 0.00, 0.00, 0.00, 0.00, 0.00, 0.00, 0.00, 0.00, 0.00, 0.00, 0.00, 0.00, 0.00],
+                [-2.75, 0.00, 0.00, 0.00, 0.00, 0.00, 0.00, 0.00, 0.00, 0.00, 0.00, 0.00, 0.00, 0.00, 0.00, 0.00, 0.00, 0.00, 0.00, 0.00, 0.00, 0.00, 0.00, 0.00, 0.00],
+                [-3.00, 0.00, 0.00, 0.00, 0.00, 0.00, 0.00, 0.00, 0.00, 0.00, 0.00, 0.00, 0.00, 0.00, 0.00, 0.00, 0.00, 0.00, 0.00, 0.00, 0.00, 0.00, 0.00, 0.00, 0.00],
+                [-3.25, 0.00, 0.00, 0.00, 0.00, 0.00, 0.00, 0.00, 0.00, 0.00, 0.00, 0.00, 0.00, 0.00, 0.00, 0.00, 0.00, 0.00, 0.00, 0.00, 0.00, 0.00, 0.00, 0.00, 0.00],
+                [-3.50, 0.00, 0.00, 0.00, 0.00, 0.00, 0.00, 0.00, 0.00, 0.00, 0.00, 0.00, 0.00, 0.00, 0.00, 0.00, 0.00, 0.00, 0.00, 0.00, 0.00, 0.00, 0.00, 0.00, 0.00],
+                [-3.75, 0.00, 0.00, 0.00, 0.00, 0.00, 0.00, 0.00, 0.00, 0.00, 0.00, 0.00, 0.00, 0.00, 0.00, 0.00, 0.00, 0.00, 0.00, 0.00, 0.00, 0.00, 0.00, 0.00, 0.00],
+                [-4.00, 0.00, 0.00, 0.00, 0.00, 0.00, 0.00, 0.00, 0.00, 0.00, 0.00, 0.00, 0.00, 0.00, 0.00, 0.00, 0.00, 0.00, 0.00, 0.00, 0.00, 0.00, 0.00, 0.00, 0.00],
+                [-4.25, 0.00, 0.00, 0.00, 0.00, 0.00, 0.00, 0.00, 0.00, 0.00, 0.00, 0.00, 0.00, 0.00, 0.00, 0.00, 0.00, 0.00, 0.00, 0.00, 0.00, 0.00, 0.00, 0.00, 0.00],
+                [-4.50, 0.00, 0.00, 0.00, 0.00, 0.00, 0.00, 0.00, 0.00, 0.00, 0.00, 0.00, 0.00, 0.00, 0.00, 0.00, 0.00, 0.00, 0.00, 0.00, 0.00, 0.00, 0.00, 0.00, 0.00],
+                [-4.75, 0.00, 0.00, 0.00, 0.00, 0.00, 0.00, 0.00, 0.00, 0.00, 0.00, 0.00, 0.00, 0.00, 0.00, 0.00, 0.00, 0.00, 0.00, 0.00, 0.00, 0.00, 0.00, 0.25, 0.25],
+                [-5.00, 0.00, 0.00, 0.00, 0.00, 0.00, 0.00, 0.00, 0.00, 0.00, 0.00, 0.00, 0.00, 0.00, 0.00, 0.00, 0.00, 0.00, 0.00, 0.00, 0.00, 0.25, 0.25, 0.25, 0.25],
+                [-5.25, 0.00, 0.00, 0.00, 0.00, 0.00, 0.00, 0.00, 0.00, 0.00, 0.00, 0.00, 0.00, 0.00, 0.00, 0.00, 0.00, 0.25, 0.25, 0.25, 0.25, 0.25, 0.25, 0.25, 0.25],
+                [-5.50, 0.25, 0.25, 0.25, 0.25, 0.25, 0.25, 0.25, 0.25, 0.25, 0.25, 0.25, 0.25, 0.25, 0.25, 0.25, 0.25, 0.25, 0.25, 0.25, 0.25, 0.25, 0.25, 0.25, 0.25],
+                [-5.75, 0.25, 0.25, 0.25, 0.25, 0.25, 0.25, 0.25, 0.25, 0.25, 0.25, 0.25, 0.25, 0.25, 0.25, 0.25, 0.25, 0.25, 0.25, 0.25, 0.25, 0.25, 0.25, 0.25, 0.25],
+                [-6.00, 0.25, 0.25, 0.25, 0.25, 0.25, 0.25, 0.25, 0.25, 0.25, 0.25, 0.25, 0.25, 0.25, 0.25, 0.25, 0.25, 0.25, 0.25, 0.25, 0.25, 0.25, 0.25, 0.25, 0.25],
+                [-6.25, 0.25, 0.25, 0.25, 0.25, 0.25, 0.25, 0.25, 0.25, 0.25, 0.25, 0.25, 0.25, 0.25, 0.25, 0.25, 0.25, 0.25, 0.25, 0.25, 0.25, 0.25, 0.25, 0.25, 0.25],
+                [-6.50, 0.25, 0.25, 0.25, 0.25, 0.25, 0.25, 0.25, 0.25, 0.25, 0.25, 0.25, 0.25, 0.25, 0.25, 0.25, 0.25, 0.25, 0.25, 0.25, 0.25, 0.25, 0.25, 0.25, 0.25],
+                [-6.75, 0.25, 0.25, 0.25, 0.25, 0.25, 0.25, 0.25, 0.25, 0.25, 0.25, 0.25, 0.25, 0.25, 0.25, 0.25, 0.25, 0.25, 0.25, 0.25, 0.25, 0.25, 0.50, 0.50, 0.50],
+                [-7.00, 0.25, 0.25, 0.25, 0.25, 0.25, 0.25, 0.25, 0.25, 0.25, 0.25, 0.25, 0.25, 0.25, 0.25, 0.25, 0.25, 0.50, 0.50, 0.50, 0.50, 0.50, 0.50, 0.50, 0.50],
+                [-7.25, 0.50, 0.50, 0.50, 0.50, 0.50, 0.50, 0.50, 0.50, 0.50, 0.50, 0.50, 0.50, 0.50, 0.50, 0.50, 0.50, 0.50, 0.50, 0.50, 0.50, 0.50, 0.50, 0.50, 0.50],
+                [-7.50, 0.50, 0.50, 0.50, 0.50, 0.50, 0.50, 0.50, 0.50, 0.50, 0.50, 0.50, 0.50, 0.50, 0.50, 0.50, 0.50, 0.50, 0.50, 0.50, 0.50, 0.50, 0.50, 0.50, 0.50],
+                [-7.75, 0.50, 0.50, 0.50, 0.50, 0.50, 0.50, 0.50, 0.50, 0.50, 0.50, 0.50, 0.50, 0.50, 0.50, 0.50, 0.50, 0.50, 0.50, 0.50, 0.50, 0.50, 0.50, 0.50, 0.50],
+                [-8.00, 0.50, 0.50, 0.50, 0.50, 0.50, 0.50, 0.50, 0.50, 0.50, 0.50, 0.50, 0.50, 0.50, 0.50, 0.50, 0.50, 0.50, 0.50, 0.50, 0.50, 0.50, 0.50, 0.50, 0.50],
+                [-8.25, 0.50, 0.50, 0.50, 0.50, 0.50, 0.50, 0.50, 0.50, 0.50, 0.50, 0.50, 0.50, 0.50, 0.50, 0.50, 0.50, 0.50, 0.50, 0.50, 0.75, 0.75, 0.75, 0.75, 0.75],
+                [-8.50, 0.75, 0.75, 0.75, 0.75, 0.50, 0.50, 0.50, 0.50, 0.50, 0.50, 0.50, 0.50, 0.75, 0.75, 0.75, 0.75, 0.75, 0.75, 0.75, 0.75, 0.75, 0.75, 0.75, 0.75],
+                [-8.75, 0.75, 0.75, 0.75, 0.75, 0.75, 0.75, 0.75, 0.75, 0.75, 0.75, 0.75, 0.75, 0.75, 0.75, 0.75, 0.75, 0.75, 0.75, 0.75, 0.75, 0.75, 0.75, 0.75, 0.75],
+                [-9.00, 0.75, 0.75, 0.75, 0.75, 0.75, 0.75, 0.75, 0.75, 0.75, 0.75, 0.75, 0.75, 0.75, 0.75, 0.75, 0.75, 0.75, 0.75, 0.75, 0.75, 0.75, 0.75, 0.75, 0.75],
+                [-9.25, 0.75, 0.75, 0.75, 0.75, 0.75, 0.75, 0.75, 0.75, 0.75, 0.75, 0.75, 0.75, 0.75, 0.75, 0.75, 0.75, 0.75, 0.75, 0.75, 0.75, 0.75, 0.75, 0.75, 0.75],
+                [-9.50, 0.75, 0.75, 0.75, 0.75, 0.75, 0.75, 0.75, 0.75, 0.75, 0.75, 0.75, 0.75, 0.75, 0.75, 0.75, 0.75, 0.75, 0.75, 0.75, 1.00, 1.00, 1.00, 1.00, 1.00],
+                [-9.75, 1.00, 1.00, 1.00, 1.00, 1.00, 1.00, 1.00, 1.00, 1.00, 1.00, 1.00, 1.00, 1.00, 1.00, 1.00, 1.00, 1.00, 1.00, 1.00, 1.00, 1.00, 1.00, 1.00, 1.00],
+                [-10.00, 1.00, 1.00, 1.00, 1.00, 1.00, 1.00, 1.00, 1.00, 1.00, 1.00, 1.00, 1.00, 1.00, 1.00, 1.00, 1.00, 1.00, 1.00, 1.00, 1.00, 1.00, 1.00, 1.00, 1.00],
+                [-10.25, 1.00, 1.00, 1.00, 1.00, 1.00, 1.00, 1.00, 1.00, 1.00, 1.00, 1.00, 1.00, 1.00, 1.00, 1.00, 1.00, 1.00, 1.00, 1.00, 1.00, 1.00, 1.00, 1.00, 1.00],
+                [-10.50, 1.00, 1.00, 1.00, 1.00, 1.00, 1.00, 1.00, 1.00, 1.00, 1.00, 1.00, 1.00, 1.00, 1.00, 1.00, 1.00, 1.00, 1.00, 1.00, 1.25, 1.25, 1.25, 1.25, 1.25],
+                [-10.75, 1.25, 1.25, 1.25, 1.25, 1.25, 1.25, 1.25, 1.25, 1.25, 1.25, 1.25, 1.25, 1.25, 1.25, 1.25, 1.25, 1.25, 1.25, 1.25, 1.25, 1.25, 1.25, 1.25, 1.25],
+                [-11.00, 1.25, 1.25, 1.25, 1.25, 1.25, 1.25, 1.25, 1.25, 1.25, 1.25, 1.25, 1.25, 1.25, 1.25, 1.25, 1.25, 1.25, 1.25, 1.25, 1.25, 1.25, 1.25, 1.25, 1.25],
+                [-11.25, 1.25, 1.25, 1.25, 1.25, 1.25, 1.25, 1.25, 1.25, 1.25, 1.25, 1.25, 1.25, 1.25, 1.25, 1.25, 1.25, 1.25, 1.25, 1.25, 1.25, 1.25, 1.25, 1.25, 1.25],
+                [-11.50, 1.25, 1.25, 1.25, 1.25, 1.25, 1.25, 1.25, 1.25, 1.25, 1.25, 1.25, 1.25, 1.25, 1.25, 1.25, 1.25, 1.50, 1.50, 1.50, 1.50, 1.50, 1.50, 1.50, 1.50],
+                [-11.75, 1.50, 1.50, 1.50, 1.50, 1.50, 1.50, 1.50, 1.50, 1.50, 1.50, 1.50, 1.50, 1.50, 1.50, 1.50, 1.50, 1.50, 1.50, 1.50, 1.50, 1.50, 1.50, 1.50, 1.50],
+                [-12.00, 1.50, 1.50, 1.50, 1.50, 1.50, 1.50, 1.50, 1.50, 1.50, 1.50, 1.50, 1.50, 1.50, 1.50, 1.50, 1.50, 1.50, 1.50, 1.50, 1.50, 1.50, 1.50, 1.50, 1.50],
+                [-12.25, 1.50, 1.50, 1.50, 1.50, 1.50, 1.50, 1.50, 1.50, 1.50, 1.50, 1.50, 1.50, 1.50, 1.50, 1.50, 1.50, 1.50, 1.50, 1.50, 1.50, 1.50, 1.75, 1.75, 1.75],
+                [-12.50, 1.75, 1.75, 1.75, 1.75, 1.75, 1.75, 1.75, 1.75, 1.75, 1.75, 1.75, 1.75, 1.75, 1.75, 1.75, 1.75, 1.75, 1.75, 1.75, 1.75, 1.75, 1.75, 1.75, 1.75],
+                [-12.75, 1.75, 1.75, 1.75, 1.75, 1.75, 1.75, 1.75, 1.75, 1.75, 1.75, 1.75, 1.75, 1.75, 1.75, 1.75, 1.75, 1.75, 1.75, 1.75, 1.75, 1.75, 1.75, 1.75, 1.75],
+                [-13.00, 1.75, 1.75, 1.75, 1.75, 1.75, 1.75, 1.75, 1.75, 1.75, 1.75, 1.75, 1.75, 1.75, 1.75, 1.75, 1.75, 1.75, 1.75, 1.75, 1.75, 1.75, 1.75, 1.75, 2.00],
+                [-13.25, 2.00, 2.00, 1.75, 1.75, 1.75, 1.75, 1.75, 1.75, 1.75, 1.75, 1.75, 1.75, 2.00, 2.00, 2.00, 2.00, 2.00, 2.00, 2.00, 2.00, 2.00, 2.00, 2.00, 2.00],
+                [-13.50, 2.00, 2.00, 2.00, 2.00, 2.00, 2.00, 2.00, 2.00, 2.00, 2.00, 2.00, 2.00, 2.00, 2.00, 2.00, 2.00, 2.00, 2.00, 2.00, 2.00, 2.00, 2.00, 2.00, 2.00],
+                [-13.75, 2.00, 2.00, 2.00, 2.00, 2.00, 2.00, 2.00, 2.00, 2.00, 2.00, 2.00, 2.00, 2.00, 2.00, 2.00, 2.00, 2.00, 2.00, 2.00, 2.00, 2.00, 2.00, 2.00, 2.00],
+                [-14.00, 2.25, 2.25, 2.00, 2.00, 2.00, 2.00, 2.00, 2.00, 2.00, 2.00, 2.00, 2.00, 2.00, 2.00, 2.25, 2.25, 2.25, 2.25, 2.25, 2.25, 2.25, 2.25, 2.25, 2.25],
+                [-14.25, 2.25, 2.25, 2.00, 2.00, 2.00, 2.00, 2.00, 2.00, 2.00, 2.00, 2.00, 2.00, 2.00, 2.00, 2.25, 2.25, 2.25, 2.25, 2.25, 2.25, 2.25, 2.25, 2.25, 2.25]
+            ];
+
+            const EX500_CYLINDER_TABLE = [
+                0, 0, 0, 0, 0, 0, 0, 0, 0.25, 0.25, 0.25, 0.25, 0.5, 0.5, 0.5, 0.75, 0.75, 0.75, 0.75, 1, 1, 1, 1.25, 1.25, 1.25
+            ];
+
+            function calculateEx500Nomogram(sphere, cylinder) {
+                let s_idx = Math.min(Math.floor(Math.abs(sphere) * 4), 57);
+                let c_idx = Math.min(Math.floor(Math.abs(cylinder) * 4), 24);
+                
+                let s_corr = 0;
+                if (s_idx < EX500_SPHERE_TABLE.length && c_idx < EX500_SPHERE_TABLE[0].length) {
+                    s_corr = EX500_SPHERE_TABLE[s_idx][c_idx];
+                }
+                
+                let c_corr = 0;
+                if (c_idx < EX500_CYLINDER_TABLE.length) {
+                    c_corr = EX500_CYLINDER_TABLE[c_idx];
+                }
+                
+                return {
+                    sph: sphere + s_corr,
+                    cyl: cylinder + c_corr
+                };
+            }
+
+            function applyNomogram() {
+                const laser = document.getElementById('laser_type').value;
+
+                const setSelectVal = (id, val, isNomogram = false) => {
+                    const el = document.getElementById(id);
+                    if(el === null || val === null || isNaN(val)) return;
+                    
+                    let valStr;
+                    if (isNomogram) {
+                        valStr = val.toFixed(2);
+                    } else {
+                        valStr = (Math.round(val * 4) / 4).toFixed(2);
+                    }
+                    
+                    let display = valStr;
+                    if (parseFloat(valStr) > 0) valStr = "+" + valStr;
+                    if (parseFloat(valStr) === 0) { valStr = "0.00"; display = "0.00"; }
+
+                    let exists = false;
+                    for (let i = 0; i < el.options.length; i++) {
+                        if (Math.abs(parseFloat(el.options[i].value) - parseFloat(valStr)) < 0.001) {
+                            el.selectedIndex = i;
+                            exists = true;
+                            break;
+                        }
+                    }
+                    
+                    if (!exists) {
+                        const opt = document.createElement('option');
+                        opt.value = valStr;
+                        opt.text = display + (isNomogram ? " *" : "");
+                        el.add(opt, 0);
+                        el.value = valStr;
+                    }
+                };
+                
+                const setInputVal = (id, val) => {
+                    const el = document.getElementById(id);
+                    if (el && val !== null && !isNaN(val)) el.value = Math.round(val);
+                };
+
+                // Check laser type
+                if (laser === 'visx_s4ir') {
+                    const ageStr = params.get('age');
+                    if (!ageStr) { alert("Возраст пациента не указан! Расчет невозможен."); return; }
+                    const age = parseFloat(ageStr);
+
+                    ['od', 'os'].forEach(side => {
+                        const mSph = parseFloat(params.get(`${side}_man_sph`));
+                        const mCyl = parseFloat(params.get(`${side}_man_cyl`));
+
+                        if (!isNaN(mSph)) {
+                            let correctedSphere = getNomogramTarget(age, mSph);
+                            if (!isNaN(mCyl) && Math.abs(mCyl) > 2.0) {
+                                correctedSphere += (mSph >= 0 ? 0.25 : -0.25);
+                            }
+                            setSelectVal(`${side}_sph`, correctedSphere, true);
+                        }
+                        
+                        if (!isNaN(mCyl)) {
+                            setSelectVal(`${side}_cyl`, mCyl, true);
+                        }
+                    });
+                } else if (laser === 'ex500') {
+                    ['od', 'os'].forEach(side => {
+                        let sph = parseFloat(params.get(`${side}_man_sph`));
+                        let cyl = parseFloat(params.get(`${side}_man_cyl`));
+                        let ax = parseFloat(params.get(`${side}_man_ax`));
+
+                        if (!isNaN(sph)) {
+                            // Transpose if cylinder is positive
+                            if (!isNaN(cyl) && cyl > 0) {
+                                sph += cyl; 
+                                cyl = -cyl; 
+                                if (!isNaN(ax)) {
+                                    ax = (ax + 90) % 180;
+                                    if (ax === 0) ax = 180;
+                                }
+                            }
+
+                            // EX500 Nomogram expects negative sphere/cylinder
+                            if (sph <= 0 && cyl <= 0) {
+                                let res = calculateEx500Nomogram(sph, cyl);
+                                setSelectVal(`${side}_sph`, res.sph, true);
+                                if (!isNaN(cyl)) setSelectVal(`${side}_cyl`, res.cyl, true);
+                            } else {
+                                // Fallback if positive (hyperopia not covered by this specific table)
+                                setSelectVal(`${side}_sph`, sph, true);
+                                if (!isNaN(cyl)) setSelectVal(`${side}_cyl`, cyl, true);
+                            }
+                            if (!isNaN(ax)) setInputVal(`${side}_ax`, ax);
+                        }
+                    });
+                } else if (laser === 'visumax_500' || laser === 'visumax_800') {
+                    const modelType = laser === 'visumax_800' ? '800' : '500';
+                    ['od', 'os'].forEach(side => {
+                        const mSph = parseFloat(params.get(`${side}_man_sph`));
+                        const mCyl = parseFloat(params.get(`${side}_man_cyl`));
+
+                        if (!isNaN(mSph)) {
+                            let c = isNaN(mCyl) ? 0 : mCyl;
+                            
+                            let res = calculateSmileNomogram(modelType, mSph, c);
+                            setSelectVal(`${side}_sph`, res.sph, true);
+                            
+                            if (!isNaN(mCyl)) {
+                                setSelectVal(`${side}_cyl`, res.cyl, true);
+                            }
+                        }
+                    });
+                } else if (laser === 'mel90') {
+                    const ageStr = params.get('age');
+                    if (!ageStr) { alert("Возраст пациента не указан! Расчет невозможен."); return; }
+                    const age = parseFloat(ageStr);
+
+                    ['od', 'os'].forEach(side => {
+                        const mSph = parseFloat(params.get(`${side}_man_sph`));
+                        const mCyl = parseFloat(params.get(`${side}_man_cyl`));
+
+                        if (!isNaN(mSph)) {
+                            let c = isNaN(mCyl) ? 0 : mCyl;
+                            let res = calculateMel90Nomogram(mSph, c, age);
+                            setSelectVal(`${side}_sph`, res.sph, true);
+                            
+                            if (!isNaN(mCyl)) {
+                                setSelectVal(`${side}_cyl`, res.cyl, true);
+                            }
+                        }
+                    });
+                } else { // default fallback
+                    // Revert to original values from manifest with transposition
+                    ['od', 'os'].forEach(side => {
+                        let sph = parseFloat(params.get(`${side}_man_sph`));
+                        let cyl = parseFloat(params.get(`${side}_man_cyl`));
+                        let ax = parseFloat(params.get(`${side}_man_ax`));
+
+                        if (!isNaN(sph) && !isNaN(cyl) && !isNaN(ax)) {
+                            if (cyl > 0) {
+                                sph += cyl; cyl = -cyl; ax = (ax + 90) % 180;
+                                if (ax === 0) ax = 180;
+                            }
+                            setSelectVal(`${side}_sph`, sph, false);
+                            setSelectVal(`${side}_cyl`, cyl, false);
+                            setInputVal(`${side}_ax`, ax);
+                        }
+                    });
+                }
+            }
+            
+            document.getElementById('laser_type').addEventListener('change', applyNomogram);
+            
+            // Apply on load
+            applyNomogram();
+
+            // Assign to window so onclick can find it
+            window.sendData = function() {
+                const btn = document.querySelector('.main-btn');
+                const originalText = btn.innerText;
+                btn.innerText = "Сохранение...";
+
+                if (!tg) {
+                    alert("Ошибка: Telegram WebApp API не найден.");
+                    btn.innerText = originalText;
+                    return;
+                }
+
+                const pid = params.get('pid');
+                if (!pid) { 
+                    alert("Ошибка: ID пациента не найден в URL."); 
+                    btn.innerText = originalText;
+                    return; 
+                }
+
+                const getVal = (id) => {
+                    const el = document.getElementById(id);
+                    return el ? el.value : "";
+                };
+
+                const payload = {
+                    type: "surgery_plan", pid: pid,
+                    surgery_plan: {
+                        laser_type: document.getElementById('laser_type').value,
+                        od: { 
+                            sph: getVal('od_sph'), cyl: getVal('od_cyl'), axis: getVal('od_ax') || "0",
+                            optical_zone: getVal('od_oz')
+                        },
+                        os: { 
+                            sph: getVal('os_sph'), cyl: getVal('os_cyl'), axis: getVal('os_ax') || "0",
+                            optical_zone: getVal('os_oz')
+                        },
+                        flap: {
+                            od: { thickness_um: getVal('od_flap_th'), diameter_mm: getVal('od_flap_d') },
+                            os: { thickness_um: getVal('os_flap_th'), diameter_mm: getVal('os_flap_d') }
+                        }
+                    }
+                };
+                tg.sendData(JSON.stringify(payload));
+                
+                // Принудительное закрытие с задержкой (для надежности)
+                setTimeout(function() { tg.close(); }, 300);
+            };
+        } catch(e) {
+            const dbg = document.getElementById('debug_info');
+            if (dbg) dbg.innerHTML += `<br><span style="color:red">FATAL: ${e.message}</span>`;
+        }
+    </script>
+</body>
+</html>
