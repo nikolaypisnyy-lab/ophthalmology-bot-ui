@@ -1,0 +1,151 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>Post-Op History</title>
+    <script src="https://telegram.org/js/telegram-web-app.js"></script>
+    <style>
+        :root {
+            --tg-theme-bg-color: #fff;
+            --tg-theme-text-color: #000;
+            --tg-theme-hint-color: #999;
+            --tg-theme-link-color: #2481cc;
+            --tg-theme-button-color: #2481cc;
+            --tg-theme-button-text-color: #fff;
+            --tg-theme-secondary-bg-color: #efeff4;
+        }
+        body {
+            background-color: var(--tg-theme-bg-color);
+            color: var(--tg-theme-text-color);
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+            margin: 0; padding: 16px; 
+            padding-bottom: 100px; /* Space for fixed button */
+            font-size: 14px;
+        }
+        h2 { margin-top: 0; font-size: 18px; margin-bottom: 4px; }
+        .subtitle { color: var(--tg-theme-hint-color); font-size: 13px; margin-bottom: 16px; }
+        
+        .history-table {
+            width: 100%; border-collapse: collapse; margin-bottom: 20px;
+        }
+        .history-table th {
+            text-align: left; color: var(--tg-theme-hint-color);
+            font-weight: 500; font-size: 12px; padding: 4px;
+            border-bottom: 1px solid rgba(0,0,0,0.1);
+        }
+        .history-table td {
+            padding: 8px 4px; border-bottom: 1px solid rgba(0,0,0,0.05);
+            vertical-align: top;
+        }
+        .period-cell { font-weight: 600; font-size: 13px; width: 70px; }
+        .date-sub { font-weight: 400; font-size: 11px; color: var(--tg-theme-hint-color); display: block; margin-top: 2px;}
+        
+        .eye-row { display: flex; justify-content: space-between; margin-bottom: 2px; }
+        .eye-label { font-weight: 700; width: 24px; display: inline-block; }
+        .eye-od { color: #007aff; }
+        .eye-os { color: #34c759; }
+        .eye-data { flex: 1; text-align: right; font-family: monospace; font-size: 13px; }
+        .va-tag { 
+            background: rgba(0,0,0,0.05); padding: 1px 4px; border-radius: 4px; 
+            margin-left: 6px; font-weight: 600; font-size: 12px;
+        }
+        .button-container {
+            position: fixed; bottom: 20px; left: 16px; right: 16px;
+            z-index: 100;
+        }
+        .secondary-btn {
+            background-color: #3a3a3c;
+            color: #fff;
+            padding: 16px; border-radius: 14px;
+            text-align: center; font-weight: 600; font-size: 17px;
+            cursor: pointer; box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+        }
+    </style>
+</head>
+<body>
+    <h2 id="pat_name">Пациент</h2>
+    <div class="subtitle" id="pat_info">История осмотров</div>
+
+    <table class="history-table">
+        <thead>
+            <tr>
+                <th>Срок</th>
+                <th>Рефракция / VA</th>
+            </tr>
+        </thead>
+        <tbody id="history_rows">
+        </tbody>
+    </table>
+
+    <div class="button-container">
+        <div class="secondary-btn" onclick="closeApp()">Закрыть</div>
+    </div>
+
+    <script>
+        const tg = window.Telegram.WebApp;
+        tg.expand();
+
+        const params = new URLSearchParams(window.location.search);
+        
+        if (params.has('name')) document.getElementById('pat_name').innerText = params.get('name');
+        if (params.has('info')) document.getElementById('pat_info').innerText = params.get('info');
+
+        let history = [];
+        try {
+            if (params.has('data')) {
+                history = JSON.parse(decodeURIComponent(params.get('data')));
+            }
+        } catch (e) {
+            console.error(e);
+            document.getElementById('history_rows').innerHTML = '<tr><td colspan="2">Ошибка загрузки данных</td></tr>';
+        }
+
+        const tbody = document.getElementById('history_rows');
+
+        // Order of periods for sorting
+        const order = {"1 день": 1, "1 неделя": 2, "1 месяц": 3, "3 месяца": 4, "6 месяцев": 5, "1 год": 6};
+        history.sort((a, b) => (order[a.p] || 99) - (order[b.p] || 99));
+
+        if (history.length === 0) {
+            tbody.innerHTML = '<tr><td colspan="2" style="text-align:center; padding: 20px; color: #999;">Нет записей</td></tr>';
+        }
+
+        history.forEach(item => {
+            const tr = document.createElement('tr');
+            
+            const pCell = document.createElement('td');
+            pCell.className = 'period-cell';
+            pCell.innerHTML = `${item.p}<span class="date-sub">${item.d || ''}</span>`;
+            
+            const dCell = document.createElement('td');
+            
+            const fmtEye = (label, cls, e) => {
+                if (!e) return `<div class="eye-row"><span class="eye-label ${cls}">${label}</span><span class="eye-data" style="color:#ccc">—</span></div>`;
+                
+                let text = "";
+                if (e.s || e.c) text += `${e.s || '0.00'} ${e.c || ''} ${e.a ? 'x '+e.a : ''}`;
+                
+                let vaHtml = "";
+                if (e.v) vaHtml = `<span class="va-tag">${e.v}</span>`;
+                
+                return `<div class="eye-row">
+                    <span class="eye-label ${cls}">${label}</span>
+                    <span class="eye-data">${text}${vaHtml}</span>
+                </div>`;
+            };
+
+            dCell.innerHTML = fmtEye("OD", "eye-od", item.od) + fmtEye("OS", "eye-os", item.os);
+            
+            tr.appendChild(pCell);
+            tr.appendChild(dCell);
+            tbody.appendChild(tr);
+        });
+
+        window.closeApp = function() {
+            tg.sendData(JSON.stringify({ type: "close_webapp_show_menu" }));
+            setTimeout(() => tg.close(), 300);
+        };
+    </script>
+</body>
+</html>
