@@ -1,0 +1,266 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>Post-Op Result</title>
+    <script src="https://telegram.org/js/telegram-web-app.js"></script>
+    <style>
+        :root {
+            --tg-theme-bg-color: #fff;
+            --tg-theme-text-color: #000;
+            --tg-theme-hint-color: #999;
+            --tg-theme-link-color: #2481cc;
+            --tg-theme-button-color: #2481cc;
+            --tg-theme-button-text-color: #fff;
+            --tg-theme-secondary-bg-color: #efeff4;
+        }
+        body {
+            background-color: var(--tg-theme-secondary-bg-color);
+            color: var(--tg-theme-text-color);
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+            margin: 0; padding: 0;
+            -webkit-tap-highlight-color: transparent;
+        }
+        .container { padding: 16px; padding-bottom: 100px; }
+        .card {
+            background: var(--tg-theme-bg-color);
+            border-radius: 12px;
+            padding: 16px;
+            margin-bottom: 16px;
+            box-shadow: 0 1px 2px rgba(0,0,0,0.05);
+        }
+        .card-header {
+            font-weight: 600; font-size: 17px; margin-bottom: 12px;
+            color: var(--tg-theme-link-color);
+        }
+        .row { display: flex; gap: 10px; margin-bottom: 12px; }
+        .col { flex: 1; display: flex; flex-direction: column; }
+        .label { font-size: 12px; color: var(--tg-theme-hint-color); margin-bottom: 4px; margin-left: 2px; }
+        select, input {
+            width: 100%; box-sizing: border-box; padding: 10px; border: none;
+            border-radius: 8px; background: var(--tg-theme-secondary-bg-color);
+            color: var(--tg-theme-text-color); font-size: 16px; text-align: center;
+            -webkit-appearance: none; appearance: none;
+            font-weight: 500;
+        }
+        select {
+            background-image: url("data:image/svg+xml;charset=US-ASCII,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%22292.4%22%20height%3D%22292.4%22%3E%3Cpath%20fill%3D%22%23007AFF%22%20d%3D%22M287%2069.4a17.6%2017.6%200%200%200-13-5.4H18.4c-5%200-9.3%201.8-12.9%205.4A17.6%2017.6%200%200%200%200%2082.2c0%205%201.8%209.3%205.4%2012.9l128%20127.9c3.6%203.6%207.8%205.4%2012.8%205.4s9.2-1.8%2012.8-5.4L287%2095c3.5-3.5%205.4-7.8%205.4-12.8%200-5-1.9-9.2-5.5-12.8z%22%2F%3E%3C%2Fsvg%3E");
+            background-repeat: no-repeat;
+            background-position: right .7em top 50%;
+            background-size: .65em auto;
+            padding-right: 1.5em;
+        }
+        .main-btn {
+        .button-container {
+            position: fixed; bottom: 20px; left: 16px; right: 16px;
+            background-color: var(--tg-theme-button-color);
+            color: var(--tg-theme-button-text-color);
+            display: flex;
+            gap: 10px;
+            z-index: 100;
+        }
+        .primary-btn, .secondary-btn {
+            flex: 1;
+            padding: 16px; border-radius: 14px;
+            text-align: center; font-weight: 600; font-size: 17px;
+            cursor: pointer; box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+            z-index: 100;
+        }
+        .primary-btn {
+            background-color: var(--tg-theme-button-color);
+            color: var(--tg-theme-button-text-color);
+        }
+        .secondary-btn {
+            background-color: #3a3a3c;
+            color: #fff;
+        }
+        .val-box {
+            background: var(--tg-theme-secondary-bg-color);
+            border: 1px solid rgba(0,0,0,0.05);
+            border-radius: 8px;
+            padding: 8px 4px;
+            text-align: center;
+            font-weight: 500;
+            font-size: 15px;
+            color: var(--tg-theme-text-color);
+            min-height: 18px;
+        }
+        .eye-section {
+            padding: 10px;
+            border-radius: 8px;
+            margin-bottom: 12px;
+        }
+        .od-section { background-color: rgba(0, 122, 255, 0.08); border-left: 4px solid #007aff; }
+        .os-section { background-color: rgba(52, 199, 89, 0.08); border-left: 4px solid #34c759; }
+        .section-title {
+            margin-top: 12px; margin-bottom: 6px; font-weight: 600; font-size: 13px; color: var(--tg-theme-hint-color); text-transform: uppercase; letter-spacing: 0.5px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div id="pat_header" style="margin-bottom: 16px; padding: 0 4px;">
+            <div id="pat_name" style="font-size: 20px; font-weight: 700; line-height: 1.2;"></div>
+            <div id="pat_info" style="font-size: 14px; color: var(--tg-theme-hint-color); margin-top: 4px;"></div>
+        </div>
+
+        <div class="card">
+            <div class="card-header">План операции (справка)</div>
+            <div class="row">
+                <div class="col"><div class="label">Лазер</div><div class="val-box" id="laser_type">-</div></div>
+            </div>
+            <div class="eye-section od-section">
+                <div class="section-title" style="margin-top:0;">OD (Правый)</div>
+                <div class="row">
+                    <div class="col"><div class="label">Sph</div><div class="val-box" id="od_plan_sph">-</div></div>
+                    <div class="col"><div class="label">Cyl</div><div class="val-box" id="od_plan_cyl">-</div></div>
+                    <div class="col"><div class="label">Ax</div><div class="val-box" id="od_plan_ax">-</div></div>
+                </div>
+            </div>
+            <div class="eye-section os-section">
+                <div class="section-title" style="margin-top:0;">OS (Левый)</div>
+                <div class="row">
+                    <div class="col"><div class="label">Sph</div><div class="val-box" id="os_plan_sph">-</div></div>
+                    <div class="col"><div class="label">Cyl</div><div class="val-box" id="os_plan_cyl">-</div></div>
+                    <div class="col"><div class="label">Ax</div><div class="val-box" id="os_plan_ax">-</div></div>
+                </div>
+            </div>
+        </div>
+
+        <div class="card">
+            <div class="card-header">Результат осмотра</div>
+            <div class="eye-section od-section">
+                <div class="section-title" style="margin-top:0;">OD (Правый)</div>
+                <div class="row">
+                    <div class="col"><div class="label">Sph</div><select id="od_postop_sph"></select></div>
+                    <div class="col"><div class="label">Cyl</div><select id="od_postop_cyl"></select></div>
+                    <div class="col"><div class="label">Ax</div><input type="text" id="od_postop_ax" inputmode="numeric" placeholder="180"></div>
+                    <div class="col"><div class="label">VA</div><input type="text" id="od_postop_va" inputmode="decimal" placeholder="1.0"></div>
+                </div>
+            </div>
+            <div class="eye-section os-section">
+                <div class="section-title" style="margin-top:0;">OS (Левый)</div>
+                <div class="row">
+                    <div class="col"><div class="label">Sph</div><select id="os_postop_sph"></select></div>
+                    <div class="col"><div class="label">Cyl</div><select id="os_postop_cyl"></select></div>
+                    <div class="col"><div class="label">Ax</div><input type="text" id="os_postop_ax" inputmode="numeric" placeholder="180"></div>
+                    <div class="col"><div class="label">VA</div><input type="text" id="os_postop_va" inputmode="decimal" placeholder="1.0"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="main-btn" onclick="sendData()">Сохранить результат</div>
+    <div class="button-container">
+        <div class="secondary-btn" onclick="closeApp()">Закрыть</div>
+        <div class="primary-btn" onclick="sendData()">Сохранить результат</div>
+    </div>
+
+    <script>
+        const tg = window.Telegram.WebApp;
+        tg.expand();
+
+        const params = new URLSearchParams(window.location.search);
+
+        function fillSelect(id, start, end, step, def) {
+            const el = document.getElementById(id);
+            if (!el) return;
+            let html = '';
+            const addOption = (i) => {
+                let val = (Math.round(i * 100) / 100).toFixed(2);
+                if (Math.abs(step) >= 1) val = (Math.round(i)).toString();
+                if (val > 0 && Math.abs(step) < 1) val = "+" + val;
+                if (parseFloat(val) === 0) val = "0.00";
+                const selected = (val == def || parseFloat(val) == parseFloat(def)) ? 'selected' : '';
+                html += `<option value="${val}" ${selected}>${val}</option>`;
+            };
+            if (step > 0) { for(let i=start; i<=end; i+=step) addOption(i); } 
+            else { for(let i=start; i>=end; i+=step) addOption(i); }
+            el.innerHTML = html; el.value = def;
+        }
+
+        fillSelect('od_postop_sph', -20, 10, 0.25, "0.00");
+        fillSelect('os_postop_sph', -20, 10, 0.25, "0.00");
+        fillSelect('od_postop_cyl', 0, -10, -0.25, "0.00");
+        fillSelect('os_postop_cyl', 0, -10, -0.25, "0.00");
+
+        // --- Populate form ---
+        const setInnerText = (id, val) => { const el = document.getElementById(id); if (el && val) el.innerText = val; };
+        const setValue = (id, val) => { const el = document.getElementById(id); if (el && val) el.value = val; };
+
+        if (params.has('name')) document.getElementById('pat_name').innerText = params.get('name');
+        let info = [];
+        if (params.has('age')) info.push(params.get('age') + ' лет');
+        if (params.has('period')) info.push('Осмотр: ' + params.get('period'));
+        document.getElementById('pat_info').innerText = info.join(' · ');
+
+        const laserMap = {
+            "ex500": "Alcon EX500 (WFO)",
+            "visx_s4ir": "VISX Star S4 IR",
+            "visumax_800": "Zeiss VisuMax 800 (SMILE Pro)",
+            "visumax_500": "Zeiss VisuMax 500 (SMILE)",
+            "mel90": "Zeiss MEL 90"
+        };
+        const laserType = params.get('laser_type');
+        setInnerText('laser_type', laserMap[laserType] || laserType);
+
+        ['od', 'os'].forEach(side => {
+            // Plan data
+            setInnerText(`${side}_plan_sph`, params.get(`${side}_plan_sph`));
+            setInnerText(`${side}_plan_cyl`, params.get(`${side}_plan_cyl`));
+            setInnerText(`${side}_plan_ax`, params.get(`${side}_plan_ax`));
+
+            // Post-op data
+            if (params.has(`${side}_postop_sph`)) setValue(`${side}_postop_sph`, params.get(`${side}_postop_sph`));
+            if (params.has(`${side}_postop_cyl`)) setValue(`${side}_postop_cyl`, params.get(`${side}_postop_cyl`));
+            if (params.has(`${side}_postop_ax`)) setValue(`${side}_postop_ax`, params.get(`${side}_postop_ax`));
+            if (params.has(`${side}_postop_va`)) setValue(`${side}_postop_va`, params.get(`${side}_postop_va`));
+        });
+
+        // --- Send Data ---
+        window.closeApp = function() {
+            tg.sendData(JSON.stringify({ type: "close_webapp_show_menu" }));
+            setTimeout(() => tg.close(), 300);
+        };
+
+        window.sendData = function() {
+            const btn = document.querySelector('.main-btn');
+            const btn = document.querySelector('.primary-btn');
+            btn.innerText = "Сохранение...";
+
+            const getVal = (id) => {
+                const el = document.getElementById(id);
+                return el ? el.value : "";
+            };
+
+            const payload = {
+                type: "postop_result",
+                pid: params.get('pid'),
+                period: params.get('period'),
+                od: {
+                    sph: getVal('od_postop_sph'),
+                    cyl: getVal('od_postop_cyl'),
+                    ax: getVal('od_postop_ax'),
+                    va: getVal('od_postop_va')
+                },
+                os: {
+                    sph: getVal('os_postop_sph'),
+                    cyl: getVal('os_postop_cyl'),
+                    ax: getVal('os_postop_ax'),
+                    va: getVal('os_postop_va')
+                }
+            };
+
+            tg.sendData(JSON.stringify(payload));
+            setTimeout(() => tg.close(), 300);
+        };
+
+        document.addEventListener('input', function(e) {
+            if (e.target.tagName === 'INPUT' && e.target.value.includes(',')) {
+                e.target.value = e.target.value.replace(/,/g, '.');
+            }
+        });
+    </script>
+</body>
+</html>
