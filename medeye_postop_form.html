@@ -1,0 +1,178 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>Результат осмотра</title>
+    <script src="https://telegram.org/js/telegram-web-app.js"></script>
+    <style>
+        :root {
+            --tg-theme-bg-color: #fff;
+            --tg-theme-text-color: #000;
+            --tg-theme-hint-color: #999;
+            --tg-theme-link-color: #2481cc;
+            --tg-theme-button-color: #2481cc;
+            --tg-theme-button-text-color: #fff;
+            --tg-theme-secondary-bg-color: #efeff4;
+        }
+        body {
+            background-color: var(--tg-theme-secondary-bg-color);
+            color: var(--tg-theme-text-color);
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+            margin: 0; padding: 16px; padding-bottom: 100px;
+            -webkit-tap-highlight-color: transparent;
+        }
+        .card {
+            background: var(--tg-theme-bg-color);
+            border-radius: 12px;
+            padding: 16px;
+            margin-bottom: 16px;
+            box-shadow: 0 1px 2px rgba(0,0,0,0.05);
+        }
+        .card-header {
+            font-weight: 600; font-size: 17px; margin-bottom: 12px;
+            color: var(--tg-theme-link-color);
+        }
+        .row { display: flex; gap: 10px; margin-bottom: 12px; }
+        .col { flex: 1; display: flex; flex-direction: column; }
+        .label { font-size: 12px; color: var(--tg-theme-hint-color); margin-bottom: 4px; margin-left: 2px; }
+        select, input {
+            width: 100%; box-sizing: border-box; padding: 10px; border: none;
+            border-radius: 8px; background: var(--tg-theme-secondary-bg-color);
+            color: var(--tg-theme-text-color); font-size: 16px; text-align: center;
+            font-weight: 500;
+        }
+        .eye-section { padding: 10px; border-radius: 8px; margin-bottom: 12px; }
+        .od-section { background-color: rgba(0, 122, 255, 0.08); border-left: 4px solid #007aff; }
+        .os-section { background-color: rgba(52, 199, 89, 0.08); border-left: 4px solid #34c759; }
+        .section-title { margin-top: 0; margin-bottom: 8px; font-weight: 600; font-size: 14px; }
+        .od-title { color: #007aff; }
+        .os-title { color: #34c759; }
+        
+        .btn-container {
+            position: fixed; bottom: 20px; left: 16px; right: 16px;
+            display: flex; gap: 10px; z-index: 100;
+        }
+        .primary-btn {
+            flex: 1; padding: 16px; border-radius: 14px;
+            text-align: center; font-weight: 600; font-size: 17px;
+            background-color: var(--tg-theme-button-color);
+            color: var(--tg-theme-button-text-color);
+            cursor: pointer; box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+        }
+        .header-title { font-size:18px; font-weight:700; line-height:1.2; }
+        .header-subtitle { font-size:14px; color:var(--tg-theme-hint-color); margin-top:4px; }
+    </style>
+</head>
+<body>
+    <div style="margin-bottom:16px; padding: 0 4px; display: flex; justify-content: space-between; align-items: flex-start;">
+        <div>
+            <div class="header-title" id="pat_name"></div>
+            <div class="header-subtitle" id="pat_info"></div>
+        </div>
+        <div onclick="requestOCR()" style="color: #007aff; background: rgba(0, 122, 255, 0.1); font-weight: 600; padding: 6px 12px; border-radius: 8px; font-size: 13px; cursor: pointer; display: flex; align-items: center; gap: 4px; height: fit-content; margin-top: 2px;">
+            📷 Скан
+        </div>
+    </div>
+    
+    <div class="card">
+        <div class="card-header" id="period_header">Данные осмотра</div>
+        
+        <div class="eye-section od-section">
+            <div class="section-title od-title">OD (Правый)</div>
+            <div class="row">
+                <div class="col" style="flex:1.2"><div class="label">Sph</div><input type="text" id="od_sph" inputmode="decimal" placeholder="0.00"></div>
+                <div class="col" style="flex:1.2"><div class="label">Cyl</div><input type="text" id="od_cyl" inputmode="decimal" placeholder="0.00"></div>
+                <div class="col" style="flex:1"><div class="label">Ax</div><input type="text" id="od_ax" inputmode="numeric" placeholder="0"></div>
+                <div class="col" style="flex:1"><div class="label">VA</div><input type="text" id="od_va" inputmode="decimal" placeholder="1.0"></div>
+            </div>
+            <div class="row">
+                <div class="col"><div class="label">K1</div><input type="text" id="od_k1" inputmode="decimal" placeholder="42.50"></div>
+                <div class="col"><div class="label">K2</div><input type="text" id="od_k2" inputmode="decimal" placeholder="43.50"></div>
+                <div class="col"><div class="label">K Ax</div><input type="text" id="od_k_ax" inputmode="numeric" placeholder="90"></div>
+            </div>
+        </div>
+
+        <div class="eye-section os-section">
+            <div class="section-title os-title">OS (Левый)</div>
+            <div class="row">
+                <div class="col" style="flex:1.2"><div class="label">Sph</div><input type="text" id="os_sph" inputmode="decimal" placeholder="0.00"></div>
+                <div class="col" style="flex:1.2"><div class="label">Cyl</div><input type="text" id="os_cyl" inputmode="decimal" placeholder="0.00"></div>
+                <div class="col" style="flex:1"><div class="label">Ax</div><input type="text" id="os_ax" inputmode="numeric" placeholder="0"></div>
+                <div class="col" style="flex:1"><div class="label">VA</div><input type="text" id="os_va" inputmode="decimal" placeholder="1.0"></div>
+            </div>
+            <div class="row">
+                <div class="col"><div class="label">K1</div><input type="text" id="os_k1" inputmode="decimal" placeholder="42.50"></div>
+                <div class="col"><div class="label">K2</div><input type="text" id="os_k2" inputmode="decimal" placeholder="43.50"></div>
+                <div class="col"><div class="label">K Ax</div><input type="text" id="os_k_ax" inputmode="numeric" placeholder="90"></div>
+            </div>
+        </div>
+    </div>
+
+    <div class="btn-container">
+        <div class="primary-btn" onclick="sendData()">Сохранить результат</div>
+    </div>
+
+    <script>
+        const tg = window.Telegram.WebApp;
+        tg.expand();
+        
+        document.addEventListener('input', function(e) {
+            if (e.target.tagName === 'INPUT') {
+                e.target.value = e.target.value.replace(/,/g, '.');
+            }
+        });
+
+        const params = new URLSearchParams(window.location.search);
+        const pid = params.get('pid');
+        const period = params.get('period');
+        const name = params.get('name') || 'Пациент';
+        const age = params.get('age');
+        
+        document.getElementById('pat_name').innerText = name;
+        let info = `ID: ${pid}`;
+        if(age) info = `${age} лет · ${info}`;
+        document.getElementById('pat_info').innerText = info;
+        
+        document.getElementById('period_header').innerText = `Осмотр: ${period}`;
+
+        ['od', 'os'].forEach(side => {
+            const fields = ['sph', 'cyl', 'ax', 'va', 'k1', 'k2', 'k_ax'];
+            fields.forEach(f => {
+                const el = document.getElementById(`${side}_${f}`);
+                if (el && params.has(`${side}_postop_${f}`)) {
+                    el.value = params.get(`${side}_postop_${f}`);
+                }
+            });
+        });
+        
+        window.requestOCR = function() {
+            tg.sendData(JSON.stringify({ type: "ocr_request_postop", pid: pid, period: period }));
+            setTimeout(() => tg.close(), 300);
+        };
+
+        function sendData() {
+            const getVal = (id) => document.getElementById(id).value.trim();
+            
+            const payload = {
+                type: "postop_result",
+                pid: pid,
+                period: period,
+                od: {
+                    sph: getVal('od_sph'), cyl: getVal('od_cyl'), ax: getVal('od_ax'), va: getVal('od_va'),
+                    k1: getVal('od_k1'), k2: getVal('od_k2'), k_ax: getVal('od_k_ax')
+                },
+                os: {
+                    sph: getVal('os_sph'), cyl: getVal('os_cyl'), ax: getVal('os_ax'), va: getVal('os_va'),
+                    k1: getVal('os_k1'), k2: getVal('os_k2'), k_ax: getVal('os_k_ax')
+                }
+            };
+            
+            const btn = document.querySelector('.primary-btn');
+            btn.innerText = "Сохранение...";
+            tg.sendData(JSON.stringify(payload));
+            setTimeout(() => tg.close(), 300);
+        }
+    </script>
+</body>
+</html>
