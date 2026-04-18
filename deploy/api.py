@@ -30,7 +30,7 @@ from calculators import (
 TMP_DIR = Path("tmp")
 TMP_DIR.mkdir(parents=True, exist_ok=True)
 
-app = FastAPI(title="MedEye TMA API", version="2.0.0")
+app = FastAPI(title="MedEye TMA API", version="2.1.0")
 
 # Настройка CORS (разрешаем WebApp делать запросы к нашему API)
 app.add_middleware(
