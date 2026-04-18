@@ -1,65 +1,48 @@
-name: Deploy to Server
+name: Deploy MedEye TMA
 
 on:
   push:
-    branches: [main]
+    branches: [ main ]
 
 jobs:
-  deploy:
+  build-and-deploy:
     runs-on: ubuntu-latest
-
     steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
+    - name: Checkout code
+      uses: actions/checkout@v4
 
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: '20'
-          cache: 'npm'
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '20'
 
-      - name: Install dependencies
-        run: npm ci
+    - name: Install dependencies
+      run: npm ci
 
-      - name: Build frontend
-        run: npm run build
+    - name: Build frontend
+      run: npm run build
 
-      - name: Copy dist to deploy folder
-        run: |
-          rm -rf deploy/dist
-          cp -r dist deploy/dist
+    - name: Sync build to deploy folder
+      run: |
+        rm -rf deploy/dist
+        cp -r dist deploy/dist
 
-      - name: Setup SSH key
-        run: |
-          mkdir -p ~/.ssh
-          echo "${{ secrets.SSH_PRIVATE_KEY }}" > ~/.ssh/deploy_key
-          chmod 600 ~/.ssh/deploy_key
-          ssh-keyscan -H ${{ secrets.SERVER_HOST }} >> ~/.ssh/known_hosts
+    - name: Deploy to Server via rsync
+      uses: easingthemes/ssh-deploy@main
+      env:
+        SSH_PRIVATE_KEY: ${{ secrets.SSH_PRIVATE_KEY }}
+        REMOTE_HOST: ${{ secrets.SERVER_IP }}
+        REMOTE_USER: ${{ secrets.SERVER_USER }}
+        TARGET: /root/medeye_bot/
+        SOURCE: "deploy/"
+        ARGS: "-av --checksum --exclude='*.db' --exclude='*.log' --exclude='__pycache__/'"
 
-      - name: Sync files to server
-        run: |
-          rsync -av --checksum \
-            --exclude="bot0.0.1.py" \
-            --exclude="__pycache__/" \
-            --exclude="*.db" \
-            --exclude="*.log" \
-            --include="*.py" \
-            --include="*.json" \
-            --include=".env" \
-            --include="dist/" \
-            --include="dist/**" \
-            --exclude="*" \
-            -e "ssh -i ~/.ssh/deploy_key -o StrictHostKeyChecking=no" \
-            deploy/ ${{ secrets.SERVER_USER }}@${{ secrets.SERVER_HOST }}:${{ secrets.REMOTE_DIR }}
-
-      - name: Restart service
-        run: |
-          ssh -i ~/.ssh/deploy_key -o StrictHostKeyChecking=no \
-            ${{ secrets.SERVER_USER }}@${{ secrets.SERVER_HOST }} \
-            "systemctl restart medeye-api || systemctl restart medeye"
-
-      - name: Check service status
-        run: |
-          ssh -i ~/.ssh/deploy_key -o StrictHostKeyChecking=no \
-            ${{ secrets.SERVER_USER }}@${{ secrets.SERVER_HOST }} \
-            "systemctl is-active medeye-api || systemctl is-active medeye"
+    - name: Restart systemd services
+      uses: appleboy/ssh-action@master
+      with:
+        host: ${{ secrets.SERVER_IP }}
+        username: ${{ secrets.SERVER_USER }}
+        key: ${{ secrets.SSH_PRIVATE_KEY }}
+        script: |
+          systemctl restart medeye
+          systemctl restart medeye-bot
