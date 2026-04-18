@@ -30,3 +30,4 @@ master.db
 *.exp
 medeye.service
 medeye-bot.service
+deploy_medeye.sh
