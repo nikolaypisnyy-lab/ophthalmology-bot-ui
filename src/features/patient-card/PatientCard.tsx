@@ -1,0 +1,158 @@
+import React, { useRef } from 'react';
+import { C } from '../../constants/design';
+
+// Запретить HMR для этого файла — любое изменение вызывает полный перезапуск страницы
+if ((import.meta as any).hot) (import.meta as any).hot.decline();
+import { useSessionStore } from '../../store/useSessionStore';
+import { useUIStore } from '../../store/useUIStore';
+import { usePatientStore } from '../../store/usePatientStore';
+import { useTelegram } from '../../hooks/useTelegram';
+import { PatientHeader } from './PatientHeader';
+import { BioTab } from './tabs/BioTab';
+import { CalcTab } from './tabs/CalcTab';
+import { PlanTab } from './tabs/PlanTab';
+import { ResultTab } from './tabs/ResultTab';
+import { EnhancementTab } from './tabs/EnhancementTab';
+import type { PeriodKey } from '../../types/results';
+
+export function PatientCard() {
+  const { draft, closeDraft } = useSessionStore();
+  const { activeTab, activeEye, closePatient, setActiveEye, setPlanEye, setResultEye } = useUIStore();
+  const { savePatient } = usePatientStore();
+  const { haptic } = useTelegram();
+  const [isSaving, setIsSaving] = React.useState(false);
+  const bodyRef = useRef<HTMLDivElement>(null);
+  const touchStartX = useRef(0);
+
+  if (!draft) return null;
+
+  // Свайп между OD/OS
+  const handleTouchStart = (e: React.TouchEvent) => {
+    touchStartX.current = e.touches[0].clientX;
+  };
+  const handleTouchEnd = (e: React.TouchEvent) => {
+    const delta = e.changedTouches[0].clientX - touchStartX.current;
+    if (Math.abs(delta) < 80) return;
+    
+    // Виброотклик
+    haptic.medium();
+
+    const next = delta > 0 ? 'od' : 'os';
+    if (activeTab === 'bio')    setActiveEye(next);
+    if (activeTab === 'plan')   setPlanEye(next);
+    if (activeTab === 'result') setResultEye(next);
+  };
+
+  // Динамический фон по активному глазу
+  const bgGradient = activeEye === 'od'
+    ? 'linear-gradient(160deg,#0e1e35 0%,#0a0d16 40%)'
+    : 'linear-gradient(160deg,#0d2820 0%,#0a0d16 40%)';
+
+  const handleSave = async () => {
+    if (isSaving || !draft) return;
+    setIsSaving(true);
+    try {
+      // Собираем финальные данные
+      const { 
+        iolResult, 
+        formulaResults,
+        enhancementPlan, 
+        refPlan, 
+        planTweaked 
+      } = useSessionStore.getState();
+
+      const updated = { ...draft } as any;
+
+      if (formulaResults) {
+        updated.formulaResults = formulaResults;
+      }
+
+      // Сохраняем результаты ИОЛ (если есть)
+      if (iolResult) {
+        updated.iolResult = iolResult;
+      }
+
+      // Если план ЛКЗ — сохраняем savedPlan
+      if (draft.type === 'refraction' && refPlan) {
+        updated.savedPlan = refPlan;
+        if (planTweaked) updated.planAuthor = 'surgeon';
+      }
+
+      // Если есть план докоррекции — сохраняем его
+      if (enhancementPlan) {
+        updated.savedEnhancement = enhancementPlan;
+      }
+
+      // Вычисляем postSph/Va из последнего заполненного периода — отдельно по каждому глазу
+      const periodOrder: PeriodKey[] = ['1y', '6m', '3m', '1m', '1w', '1d'];
+
+      const findEyeResult = (eye: 'od' | 'os') => {
+        for (const pk of periodOrder) {
+          const ed = draft.periods?.[pk]?.[eye];
+          if (ed?.sph !== undefined && ed.sph !== '') {
+            return {
+              sph: parseFloat(ed.sph),
+              cyl: parseFloat(ed.cyl ?? '0') || 0,
+              va:  ed.va ?? '',
+            };
+          }
+        }
+        return null;
+      };
+
+      const odRes = findEyeResult('od');
+      const osRes = findEyeResult('os');
+      const anyRes = odRes ?? osRes;
+
+      if (anyRes) {
+        updated.status  = 'done';
+        updated.postSph = anyRes.sph;
+        updated.postCyl = anyRes.cyl;
+      }
+      if (odRes) {
+        updated.postSphOD = odRes.sph;
+        updated.postCylOD = odRes.cyl;
+        updated.postVaOD  = odRes.va;
+      }
+      if (osRes) {
+        updated.postSphOS = osRes.sph;
+        updated.postCylOS = osRes.cyl;
+        updated.postVaOS  = osRes.va;
+      }
+
+      await savePatient(updated as any);
+      haptic.success();
+      closePatient();
+      closeDraft();
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  return (
+    <div
+      style={{
+        position: 'absolute', inset: 0, zIndex: 100,
+        background: bgGradient,
+        transition: 'background .4s ease',
+        display: 'flex', flexDirection: 'column',
+      }}
+    >
+      <PatientHeader onSave={handleSave} isSaving={isSaving} />
+
+      <div
+        ref={bodyRef}
+        onTouchStart={handleTouchStart}
+        onTouchEnd={handleTouchEnd}
+        style={{ flex: 1, overflowY: 'auto', padding: '14px 16px 32px' }}
+      >
+        {activeTab === 'bio'    && <BioTab />}
+        {activeTab === 'calc'   && <CalcTab />}
+        {activeTab === 'plan'   && <PlanTab />}
+        {activeTab === 'result' && <ResultTab onSave={handleSave} isSaving={isSaving} />}
+        {activeTab === 'enhancement' && <EnhancementTab />}
+      </div>
+
+    </div>
+  );
+}

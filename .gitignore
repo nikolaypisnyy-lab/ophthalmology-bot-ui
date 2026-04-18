@@ -1,0 +1,32 @@
+# Dependencies
+node_modules/
+
+# Build outputs
+dist/
+build/
+
+# IDE files
+.claude/
+.vscode/
+.idea/
+.DS_Store
+
+# Static assets and logs
+*.log
+deploy.zip
+tmp/
+
+# Databases (IMPORTANT: keep patient data private)
+*.db
+*.db.bak
+master.db
+
+# Environment and secrets
+.env
+.env.production
+.env.local
+
+# Deployment scripts with passwords/secrets
+*.exp
+medeye.service
+medeye-bot.service
