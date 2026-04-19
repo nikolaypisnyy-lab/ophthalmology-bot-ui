@@ -394,9 +394,24 @@ def calculate_iol(payload: IolCalcRequest):
             req_k[side] = {"al": float(e["al"]), "k1": float(e["k1"]), "k2": float(e["k2"]), "acd": float(e["acd"] or 0), "a_const": a_k, "target": float(e.get("target") or 0)}
     
     results = {}
-    if d.get("use_barrett"): results["barrett"] = run_scraper_subprocess("scrape_barrett_universal2_both", req_b)
-    if d.get("use_kane"):    results["kane"] = run_scraper_subprocess("scrape_kane_formula_both", req_k)
-    return {"status": "ok", "results": results}
+    errors = []
+
+    def _run(fn, req, name):
+        r = run_scraper_subprocess(fn, req)
+        if "error" in r:
+            errors.append(f"{name}: {r['error']}")
+        else:
+            results[name] = r.get("result", r)
+
+    from concurrent.futures import ThreadPoolExecutor
+    tasks = []
+    if d.get("use_barrett"): tasks.append(("scrape_barrett_universal2_both", req_b, "barrett"))
+    if d.get("use_kane"):    tasks.append(("scrape_kane_formula_both",        req_k, "kane"))
+
+    with ThreadPoolExecutor(max_workers=len(tasks) or 1) as pool:
+        list(pool.map(lambda t: _run(*t), tasks))
+
+    return {"status": "ok", "results": results, "errors": errors}
 
 if __name__ == "__main__":
     import uvicorn
