@@ -22,6 +22,12 @@ import { ToricSchematic } from '../../../ui/ToricSchematic';
 
 function PlanResult({ eye, onReset, laser }: { eye: 'od' | 'os'; onReset: () => void; laser: string }) {
   const { draft, refPlan, setPlanField, setDraft, setPlanTweaked } = useSessionStore();
+  const { activeLaser, activeRefNomo, recommendedNomo, setRefNomo, fetchRecommendedNomo } = useClinicStore();
+  
+  useEffect(() => {
+    fetchRecommendedNomo();
+  }, [fetchRecommendedNomo]);
+
   const ec = eyeColors(eye);
   const plan = refPlan?.[eye];
 
@@ -208,16 +214,62 @@ function PlanResult({ eye, onReset, laser }: { eye: 'od' | 'os'; onReset: () => 
             <div style={{ flex: 1 }}>
               <SectionLabel color={ec.color} style={{ marginBottom: 0 }}>ПЛАН ВМЕШАТЕЛЬСТВА</SectionLabel>
             </div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap', justifyContent: 'flex-end', marginLeft: 10 }}>
+              {(activeRefNomo !== null || recommendedNomo !== null) && (
+                <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+                  <button
+                    onClick={() => {
+                      if (activeRefNomo === null && recommendedNomo !== null) {
+                        setRefNomo(recommendedNomo);
+                        setDraft({ useClinicNomo: true });
+                      } else {
+                        setDraft({ useClinicNomo: !draft?.useClinicNomo });
+                      }
+                    }}
+                    style={{
+                      padding: '0 8px', height: 20, borderRadius: 10,
+                      background: draft?.useClinicNomo ? `${C.green}15` : 'rgba(255,255,255,0.03)',
+                      border: `1px solid ${draft?.useClinicNomo ? `${C.green}30` : C.border}`,
+                      color: draft?.useClinicNomo ? C.green : C.muted,
+                      fontFamily: F.sans, fontSize: 8, fontWeight: 900,
+                      cursor: 'pointer', transition: 'all .2s',
+                      whiteSpace: 'nowrap'
+                    }}
+                  >
+                    НОМО: {activeRefNomo !== null ? (activeRefNomo > 0 ? '+' : '') + activeRefNomo : (recommendedNomo! > 0 ? '+' : '') + recommendedNomo + ' (Рек.)'}
+                  </button>
+                  
+                  {recommendedNomo !== null && activeRefNomo !== null && Math.abs(recommendedNomo - activeRefNomo) > 0.05 && (
+                    <button
+                      onClick={() => setRefNomo(recommendedNomo)}
+                      style={{
+                        padding: '0 8px', height: 20, borderRadius: 10,
+                        background: `linear-gradient(135deg, ${C.accent} 0%, #3B82F6 100%)`,
+                        border: 'none',
+                        color: '#fff', fontFamily: F.sans, fontSize: 8, fontWeight: 900,
+                        cursor: 'pointer', boxShadow: `0 4px 8px ${C.accent}30`,
+                        transition: 'transform .2s',
+                        whiteSpace: 'nowrap'
+                      }}
+                      onMouseEnter={e => e.currentTarget.style.transform = 'scale(1.05)'}
+                      onMouseLeave={e => e.currentTarget.style.transform = 'scale(1)'}
+                    >
+                      АКТУАЛИЗИРОВАТЬ
+                    </button>
+                  )}
+                </div>
+              )}
+
               <button
                 onClick={() => setDraft({ noNomogram: !draft?.noNomogram })}
                 style={{
-                  padding: '0 10px', height: 18, borderRadius: 10,
-                  background: draft?.noNomogram ? `${C.red}15` : 'transparent',
+                  padding: '0 8px', height: 20, borderRadius: 10,
+                  background: draft?.noNomogram ? `${C.red}15` : 'rgba(255,255,255,0.03)',
                   border: `1px solid ${draft?.noNomogram ? `${C.red}30` : C.border}`,
                   color: draft?.noNomogram ? C.red : C.muted,
-                  fontFamily: F.sans, fontSize: 8, fontWeight: 800,
-                  cursor: 'pointer', transition: 'all .2s', letterSpacing: '.02em'
+                  fontFamily: F.sans, fontSize: 8, fontWeight: 900,
+                  cursor: 'pointer', transition: 'all .2s',
+                  whiteSpace: 'nowrap'
                 }}
               >
                 БЕЗ НОМО
@@ -226,15 +278,17 @@ function PlanResult({ eye, onReset, laser }: { eye: 'od' | 'os'; onReset: () => 
               <button
                 onClick={() => setDraft({ doRound: !draft?.doRound })}
                 style={{
-                  padding: '0 8px', height: 18, borderRadius: 10,
-                  background: draft?.doRound ? `${C.accent}15` : 'transparent',
+                  padding: '0 6px', height: 16, borderRadius: 8,
+                  background: draft?.doRound ? `${C.accent}15` : 'rgba(255,255,255,0.03)',
                   border: `1px solid ${draft?.doRound ? `${C.accent}30` : C.border}`,
                   color: draft?.doRound ? C.accent : C.muted,
-                  fontFamily: F.sans, fontSize: 8, fontWeight: 800,
-                  cursor: 'pointer', transition: 'all .2s', letterSpacing: '.02em'
+                  fontFamily: F.sans, fontSize: 7, fontWeight: 900,
+                  cursor: 'pointer', transition: 'all .2s',
+                  display: 'flex', alignItems: 'center', gap: 2
                 }}
               >
-                ≈ 0.25
+                <span>≈</span>
+                {draft?.doRound ? '0.25' : 'БЕЗ ОКР.'}
               </button>
               
               <button
@@ -559,7 +613,7 @@ export function PlanTab() {
   }, [showCalendar]);
   const { planEye, setPlanEye } = useUIStore();
 
-  const { activeLaser } = useClinicStore();
+  const { activeLaser, activeRefNomo, recommendedNomo } = useClinicStore();
   const laser = activeLaser || 'ex500';
   const strategy = draft?.astigStrategy ?? (draft?.useCorneal ? 'corneal' : 'manifest');
 
@@ -567,9 +621,11 @@ export function PlanTab() {
   useEffect(() => {
     if (!planTweaked && draft) {
       const age = parseFloat(draft.age ?? '0') || 0;
+      const nomo = activeRefNomo ?? recommendedNomo;
+      const userOffset = (draft.useClinicNomo && nomo !== null) ? nomo : 0;
       setRefPlan({
-        od: computeRefPlan(draft.od ?? newEyeData(), laser as any, false, !!draft.doRound, age, !!draft.noNomogram, strategy) ?? undefined,
-        os: computeRefPlan(draft.os ?? newEyeData(), laser as any, false, !!draft.doRound, age, !!draft.noNomogram, strategy) ?? undefined,
+        od: computeRefPlan(draft.od ?? newEyeData(), laser as any, false, !!draft.doRound, age, !!draft.noNomogram, strategy, userOffset) ?? undefined,
+        os: computeRefPlan(draft.os ?? newEyeData(), laser as any, false, !!draft.doRound, age, !!draft.noNomogram, strategy, userOffset) ?? undefined,
       });
     }
   }, [
@@ -592,14 +648,20 @@ export function PlanTab() {
         <CataractPlanTab />
       ) : (
         <>
-          <PlanResult eye={planEye} laser={laser} onReset={() => {
-            const age = parseFloat(draft.age ?? '0') || 0;
-            setPlanTweaked(false);
-            setRefPlan({
-              od: computeRefPlan(draft.od ?? newEyeData(), laser as any, false, !!draft.doRound, age, !!draft.noNomogram, strategy) ?? undefined,
-              os: computeRefPlan(draft.os ?? newEyeData(), laser as any, false, !!draft.doRound, age, !!draft.noNomogram, strategy) ?? undefined,
-            });
-          }} />
+          <PlanResult 
+            eye={planEye} 
+            laser={laser} 
+            onReset={() => {
+              const age = parseFloat(draft.age ?? '0') || 0;
+              const nomo = activeRefNomo ?? recommendedNomo;
+              const userOffset = (draft.useClinicNomo && nomo !== null) ? nomo : 0;
+              setPlanTweaked(false);
+              setRefPlan({
+                od: computeRefPlan(draft.od ?? newEyeData(), laser as any, false, !!draft.doRound, age, !!draft.noNomogram, strategy, userOffset) ?? undefined,
+                os: computeRefPlan(draft.os ?? newEyeData(), laser as any, false, !!draft.doRound, age, !!draft.noNomogram, strategy, userOffset) ?? undefined,
+              });
+            }} 
+          />
 
         </>
       )}

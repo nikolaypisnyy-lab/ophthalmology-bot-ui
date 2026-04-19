@@ -140,7 +140,7 @@ export function ResultTab({ onSave, isSaving }: { onSave: () => void, isSaving: 
             <CompareRow label="Sph" pre={preSph} plan={planEye?.sph} result={eyeData.sph} unit="D" />
             <CompareRow label="Cyl" pre={preCyl} plan={planEye?.cyl} result={eyeData.cyl} unit="D" />
             <CompareRow label="Ax" pre={preAx} plan={planEye?.ax} result={eyeData.ax} unit="°" />
-            <CompareRow label="SE" pre={getSE(preSph, preCyl)} plan={getSE(planEye?.sph, planEye?.cyl)} result={getSE(eyeData.sph, eyeData.cyl)} unit="D" color={C.green} />
+            <CompareRow label="SE" pre={getSE(preSph, preCyl)} result={getSE(eyeData.sph, eyeData.cyl)} unit="D" color={C.green} />
           </div>
         </div>
       )}

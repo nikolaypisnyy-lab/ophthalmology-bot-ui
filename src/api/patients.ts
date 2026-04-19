@@ -37,6 +37,8 @@ export interface PatientDetailResponse {
     op_eye?: string;
     op_date?: string;
     patient_type?: string;
+    od?: any;
+    os?: any;
   };
   visit?: {
     visit_id: string | number;
@@ -58,6 +60,8 @@ export interface CreatePatientRequest {
   op_eye?: string;
   op_date?: string;
   isEnhancement?: boolean;
+  od?: any;
+  os?: any;
 }
 
 export interface CreatePatientResponse {
@@ -85,6 +89,8 @@ export interface UpdatePatientRequest {
   patient_type?: 'refraction' | 'cataract';
   isEnhancement?: boolean;
   surgical_order?: number;
+  od?: any;
+  os?: any;
 }
 
 export async function updatePatient(
@@ -123,6 +129,8 @@ export async function savePatientMeta(patient: Partial<Patient>): Promise<SaveRe
       op_eye: patient.eye,
       op_date: patient.date,
       isEnhancement: patient.isEnhancement,
+      od: patient.od,
+      os: patient.os,
     });
     const patientId = String(res.patient_id ?? '');
 
@@ -145,6 +153,8 @@ export async function savePatientMeta(patient: Partial<Patient>): Promise<SaveRe
       op_eye: patient.eye,
       patient_type: patient.type,
       isEnhancement: patient.isEnhancement,
+      od: patient.od,
+      os: patient.os,
     });
     return { patientId: String(patient.id), visitId: null };
   }

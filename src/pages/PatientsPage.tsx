@@ -597,27 +597,36 @@ export function PatientsPage() {
         </div>
       </div>
 
-      {/* Список */}
-      <div style={{ flex: 1, overflowY: 'auto', padding: '4px 16px 16px', display: 'flex', flexDirection: 'column', gap: 8 }}>
-        {loading && patients.length === 0 && (
-          <div style={{ textAlign: 'center', padding: 40, color: C.muted, fontFamily: F.sans, fontSize: 14 }}>
-            Загрузка...
-          </div>
-        )}
-        {!loading && visible.length === 0 && (
-          <div style={{ textAlign: 'center', padding: 40, color: C.muted, fontFamily: F.sans, fontSize: 14 }}>
-            {searchQuery ? 'Ничего не найдено' : 'Нет пациентов'}
-          </div>
-        )}
-        {visible.map((p, i) => (
-          <PatientCard
-            key={p.id || i}
-            patient={p}
-            index={i}
-            onOpen={id => openPatient(id, 'bio')}
-            onDelete={deletePatient}
-          />
-        ))}
+      {/* Список с абсолютным позиционированием */}
+      <div style={{ flex: 1, position: 'relative' }}>
+        <div style={{ 
+          position: 'absolute', inset: 0,
+          overflowY: 'auto', 
+          padding: '4px 16px 100px', 
+          display: 'block', 
+          WebkitOverflowScrolling: 'touch' 
+        }}>
+          {loading && patients.length === 0 && (
+            <div style={{ textAlign: 'center', padding: 40, color: C.muted, fontFamily: F.sans, fontSize: 14 }}>
+              Загрузка...
+            </div>
+          )}
+          {!loading && visible.length === 0 && (
+            <div style={{ textAlign: 'center', padding: 40, color: C.muted, fontFamily: F.sans, fontSize: 14 }}>
+              {searchQuery ? 'Ничего не найдено' : 'Нет пациентов'}
+            </div>
+          )}
+          {visible.map((p, i) => (
+            <div key={p.id || i} style={{ display: 'block', width: '100%', marginBottom: 10 }}>
+              <PatientCard
+                patient={p}
+                index={i}
+                onOpen={id => openPatient(id, 'bio')}
+                onDelete={deletePatient}
+              />
+            </div>
+          ))}
+        </div>
       </div>
 
       {showNew && (

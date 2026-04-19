@@ -28,6 +28,7 @@ export interface PatientSummary {
   postVaOS?: string;
   isEnhancement?: boolean; // флаг докоррекции для календаря
   surgicalOrder?: number;  // порядок в операционном списке
+  useClinicNomo?: boolean;
 }
 
 export interface Patient extends PatientSummary {

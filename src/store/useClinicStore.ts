@@ -17,11 +17,15 @@ interface ClinicStore {
   activeClinicId:  string | null;
   activeName:      string | null;
   activeLaser:     string | null;
+  activeRefNomo:   number | null;
+  recommendedNomo: number | null;
   initialized:     boolean;
   error:           string | null;
   initClinics:     () => Promise<void>;
   switchClinic:    (id: string) => void;
   setActiveLaser:  (id: string) => void;
+  setRefNomo:      (val: number | null) => void;
+  fetchRecommendedNomo: () => Promise<void>;
 }
 
 export const useClinicStore = create<ClinicStore>((set, get) => ({
@@ -29,6 +33,8 @@ export const useClinicStore = create<ClinicStore>((set, get) => ({
   activeClinicId: null,
   activeName:     null,
   activeLaser:    null,
+  activeRefNomo:  null,
+  recommendedNomo: null,
   initialized:    false,
   error:          null,
 
@@ -66,7 +72,19 @@ export const useClinicStore = create<ClinicStore>((set, get) => ({
       setActiveClinicId(target);
       
       const laser = localStorage.getItem(`rm_laser_${target}`) || 'ex500';
-      set({ clinics, activeClinicId: target, activeName: targetCl.clinic_name, activeLaser: laser, initialized: true, error: null });
+      const nomo  = localStorage.getItem(`rm_ref_nomo_${target}`);
+      set({ 
+        clinics, 
+        activeClinicId: target, 
+        activeName: targetCl.clinic_name, 
+        activeLaser: laser, 
+        activeRefNomo: nomo ? parseFloat(nomo) : null,
+        initialized: true, 
+        error: null 
+      });
+
+
+      await get().fetchRecommendedNomo();
 
     } catch (e: any) {
       // Fallback: если API недоступен — используем сохранённую клинику и название
@@ -86,16 +104,14 @@ export const useClinicStore = create<ClinicStore>((set, get) => ({
     const { clinics } = get();
     const prev = localStorage.getItem(LS_CLINIC);
     if (prev !== id) {
+      localStorage.setItem(LS_CLINIC, id);
+      const cl = clinics.find(c => c.clinic_id === id);
+      if (cl?.clinic_name) localStorage.setItem(LS_CLINIC_NAME, cl.clinic_name);
+      
       localStorage.removeItem(LS_PATIENTS);
       localStorage.removeItem(LS_PDATA);
+      window.location.reload(); 
     }
-    localStorage.setItem(LS_CLINIC, id);
-    setActiveClinicId(id);
-    const cl = clinics.find(c => c.clinic_id === id);
-    if (cl?.clinic_name) localStorage.setItem(LS_CLINIC_NAME, cl.clinic_name);
-    
-    const laser = localStorage.getItem(`rm_laser_${id}`) || 'ex500';
-    set({ activeClinicId: id, activeName: cl?.clinic_name ?? null, activeLaser: laser });
   },
 
   setActiveLaser: (id) => {
@@ -104,5 +120,22 @@ export const useClinicStore = create<ClinicStore>((set, get) => ({
       localStorage.setItem(`rm_laser_${activeClinicId}`, id);
       set({ activeLaser: id });
     }
+  },
+
+  setRefNomo: (val) => {
+    const { activeClinicId } = get();
+    if (activeClinicId) {
+      if (val === null) localStorage.removeItem(`rm_ref_nomo_${activeClinicId}`);
+      else localStorage.setItem(`rm_ref_nomo_${activeClinicId}`, String(val));
+      set({ activeRefNomo: val });
+    }
+  },
+  fetchRecommendedNomo: async () => {
+    try {
+      const data = await apiGet<any>('/nomogram');
+      if (data && data.proposed_offset_sph !== undefined) {
+        set({ recommendedNomo: data.proposed_offset_sph });
+      }
+    } catch (e) {}
   },
 }));

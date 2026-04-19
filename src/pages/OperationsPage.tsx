@@ -51,7 +51,7 @@ function MonthCalendar({
         {DOW.map((d, di) => (
           <div key={d} style={{
             fontFamily: F.sans, fontSize: 9, fontWeight: 600, textAlign: 'center',
-            color: di >= 5 ? '#f87171' : C.muted,
+            color: di === 6 ? '#f87171' : C.muted,
           }}>{d}</div>
         ))}
       </div>
@@ -63,8 +63,8 @@ function MonthCalendar({
           const isSelected = iso === selected;
           const cnt = markedDates[iso] || 0;
           const isToday = iso === today;
-          const dow = new Date(year, month, d).getDay(); // 0=Вс, 6=Сб
-          const isWeekend = dow === 0 || dow === 6;
+          const dow = new Date(year, month, d).getDay(); // 0=Вс
+          const isSunday = dow === 0;
 
           return (
             <button
@@ -73,7 +73,7 @@ function MonthCalendar({
               style={{
                 padding: '4px 2px', borderRadius: 8,
                 border: `1px solid ${isSelected ? C.accent : cnt > 0 ? C.border2 : 'transparent'}`,
-                background: isSelected ? C.accent : cnt > 0 ? C.accentLt : isWeekend ? 'rgba(248,113,113,0.07)' : 'transparent',
+                background: isSelected ? C.accent : cnt > 0 ? C.accentLt : 'transparent',
                 cursor: 'pointer',
                 display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 2,
                 transition: 'all .12s',
@@ -82,7 +82,7 @@ function MonthCalendar({
               <span style={{
                 fontFamily: F.mono, fontSize: 12,
                 fontWeight: isSelected || isToday ? 700 : 400,
-                color: isSelected ? '#fff' : isToday ? C.accent : isWeekend ? '#f87171' : C.text,
+                color: isSelected ? '#fff' : isToday ? C.accent : isSunday ? '#f87171' : C.text,
               }}>
                 {d}
               </span>
@@ -149,154 +149,167 @@ export function OperationsPage() {
   };
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', height: '100%', overflowY: 'auto' }}>
-      {/* Календарь */}
-      <div style={{ padding: '12px 16px 0' }}>
-        <MonthCalendar selected={selDay} onChange={setSelDay} markedDates={markedDates} />
-      </div>
-
-      {/* Заголовок дня */}
-      <div style={{ padding: '20px 16px 8px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-        <div style={{ fontFamily: F.sans, fontSize: 13, fontWeight: 700, color: C.text, display: 'flex', alignItems: 'center', gap: 6 }}>
-           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"/></svg>
-           {fmtDate(selDay)}
+    <div style={{ display: 'flex', flexDirection: 'column', height: '100%', overflow: 'hidden', position: 'relative' }}>
+      {/* Шапка (Календарь + Заголовок) */}
+      <div style={{ flexShrink: 0, background: C.bg, zIndex: 10 }}>
+        {/* Календарь */}
+        <div style={{ padding: '12px 16px 0' }}>
+          <MonthCalendar selected={selDay} onChange={setSelDay} markedDates={markedDates} />
         </div>
-        <span style={{
-          background: C.accentLt, color: C.accent,
-          fontFamily: F.mono, fontSize: 11, fontWeight: 700,
-          padding: '4px 12px', borderRadius: 20, border: `1px solid ${C.accent}20`
-        }}>
-          {dayPatients.length} ПАЦИЕНТОВ
-        </span>
+
+        {/* Заголовок дня */}
+        <div style={{ padding: '20px 16px 8px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+          <div style={{ fontFamily: F.sans, fontSize: 13, fontWeight: 700, color: C.text, display: 'flex', alignItems: 'center', gap: 6 }}>
+             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"/></svg>
+             {fmtDate(selDay)}
+          </div>
+          <span style={{
+            background: C.accentLt, color: C.accent,
+            fontFamily: F.mono, fontSize: 11, fontWeight: 700,
+            padding: '4px 12px', borderRadius: 20, border: `1px solid ${C.accent}20`
+          }}>
+            {dayPatients.length} ПАЦИЕНТОВ
+          </span>
+        </div>
       </div>
 
-      {/* Список операций */}
-      <div style={{ padding: '8px 16px 32px', display: 'flex', flexDirection: 'column', gap: 7 }}>
-        {dayPatients.length === 0 && (
-          <div style={{ textAlign: 'center', padding: 48, color: C.muted, fontFamily: F.sans, fontSize: 14 }}>
-            Нет операций на этот день
-          </div>
-        )}
-        {dayPatients.map((p, i) => {
-          const tc = typeColors(p.type);
-          const isMoving = movingId === p.id;
-
-          const startPress = () => {
-            const timer = setTimeout(() => {
-              setMovingId(p.id);
-              if (window.navigator?.vibrate) window.navigator.vibrate(50);
-            }, 600);
-            setPressTimer(timer);
-          };
-
-          const endPress = () => {
-            if (pressTimer) clearTimeout(pressTimer);
-          };
-
-          return (
-            <div
-              key={p.id}
-              onPointerDown={startPress}
-              onPointerUp={endPress}
-              onPointerLeave={endPress}
-              onClick={() => { if (!isMoving) openPatient(String(p.id), p.isEnhancement ? 'enhancement' : 'plan'); }}
-              style={{
-                background: isMoving ? C.surfaceActive : C.surface,
-                border: `1px solid ${isMoving ? C.accent : C.border}`,
-                borderRadius: 20, padding: '10px 12px',
-                display: 'flex', alignItems: 'center', gap: 10,
-                cursor: 'pointer',
-                transition: 'all .2s cubic-bezier(.16,1,.3,1)',
-                transform: isMoving ? 'scale(1.02)' : 'none',
-                boxShadow: isMoving ? `0 12px 30px ${C.accentGlow}` : 'none',
-                position: 'relative',
-                zIndex: isMoving ? 10 : 1,
-                userSelect: 'none',
-                WebkitUserSelect: 'none',
-                WebkitTouchCallout: 'none',
-              }}
-            >
-              {isMoving && (
-                <div 
-                  onClick={(e) => { e.stopPropagation(); setMovingId(null); }}
-                  style={{ position: 'absolute', top: -10, right: -10, width: 24, height: 24, borderRadius: '50%', background: C.red, color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 16, fontWeight: 700, boxShadow: '0 2px 8px rgba(0,0,0,0.3)' }}
-                >×</div>
-              )}
-
-              {/* Порядок / Кнопки движения */}
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 4, flexShrink: 0 }}>
-                {isMoving && (
-                   <button 
-                     onClick={(e) => { e.stopPropagation(); handleMove('up', i); }}
-                     disabled={i === 0}
-                     style={{ width: 34, height: 34, borderRadius: 10, background: C.surface3, border: `1px solid ${C.border}`, color: C.text, opacity: i === 0 ? 0.3 : 1 }}
-                   >▲</button>
-                )}
-                
-                <div style={{
-                  width: 28, height: 28, borderRadius: 10, flexShrink: 0,
-                  background: tc.bg,
-                  display: 'flex', alignItems: 'center', justifyContent: 'center',
-                  fontFamily: F.mono, fontSize: 12, fontWeight: 700, color: tc.color,
-                }}>
-                  {i + 1}
-                </div>
-
-                {isMoving && (
-                   <button 
-                     onClick={(e) => { e.stopPropagation(); handleMove('down', i); }}
-                     disabled={i === dayPatients.length - 1}
-                     style={{ width: 34, height: 34, borderRadius: 10, background: C.surface3, border: `1px solid ${C.border}`, color: C.text, opacity: i === dayPatients.length - 1 ? 0.3 : 1 }}
-                   >▼</button>
-                )}
-              </div>
-
-              {/* Инфо */}
-              <div style={{ flex: 1, minWidth: 0 }}>
-                <div style={{ fontFamily: F.sans, fontSize: 14, fontWeight: 700, color: C.text, display: 'flex', alignItems: 'center', gap: 6, overflow: 'hidden' }}>
-                  <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{p.name}</span>
-                  {p.isEnhancement && (
-                    <span style={{
-                      background: 'rgba(236,72,153,.15)', color: '#ec4899',
-                      padding: '1px 6px', borderRadius: 6, flexShrink: 0,
-                      fontSize: 9, fontWeight: 800, textTransform: 'uppercase'
-                    }}>Re-scan</span>
-                  )}
-                </div>
-                <div style={{ fontFamily: F.sans, fontSize: 11, color: C.muted, marginTop: 2, display: 'flex', alignItems: 'center', gap: 5 }}>
-                  <span style={{ opacity: 0.7 }}>{p.eye}</span>
-                  <div style={{ width: 2, height: 2, borderRadius: '50%', background: C.border }} />
-                  <span style={{ color: tc.color }}>{p.type === 'cataract' ? 'Катаракта' : 'Рефракция'}</span>
-                </div>
-              </div>
-
-              {/* Статус */}
-              {!isMoving && (
-                <div style={{ flexShrink: 0 }}>
-                  {p.status === 'done' ? (
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 4, color: C.green, fontFamily: F.sans, fontSize: 12, fontWeight: 700 }}>
-                       <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3"><polyline points="20 6 9 17 4 12"/></svg>
-                       ГОТОВО
-                    </div>
-                  ) : (
-                    <button
-                      onClick={e => { e.stopPropagation(); openPatient(String(p.id), 'result'); }}
-                      style={{
-                        background: 'linear-gradient(135deg, #16a34a 0%, #15803d 100%)',
-                        color: '#fff', border: 'none',
-                        fontFamily: F.sans, fontSize: 10, fontWeight: 800,
-                        padding: '5px 10px', borderRadius: 20, cursor: 'pointer',
-                        boxShadow: '0 2px 6px rgba(22,163,74,0.3)'
-                      }}
-                    >
-                      РЕЗУЛЬТАТ
-                    </button>
-                  )}
-                </div>
-              )}
+      {/* Список операций с абсолютным позиционированием */}
+      <div style={{ flex: 1, position: 'relative' }}>
+        <div style={{ 
+          position: 'absolute', inset: 0,
+          overflowY: 'auto', 
+          padding: '8px 16px 120px', 
+          display: 'block', 
+          WebkitOverflowScrolling: 'touch' 
+        }}>
+          {dayPatients.length === 0 && (
+            <div style={{ textAlign: 'center', padding: 48, color: C.muted, fontFamily: F.sans, fontSize: 14 }}>
+              Нет операций на этот день
             </div>
-          );
-        })}
+          )}
+          {dayPatients.map((p, i) => {
+            const tc = typeColors(p.type);
+            const isMoving = movingId === p.id;
+
+            const startPress = () => {
+              const timer = setTimeout(() => {
+                setMovingId(p.id);
+                if (window.navigator?.vibrate) window.navigator.vibrate(50);
+              }, 600);
+              setPressTimer(timer);
+            };
+
+            const endPress = () => {
+              if (pressTimer) clearTimeout(pressTimer);
+            };
+
+            return (
+              <div key={p.id} style={{ display: 'block', width: '100%', marginBottom: 10 }}>
+                <div
+                  onPointerDown={startPress}
+                  onPointerUp={endPress}
+                  onPointerLeave={endPress}
+                  onClick={() => { if (!isMoving) openPatient(String(p.id), p.isEnhancement ? 'enhancement' : 'plan'); }}
+                  style={{
+                    background: isMoving ? C.surfaceActive : C.surface,
+                    border: `1px solid ${isMoving ? C.accent : C.border}`,
+                    borderRadius: 20, padding: '10px 12px',
+                    display: 'flex', alignItems: 'center', gap: 10,
+                    cursor: 'pointer',
+                    transition: 'all .2s cubic-bezier(.16,1,.3,1)',
+                    transform: isMoving ? 'scale(1.02)' : 'none',
+                    boxShadow: isMoving ? `0 12px 30px ${C.accentGlow}` : 'none',
+                    position: 'relative',
+                    zIndex: isMoving ? 10 : 1,
+                    userSelect: 'none',
+                    WebkitUserSelect: 'none',
+                    WebkitTouchCallout: 'none',
+                    minHeight: 64, flexShrink: 0
+                  }}
+                >
+                  {isMoving && (
+                    <div 
+                      onClick={(e) => { e.stopPropagation(); setMovingId(null); }}
+                      style={{ position: 'absolute', top: -10, right: -10, width: 24, height: 24, borderRadius: '50%', background: C.red, color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 16, fontWeight: 700, boxShadow: '0 2px 8px rgba(0,0,0,0.3)' }}
+                    >×</div>
+                  )}
+
+                  {/* Порядок / Кнопки движения */}
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 4, flexShrink: 0 }}>
+                    {isMoving && (
+                       <button 
+                         onClick={(e) => { e.stopPropagation(); handleMove('up', i); }}
+                         disabled={i === 0}
+                         style={{ width: 34, height: 34, borderRadius: 10, background: C.surface3, border: `1px solid ${C.border}`, color: C.text, opacity: i === 0 ? 0.3 : 1 }}
+                       >▲</button>
+                    )}
+                    
+                    <div style={{
+                      width: 28, height: 28, borderRadius: 10, flexShrink: 0,
+                      background: tc.bg,
+                      display: 'flex', alignItems: 'center', justifyContent: 'center',
+                      fontFamily: F.mono, fontSize: 12, fontWeight: 700, color: tc.color,
+                    }}>
+                      {i + 1}
+                    </div>
+
+                    {isMoving && (
+                       <button 
+                         onClick={(e) => { e.stopPropagation(); handleMove('down', i); }}
+                         disabled={i === dayPatients.length - 1}
+                         style={{ width: 34, height: 34, borderRadius: 10, background: C.surface3, border: `1px solid ${C.border}`, color: C.text, opacity: i === dayPatients.length - 1 ? 0.3 : 1 }}
+                       >▼</button>
+                    )}
+                  </div>
+
+                  {/* Инфо */}
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{ fontFamily: F.sans, fontSize: 14, fontWeight: 700, color: C.text, display: 'flex', alignItems: 'center', gap: 6, overflow: 'hidden' }}>
+                      <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{p.name}</span>
+                      {p.isEnhancement && (
+                        <span style={{
+                          background: 'rgba(236,72,153,.15)', color: '#ec4899',
+                          padding: '1px 6px', borderRadius: 6, flexShrink: 0,
+                          fontSize: 9, fontWeight: 800, textTransform: 'uppercase'
+                        }}>Re-scan</span>
+                      )}
+                    </div>
+                    <div style={{ fontFamily: F.sans, fontSize: 11, color: C.muted, marginTop: 2, display: 'flex', alignItems: 'center', gap: 5 }}>
+                      <span style={{ opacity: 0.7 }}>{p.eye}</span>
+                      <div style={{ width: 2, height: 2, borderRadius: '50%', background: C.border }} />
+                      <span style={{ color: tc.color }}>{p.type === 'cataract' ? 'Катаракта' : 'Рефракция'}</span>
+                    </div>
+                  </div>
+
+                  {/* Статус */}
+                  {!isMoving && (
+                    <div style={{ flexShrink: 0 }}>
+                      {p.status === 'done' ? (
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 4, color: C.green, fontFamily: F.sans, fontSize: 12, fontWeight: 700 }}>
+                           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3"><polyline points="20 6 9 17 4 12"/></svg>
+                           ГОТОВО
+                        </div>
+                      ) : (
+                        <button
+                          onClick={e => { e.stopPropagation(); openPatient(String(p.id), 'result'); }}
+                          style={{
+                            background: 'linear-gradient(135deg, #16a34a 0%, #15803d 100%)',
+                            color: '#fff', border: 'none',
+                            fontFamily: F.sans, fontSize: 10, fontWeight: 800,
+                            padding: '5px 10px', borderRadius: 20, cursor: 'pointer',
+                            boxShadow: '0 2px 6px rgba(22,163,74,0.3)'
+                          }}
+                        >
+                          РЕЗУЛЬТАТ
+                        </button>
+                      )}
+                    </div>
+                  )}
+                </div>
+              </div>
+            );
+          })}
+        </div>
       </div>
     </div>
   );

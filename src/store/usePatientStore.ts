@@ -196,6 +196,8 @@ export const usePatientStore = create<PatientStore>((set, get) => ({
         eye: (p.op_eye as any) ?? cached?.eye ?? 'OU',
         date: p.op_date ?? cached?.date,
         _visitId: visitId,
+        od: p.od ?? cached?.od,
+        os: p.os ?? cached?.os,
       } as Patient & { _visitId?: string };
 
       // Загружаем измерения если есть visitId
@@ -208,9 +210,9 @@ export const usePatientStore = create<PatientStore>((set, get) => ({
             loaded.bio_od = { ...newBiometryData(), ...mapBiometryData(m, 'od') };
             loaded.bio_os = { ...newBiometryData(), ...mapBiometryData(m, 'os') };
           } else {
-            // Рефракция
-            loaded.od = { ...newEyeData(), ...mapEyeData(m, 'od') };
-            loaded.os = { ...newEyeData(), ...mapEyeData(m, 'os') };
+            // Рефракция — МЕРДЖИМ данные из анкеты и данные из измерений
+            loaded.od = { ...newEyeData(), ...loaded.od, ...mapEyeData(m, 'od') };
+            loaded.os = { ...newEyeData(), ...loaded.os, ...mapEyeData(m, 'os') };
 
             // Настройки лазера
             loaded.laser = (m.surgery_plan?.laser_type as any) ?? loaded.laser ?? 'ex500';

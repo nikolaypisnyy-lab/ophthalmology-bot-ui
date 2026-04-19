@@ -259,11 +259,29 @@ export function CalcTab() {
         // Устанавливаем лучший результат в iolResult
         const buildEyeResult = (ek: 'od' | 'os') => {
           const frm = finalResults[ek];
-          // Приоритет: Barrett для сферы
-          const sphereSource = frm['Barrett Universal II'] ?? frm['Kane Formula'];
+          const bio = draft[`bio_${ek}`] ?? newBiometryData();
+          const al = parseFloat(bio.al);
+          const isLongEye = al > 25.0;
+
+          // Приоритет: Kane для длинного глаза, иначе Barrett
+          let sphereSource = frm['Barrett Universal II'] ?? frm['Kane Formula'];
+          if (isLongEye && frm['Kane Formula']) {
+            sphereSource = frm['Kane Formula'];
+          } else if (isLongEye && frm['Kane Toric']) {
+            sphereSource = frm['Kane Toric'];
+          }
+          
           if (!sphereSource) return undefined;
           
-          const bestName = toricMode ? 'Kane Toric + Barrett' : (frm['Barrett Universal II'] ? 'Barrett Universal II' : 'Kane Formula');
+          // Определяем название формулы для отображения
+          let bestName = 'Barrett Universal II';
+          if (isLongEye && (frm['Kane Formula'] || frm['Kane Toric'])) {
+            bestName = toricMode ? 'Kane Toric' : 'Kane Formula';
+          } else if (toricMode && frm['Kane Toric']) {
+            bestName = 'Kane Toric + Barrett';
+          } else if (!frm['Barrett Universal II'] && frm['Kane Formula']) {
+            bestName = 'Kane Formula';
+          }
 
           // Торик
           const kaneEye = res.results?.kane?.[ek];
@@ -292,15 +310,19 @@ export function CalcTab() {
           };
         };
 
+        const odResult = buildEyeResult('od');
+        const osResult = buildEyeResult('os');
         setIOLResult({
-          od: buildEyeResult('od'),
-          os: buildEyeResult('os'),
+          od: odResult,
+          os: osResult,
           lens: lensName,
           aConst: aConstN,
           targetRefr: target,
           timestamp: new Date().toISOString(),
           source: 'api',
         });
+        if (!odResult && osResult) setActiveEye('os');
+        else if (odResult && !osResult) setActiveEye('od');
       }
     } catch {
       // Ошибка расчёта

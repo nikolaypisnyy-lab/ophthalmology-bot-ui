@@ -1,9 +1,11 @@
-import { useMemo, useState } from 'react';
+import { useMemo, useState, useEffect } from 'react';
 import { C, F, typeColors } from '../constants/design';
 import { usePatientStore } from '../store/usePatientStore';
 import { useUIStore } from '../store/useUIStore';
 import { Chip } from '../ui/Chip';
 import { SearchBar } from '../ui/SearchBar';
+import { apiGet } from '../api/client';
+import { useClinicStore } from '../store/useClinicStore';
 import type { PatientSummary } from '../types/patient';
 
 // ── Стат-карточка ─────────────────────────────────────────────────────────────
@@ -29,10 +31,14 @@ function StatCard({ label, value, color, sub }: {
 // ── Карточка результата ───────────────────────────────────────────────────────
 
 function EyeResultRow({ label, sph, cyl, ax, target, color }: {
-  label: string; sph?: number; cyl?: number; ax?: number; target: number; color: string;
+  label: string; sph?: any; cyl?: any; ax?: any; target: number; color: string;
 }) {
-  if (sph === undefined) return null;
-  const se = sph + (cyl ?? 0) / 2;
+  if (sph === undefined || sph === null) return null;
+  const numSph = parseFloat(String(sph || 0));
+  const numCyl = parseFloat(String(cyl || 0));
+  const numAx = ax ? parseFloat(String(ax)) : null;
+  
+  const se = numSph + numCyl / 2;
   const hit = Math.abs(se - target) <= 0.5;
   const fmt = (v: number) => (v >= 0 ? '+' : '') + v.toFixed(2);
   return (
@@ -46,11 +52,11 @@ function EyeResultRow({ label, sph, cyl, ax, target, color }: {
       </div>
       <div style={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
         <div style={{ fontFamily: F.mono, fontSize: 13, fontWeight: 700, color: C.text }}>
-          {fmt(sph)}{cyl && cyl !== 0 ? ` / ${fmt(cyl)}` : ''}
+          {fmt(numSph)}{numCyl !== 0 ? ` / ${fmt(numCyl)}` : ''}
         </div>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
           <span style={{ fontFamily: F.mono, fontSize: 11, color: C.accent, fontWeight: 600 }}>
-            {ax ? `Ax: ${ax}°` : ''}
+            {numAx ? `Ax: ${numAx}°` : ''}
           </span>
           <div style={{ color: C.muted, fontSize: 8, fontWeight: 700, fontFamily: F.sans, flexShrink: 0 }}>
             SE: <span style={{ color: hit ? C.green : C.text }}>{fmt(se)}</span>
@@ -86,7 +92,12 @@ function ResultCard({ patient, onOpen }: { patient: PatientSummary; onOpen: () =
       style={{
         background: C.surface, border: `1px solid ${C.border}`,
         borderRadius: 14, padding: '12px 14px',
-        cursor: 'pointer', display: 'flex', flexDirection: 'column', gap: 8,
+        cursor: 'pointer', display: 'block', // Change to block
+        marginBottom: 10, // Use margin instead of gap
+        minHeight: 100, // Explicit height
+        width: '100%',
+        position: 'relative',
+        flexShrink: 0
       }}
     >
       {/* Header */}
@@ -125,8 +136,22 @@ function ResultCard({ patient, onOpen }: { patient: PatientSummary; onOpen: () =
 export function ResultsPage() {
   const { patients } = usePatientStore();
   const { openPatient } = useUIStore();
+  const { activeRefNomo, setRefNomo } = useClinicStore();
   const [filter, setFilter] = useState<'all' | 'refraction' | 'cataract'>('all');
   const [search, setSearch] = useState('');
+  const [nomo, setNomo] = useState<any>(null);
+
+  // Fetch Nomogram stats
+  const fetchNomo = async () => {
+    try {
+      const data = await apiGet<any>('/nomogram');
+      if (data && data.count > 0) setNomo(data);
+    } catch(e) {}
+  };
+
+  useEffect(() => {
+    fetchNomo();
+  }, []);
 
   const done = useMemo(() => patients.filter(p => p.status === 'done'), [patients]);
 
@@ -141,11 +166,17 @@ export function ResultsPage() {
   // Статистика
   const stats = useMemo(() => {
     const filtered = filter === 'all' ? done : done.filter(p => p.type === filter);
-    const catDone = filtered.filter(p => p.type === 'cataract' && p.postSph !== undefined);
-    const refDone = filtered.filter(p => p.type === 'refraction' && p.postSph !== undefined);
-    const catSE = (p: PatientSummary) => (p.postSph ?? 0) + (p.postCyl ?? 0) / 2;
-    const catHit = catDone.filter(p => Math.abs(catSE(p) - parseFloat(String(p.targetRefr ?? '0'))) <= 0.5).length;
-    const refHit = refDone.filter(p => Math.abs(catSE(p)) <= 0.25).length;
+    const catDone = filtered.filter(p => p.type === 'cataract' && (p as any).postSphOD !== undefined);
+    const refDone = filtered.filter(p => p.type === 'refraction' && (p as any).postSphOD !== undefined);
+    
+    const getSE = (p: any) => {
+      const s = parseFloat(String(p.postSphOD || 0));
+      const c = parseFloat(String(p.postCylOD || 0));
+      return s + c / 2;
+    };
+
+    const catHit = catDone.filter(p => Math.abs(getSE(p) - parseFloat(String(p.targetRefr ?? '0'))) <= 0.5).length;
+    const refHit = refDone.filter(p => Math.abs(getSE(p)) <= 0.25).length;
 
     if (filter === 'cataract') {
       return [
@@ -167,14 +198,73 @@ export function ResultsPage() {
   }, [done, filter]);
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
+    <div style={{ display: 'flex', flexDirection: 'column', height: '100%', overflow: 'hidden', position: 'relative' }}>
       {/* Шапка со статистикой и фильтрами */}
-      <div style={{ padding: '14px 16px 0', display: 'flex', flexDirection: 'column', gap: 10 }}>
+      <div style={{ 
+        padding: '14px 16px 14px', 
+        display: 'flex', 
+        flexDirection: 'column', 
+        gap: 12,
+        background: C.bg,
+        borderBottom: `1px solid ${C.border}`,
+        flexShrink: 0
+      }}>
         <div style={{ display: 'grid', gridTemplateColumns: `repeat(${stats.length},1fr)`, gap: 8 }}>
           {stats.map(s => (
             <StatCard key={s.label} label={s.label} value={s.val} color={s.color} sub={s.sub} />
           ))}
         </div>
+
+        {/* Nomogram Recommendation Card */}
+        {nomo && (
+          <div style={{
+            background: 'linear-gradient(135deg,rgba(99,102,241,0.1) 0%,rgba(168,85,247,0.1) 100%)',
+            border: `1px solid rgba(168,85,247,0.2)`,
+            borderRadius: 14, padding: '12px 14px',
+            display: 'flex', flexDirection: 'column', gap: 6
+          }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                <span style={{ fontSize: 14 }}>🧠</span>
+                <span style={{ fontFamily: F.sans, fontSize: 10, fontWeight: 800, color: C.accent, letterSpacing: '.05em' }}>AUTO-NOMOGRAM (BETA)</span>
+              </div>
+              <span style={{ fontFamily: F.sans, fontSize: 9, color: C.muted }}>{nomo.count} ГЛАЗ ПРОАНАЛИЗИРОВАНО</span>
+            </div>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <div style={{ fontFamily: F.sans, fontSize: 12, color: C.text, fontWeight: 500 }}>
+                Среднее SE: <span style={{ 
+                  color: parseFloat(nomo.avg_sph_error) > 0 ? '#f87171' : C.green, 
+                  fontWeight: 700 
+                }}>
+                  {parseFloat(nomo.avg_sph_error) > 0 ? '+' : ''}{nomo.avg_sph_error}D
+                </span>
+              </div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                <div style={{ textAlign: 'right' }}>
+                  <div style={{ fontFamily: F.sans, fontSize: 8, color: C.muted, textTransform: 'uppercase' }}>Рекомендация</div>
+                  <div style={{ fontFamily: F.mono, fontSize: 16, color: C.green, fontWeight: 800 }}>
+                    {nomo.proposed_offset_sph > 0 ? '+' : ''}{nomo.proposed_offset_sph} D
+                  </div>
+                </div>
+                <button
+                  onClick={() => {
+                    if (activeRefNomo === nomo.proposed_offset_sph) setRefNomo(null);
+                    else setRefNomo(nomo.proposed_offset_sph);
+                  }}
+                  style={{
+                    background: activeRefNomo === nomo.proposed_offset_sph ? C.green : C.accent,
+                    border: 'none', borderRadius: 10, padding: '8px 12px',
+                    color: '#fff', fontFamily: F.sans, fontSize: 11, fontWeight: 700,
+                    cursor: 'pointer', boxShadow: '0 4px 12px rgba(0,0,0,0.2)',
+                    transition: 'all 0.2s'
+                  }}
+                >
+                  {activeRefNomo === nomo.proposed_offset_sph ? 'АКТИВНО ✓' : 'ПРИМЕНИТЬ'}
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
 
         <div style={{ display: 'flex', gap: 8, overflowX: 'auto' }}>
           <Chip label="Все" active={filter === 'all'} color={C.accent} onClick={() => setFilter('all')} />
@@ -185,20 +275,29 @@ export function ResultsPage() {
         <SearchBar value={search} onChange={setSearch} />
       </div>
 
-      {/* Список */}
-      <div style={{ flex: 1, overflowY: 'auto', padding: '12px 16px 16px', display: 'flex', flexDirection: 'column', gap: 8 }}>
-        {visible.length === 0 && (
-          <div style={{ textAlign: 'center', padding: 40, color: C.muted, fontFamily: F.sans, fontSize: 14 }}>
-            {search ? 'Ничего не найдено' : 'Нет завершённых операций'}
-          </div>
-        )}
-        {visible.map(p => (
-          <ResultCard
-            key={p.id}
-            patient={p}
-            onOpen={() => openPatient(String(p.id), 'result')}
-          />
-        ))}
+      {/* Список с абсолютным позиционированием */}
+      <div style={{ flex: 1, position: 'relative', minHeight: 100 }}>
+        <div style={{ 
+          position: 'absolute', inset: 0,
+          overflowY: 'scroll', // Explicit scroll
+          padding: '12px 16px 120px', 
+          display: 'block', // Fail-safe block display
+          WebkitOverflowScrolling: 'touch' 
+        }}>
+          {visible.length === 0 && (
+            <div style={{ textAlign: 'center', padding: 40, color: C.muted, fontFamily: F.sans, fontSize: 14 }}>
+              {search ? 'Ничего не найдено' : 'Нет завершённых операций'}
+            </div>
+          )}
+          {visible.map(p => (
+            <div key={p.id} style={{ display: 'block', width: '100%', marginBottom: 12 }}>
+              <ResultCard
+                patient={p}
+                onOpen={() => openPatient(String(p.id), 'result')}
+              />
+            </div>
+          ))}
+        </div>
       </div>
     </div>
   );

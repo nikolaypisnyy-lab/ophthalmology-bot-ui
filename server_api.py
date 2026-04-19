@@ -18,7 +18,6 @@ from database import MedEyeDB
 
 # Импортируем OCR движок
 from ocr_engine import gemini_parse_ocr_image, normalize_ocr_draft
-from nomogram import get_nomogram_offsets
 
 # Импортируем парсеры ИОЛ
 from calculators import (
@@ -62,7 +61,6 @@ def get_clinic_db(telegram_id: str = Header(None), clinic_id: str = Header(None)
     if not clinic_info:
         raise HTTPException(status_code=404, detail="Clinic data not found")
         
-    print(f"[DEBUG] Request for Clinic: {clinic_info.get('name')} ({clinic_id}) -> DB: {clinic_info['db_file']}")
     return MedEyeDB(clinic_info["db_file"])
 
 @app.get("/api/me")
@@ -102,11 +100,6 @@ def serve_crm():
         return FileResponse("dist/index.html", headers=NO_CACHE_HEADERS)
     return FileResponse("ophthalmo_crm.html", headers=NO_CACHE_HEADERS)
 
-@app.get("/api/nomogram")
-def get_nomo_stats(db: MedEyeDB = Depends(get_clinic_db)):
-    """Получить статистику самообучающейся номограммы для текущей клиники"""
-    return get_nomogram_offsets(db.db_path)
-
 @app.get("/health")
 def health_check():
     return {"status": "ok", "message": "MedEye TMA API is running! 🚀"}
@@ -130,33 +123,16 @@ def get_patients(telegram_id: str = Header(None), db: MedEyeDB = Depends(get_cli
             p['op_eye'] = form['primary'].get('op_eye')
             p['patient_type'] = form['primary'].get('patient_type')
             p['isEnhancement'] = form['primary'].get('isEnhancement')
-            p['od'] = form['primary'].get('od')
-            p['os'] = form['primary'].get('os')
 
         p['op_date'] = form.get('op_date') if form else None
         
         has_iol = False
         if visit:
             vid = visit.get('visit_id')
-            p['status'] = visit.get('status') # Added status
             if vid:
                 meas = all_meas.get(vid)
-                if meas:
-                    if 'iol_calc' in meas:
-                        has_iol = True
-                    # Extract latest refraction for Results page
-                    periods = meas.get('periods', {})
-                    if periods:
-                        latest_key = sorted(periods.keys(), reverse=True)[0]
-                        latest = periods[latest_key]
-                        if 'od' in latest:
-                            p['postSphOD'] = latest['od'].get('sph')
-                            p['postCylOD'] = latest['od'].get('cyl')
-                            p['postAxOD'] = latest['od'].get('ax')
-                        if 'os' in latest:
-                            p['postSphOS'] = latest['os'].get('sph')
-                            p['postCylOS'] = latest['os'].get('cyl')
-                            p['postAxOS'] = latest['os'].get('ax')
+                if meas and 'iol_calc' in meas:
+                    has_iol = True
         p['has_iol_calc'] = has_iol
         
     clinic_id = "default"
@@ -184,8 +160,6 @@ def get_patient(patient_id: str, db: MedEyeDB = Depends(get_clinic_db)):
         patient['op_eye'] = form['primary'].get('op_eye')
         patient['patient_type'] = form['primary'].get('patient_type')
         patient['isEnhancement'] = form['primary'].get('isEnhancement')
-        patient['od'] = form['primary'].get('od')
-        patient['os'] = form['primary'].get('os')
     patient['op_date'] = form.get('op_date') if form else None
 
     return {
@@ -206,8 +180,6 @@ class PatientCreate(BaseModel):
     op_eye: Optional[str] = None
     op_date: Optional[str] = None
     isEnhancement: Optional[bool] = None
-    od: Optional[Dict[str, Any]] = None
-    os: Optional[Dict[str, Any]] = None
 
 
 class PatientUpdate(BaseModel):
@@ -219,8 +191,6 @@ class PatientUpdate(BaseModel):
     op_eye: Optional[str] = None
     patient_type: Optional[str] = None
     isEnhancement: Optional[bool] = None
-    od: Optional[Dict[str, Any]] = None
-    os: Optional[Dict[str, Any]] = None
 
 class OcrFile(BaseModel):
     name: str
@@ -256,8 +226,6 @@ def create_patient(data: PatientCreate, db: MedEyeDB = Depends(get_clinic_db)):
     if data.patient_type: prim["patient_type"] = data.patient_type
     if data.op_eye:       prim["op_eye"]       = data.op_eye
     if data.isEnhancement is not None: prim["isEnhancement"] = data.isEnhancement
-    if data.od: prim["od"] = data.od
-    if data.os: prim["os"] = data.os
     db.save_form(pid, op_date=data.op_date, primary=prim)
         
     # 4. Создаем первичный открытый визит
@@ -283,10 +251,6 @@ def update_patient_info(patient_id: str, data: PatientUpdate, db: MedEyeDB = Dep
         prim["patient_type"] = data.patient_type
     if data.isEnhancement is not None:
         prim["isEnhancement"] = data.isEnhancement
-    if data.od is not None:
-        prim["od"] = data.od
-    if data.os is not None:
-        prim["os"] = data.os
 
     op_date = data.op_date if data.op_date is not None else f.get("op_date")
     db.save_form(patient_id, op_date, f.get("op_time"), prim)

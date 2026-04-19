@@ -121,15 +121,32 @@ export function PatientHeader({ onSave, isSaving }: PatientHeaderProps) {
                 </>
             }
             <span style={{ opacity: 0.4 }}>·</span>
-            <span style={{ 
-              display: 'flex', alignItems: 'center', gap: 5,
-              background: typeColor + '18', padding: '1px 8px', borderRadius: 20,
-              border: `1px solid ${typeColor}35`, color: typeColor, 
-              fontWeight: 700, fontSize: 10
-            }}>
+            <button
+              onClick={() => {
+                haptic.light();
+                const newType = isCat ? 'refraction' : 'cataract';
+                setDraft({ type: newType });
+                
+                // Safety: if switching to refraction and we are on bio or calc,
+                // move to a safe tab like 'plan'
+                if (newType === 'refraction' && (activeTab === 'bio' || activeTab === 'calc')) {
+                  setActiveTab('bio'); // bio exists in both, but if it's named differently, we keep it
+                }
+              }}
+              style={{ 
+                display: 'flex', alignItems: 'center', gap: 5,
+                background: typeColor + '18', padding: '1px 8px', borderRadius: 20,
+                border: `1px solid ${typeColor}35`, color: typeColor, 
+                fontWeight: 700, fontSize: 10, cursor: 'pointer',
+                transition: 'all 0.15s', outline: 'none',
+              }}
+            >
               {typeLabel.toUpperCase()}
               <span style={{ opacity: 0.5, fontFamily: F.mono, letterSpacing: '0.2px' }}>#{draft.id}</span>
-            </span>
+              <svg width="8" height="8" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" style={{ opacity: 0.6, marginLeft: 2 }}>
+                <path d="M7 15l5 5 5-5M7 9l5-5 5 5" />
+              </svg>
+            </button>
           </div>
         </div>
 

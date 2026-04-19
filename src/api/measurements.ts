@@ -23,7 +23,7 @@ export interface RawMeasurements {
     sph?: number; cyl?: number; axis?: number;
   }>;
   keratometry?: Record<'od' | 'os', {
-    k1?: number; k2?: number; axis?: number;
+    k1?: number; k2?: number; kavg?: number; kercyl?: number; axis?: number;
   }>;
   pentacam?: Record<'od' | 'os', {
     ant_cyl?: number; ant_ax?: number;
@@ -134,9 +134,11 @@ export function mapEyeData(m: RawMeasurements, side: 'od' | 'os'): Partial<EyeDa
   // Кератометрия
   const ker = m.keratometry?.[side];
   if (ker) {
-    eye.k1   = sf(ker.k1);
-    eye.k2   = sf(ker.k2);
-    eye.k_ax = sf(ker.axis);
+    eye.k1     = sf(ker.k1);
+    eye.k2     = sf(ker.k2);
+    eye.kavg   = sf(ker.kavg ?? ((parseFloat(String(ker.k1)) + parseFloat(String(ker.k2))) / 2).toFixed(2));
+    eye.kercyl = sf(ker.kercyl);
+    eye.kerax  = sf(ker.axis);
   }
 
   // Pentacam

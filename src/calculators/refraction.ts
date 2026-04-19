@@ -26,6 +26,7 @@ export function computeRefPlan(
   age: number,
   noNomogram: boolean = false,
   astigStrategy?: 'manifest' | 'corneal' | 'vector',
+  userOffset: number = 0,
 ): RefractionPlan | null {
   try {
     const v = (f: keyof EyeData): number | null => {
@@ -218,6 +219,8 @@ export function computeRefPlan(
         }
     }
 
+    pSph += userOffset;
+    
     pSph = roundQ(pSph, doRound);
     pCyl = roundQ(pCyl, doRound);
 
