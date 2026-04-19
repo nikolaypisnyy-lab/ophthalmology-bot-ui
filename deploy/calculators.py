@@ -3,6 +3,7 @@ import json as json_lib
 import re
 from typing import Dict, Any, Optional
 from playwright.sync_api import sync_playwright
+from playwright_stealth import stealth_sync
 
 def suggest_flap_diameter(wtw_value: Optional[float]) -> float:
     if wtw_value is None: return 9.0
@@ -136,9 +137,11 @@ def scrape_kane_formula_both(data: dict) -> dict:
                 user_agent='Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/123.0.0.0 Safari/537.36'
             )
             page = context.new_page()
+            stealth_sync(page)
             
             print("[Kane] Navigating...")
             page.goto("https://www.iolformula.com/", timeout=60000, wait_until="domcontentloaded")
+            page.wait_for_timeout(random.randint(1500, 3000))
             page.screenshot(path="debug_kane_start.png")
             
             # I Agree
@@ -162,13 +165,14 @@ def scrape_kane_formula_both(data: dict) -> dict:
 
             is_toric = data.get("use_kane_toric", False)
             if is_toric:
+                print("[KANE] Enabling Toric mode...")
                 page.evaluate("""() => {
                     let t1 = document.querySelector('input[name="toric_1"][value="1"]');
-                    if (t1 && t1.parentElement) t1.parentElement.click();
+                    if (t1 && !t1.checked) t1.parentElement.click();
                     let t2 = document.querySelector('input[name="toric_2"][value="1"]');
-                    if (t2 && t2.parentElement) t2.parentElement.click();
+                    if (t2 && !t2.checked) t2.parentElement.click();
                 }""")
-                page.wait_for_timeout(1000)
+                page.wait_for_timeout(1500)
 
             # Demographics
             calc_frame.locator("#Patient").fill(str(data.get("patient_name", "Patient")))
@@ -213,13 +217,16 @@ def scrape_kane_formula_both(data: dict) -> dict:
                 }}"""
                 calc_frame.evaluate(fill_js)
 
-            page.wait_for_timeout(1000)
+            page.wait_for_timeout(random.randint(2000, 4000))
             print("[KANE] Нажимаем Calculate...")
 
             def is_api(r): return ("iolformula.com/wp-admin/admin-ajax.php" in r.url or "iolformula.com/api/" in r.url) and r.method == "POST"
             try:
-                with page.expect_response(is_api, timeout=30000) as resp_info:
-                    page.evaluate("() => document.querySelector('input.calculate').click()")
+                # Эмуляция движения мыши к кнопке
+                page.mouse.move(random.randint(100, 500), random.randint(100, 500))
+                
+                with page.expect_response(is_api, timeout=45000) as resp_info:
+                    page.evaluate("() => { const btn = document.querySelector('input.calculate'); if(btn) btn.click(); }")
 
                 resp_body = resp_info.value.text()
                 raw_data = json_lib.loads(resp_body)
