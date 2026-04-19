@@ -3,6 +3,7 @@ export interface IOLLens {
   name: string;
   a: number;        // A-константа (SRK/T, Barrett)
   a_kane: number;   // A-константа Kane
+  haigis?: { a0: number; a1: number; a2: number };  // ULIB-оптимизированные константы Haigis
 }
 
 /** Биометрические данные для расчёта ИОЛ (по глазу) */
@@ -33,6 +34,7 @@ export interface IOLToricRow {
   cyl_power: number;    // цилиндрическая мощность торика
   residual_cyl: number; // остаточный цилиндр
   axis: number;         // ось имплантации
+  residual_axis?: number; // ось остаточного астигматизма
 }
 
 /** Результат одной формулы для одного глаза */
@@ -76,11 +78,12 @@ export interface IOLResult {
 
 /** Тело запроса к /api/calculate_iol */
 export interface IOLCalcRequest {
-  telegram_id: string;
-  lens_name: string;
-  a_const: number;
-  a_const_kane?: number;
-  target_refr: number;
+  name?: string;
+  age?: string;
+  sex?: string;
+  const_a_barrett: number;
+  const_a_kane: number;
+  const_a_jnj?: number;
   use_barrett?: boolean;
   use_kane?: boolean;
   use_jnj?: boolean;
@@ -89,10 +92,8 @@ export interface IOLCalcRequest {
   kane_incision?: number;
   jnj_sia?: number;
   jnj_incision?: number;
-  eyes: {
-    od?: BiometryData;
-    os?: BiometryData;
-  };
+  od?: { al: number; k1: number; k2: number; acd: number; k1_ax: number; target: number };
+  os?: { al: number; k1: number; k2: number; acd: number; k1_ax: number; target: number };
 }
 
 /** Ответ от /api/calculate_iol */
@@ -106,6 +107,8 @@ export interface IOLCalcResponse {
     barrett?: Record<string, IOLFormulaResult>;
     kane?: Record<string, IOLFormulaResult>;
     jnj?: Record<string, IOLFormulaResult>;
+    haigis?: Record<string, IOLFormulaResult>;
+    autonomous_toric?: Record<string, IOLFormulaResult>;
   };
   detail?: string;
 }

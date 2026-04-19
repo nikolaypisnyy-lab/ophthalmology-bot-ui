@@ -18,13 +18,16 @@ interface ClinicStore {
   activeName:      string | null;
   activeLaser:     string | null;
   activeRefNomo:   number | null;
+  activeRefNomoCyl: number | null;
   recommendedNomo: number | null;
+  recommendedNomoCyl: number | null;
   initialized:     boolean;
   error:           string | null;
   initClinics:     () => Promise<void>;
   switchClinic:    (id: string) => void;
   setActiveLaser:  (id: string) => void;
   setRefNomo:      (val: number | null) => void;
+  setRefNomoCyl:   (val: number | null) => void;
   fetchRecommendedNomo: () => Promise<void>;
 }
 
@@ -34,7 +37,9 @@ export const useClinicStore = create<ClinicStore>((set, get) => ({
   activeName:     null,
   activeLaser:    null,
   activeRefNomo:  null,
+  activeRefNomoCyl: null,
   recommendedNomo: null,
+  recommendedNomoCyl: null,
   initialized:    false,
   error:          null,
 
@@ -73,12 +78,14 @@ export const useClinicStore = create<ClinicStore>((set, get) => ({
       
       const laser = localStorage.getItem(`rm_laser_${target}`) || 'ex500';
       const nomo  = localStorage.getItem(`rm_ref_nomo_${target}`);
+      const nomoCyl = localStorage.getItem(`rm_ref_nomo_cyl_${target}`);
       set({ 
         clinics, 
         activeClinicId: target, 
         activeName: targetCl.clinic_name, 
         activeLaser: laser, 
         activeRefNomo: nomo ? parseFloat(nomo) : null,
+        activeRefNomoCyl: nomoCyl ? parseFloat(nomoCyl) : null,
         initialized: true, 
         error: null 
       });
@@ -130,11 +137,22 @@ export const useClinicStore = create<ClinicStore>((set, get) => ({
       set({ activeRefNomo: val });
     }
   },
+  setRefNomoCyl: (val) => {
+    const { activeClinicId } = get();
+    if (activeClinicId) {
+      if (val === null) localStorage.removeItem(`rm_ref_nomo_cyl_${activeClinicId}`);
+      else localStorage.setItem(`rm_ref_nomo_cyl_${activeClinicId}`, String(val));
+      set({ activeRefNomoCyl: val });
+    }
+  },
   fetchRecommendedNomo: async () => {
     try {
       const data = await apiGet<any>('/nomogram');
-      if (data && data.proposed_offset_sph !== undefined) {
-        set({ recommendedNomo: data.proposed_offset_sph });
+      if (data) {
+        set({ 
+          recommendedNomo: data.proposed_offset_sph ?? null,
+          recommendedNomoCyl: data.proposed_offset_cyl ?? null
+        });
       }
     } catch (e) {}
   },

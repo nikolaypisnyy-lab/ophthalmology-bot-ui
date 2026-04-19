@@ -1,37 +1,7 @@
 import { apiPost, API_BASE, TELEGRAM_ID } from './client';
-import type { BiometryData, IOLFormulaResult } from '../types/iol';
+import type { IOLCalcResponse, IOLCalcRequest } from '../types/iol';
 
 // ── Расчёт ИОЛ ───────────────────────────────────────────────────────────────
-
-export interface IOLCalcRequest {
-  name?: string;
-  age?: string;
-  sex?: string;
-  const_a_barrett: number;
-  const_a_kane: number;
-  const_a_jnj?: number;
-  use_barrett?: boolean;
-  use_kane?: boolean;
-  use_jnj?: boolean;
-  use_kane_toric?: boolean;
-  kane_sia?: number;
-  kane_incision?: number;
-  jnj_sia?: number;
-  jnj_incision?: number;
-  od?: { al: number; k1: number; k2: number; acd: number; k1_ax: number; target: number };
-  os?: { al: number; k1: number; k2: number; acd: number; k1_ax: number; target: number };
-}
-
-export interface IOLCalcResponse {
-  status: 'ok' | 'error';
-  results?: {
-    barrett?: { od?: IOLFormulaResult; os?: IOLFormulaResult };
-    kane?: { od?: IOLFormulaResult; os?: IOLFormulaResult };
-    jnj?: { od?: IOLFormulaResult; os?: IOLFormulaResult };
-  };
-  errors?: string[];
-  detail?: string;
-}
 
 export async function calculateIOL(req: IOLCalcRequest): Promise<IOLCalcResponse> {
   return apiPost<IOLCalcResponse>('/calculate_iol', {

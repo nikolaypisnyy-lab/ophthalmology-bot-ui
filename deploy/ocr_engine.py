@@ -530,7 +530,7 @@ def gemini_parse_ocr_image(image_paths, target='all'):
             text = resp_obj['candidates'][0]['content']['parts'][0]['text']
             print(f"OCR RAW (attempt {attempt+1}): {text[:300]}")
             try:
-                with open('/root/app/deploy/ocr_debug.log', 'a') as f:
+                with open('/root/medeye/logs/ocr_debug.log', 'a') as f:
                     f.write(f"\n--- {time.ctime()} target={target} ---\n{text}\n")
             except:
                 pass

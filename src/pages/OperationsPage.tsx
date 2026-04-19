@@ -51,7 +51,7 @@ function MonthCalendar({
         {DOW.map((d, di) => (
           <div key={d} style={{
             fontFamily: F.sans, fontSize: 9, fontWeight: 600, textAlign: 'center',
-            color: di === 6 ? '#f87171' : C.muted,
+            color: di === 6 ? '#ff4d4d' : C.muted,
           }}>{d}</div>
         ))}
       </div>
@@ -63,8 +63,7 @@ function MonthCalendar({
           const isSelected = iso === selected;
           const cnt = markedDates[iso] || 0;
           const isToday = iso === today;
-          const dow = new Date(year, month, d).getDay(); // 0=Вс
-          const isSunday = dow === 0;
+          const isSunday = new Date(iso).getDay() === 0;
 
           return (
             <button
@@ -82,7 +81,7 @@ function MonthCalendar({
               <span style={{
                 fontFamily: F.mono, fontSize: 12,
                 fontWeight: isSelected || isToday ? 700 : 400,
-                color: isSelected ? '#fff' : isToday ? C.accent : isSunday ? '#f87171' : C.text,
+                color: isSelected ? '#fff' : isToday ? C.accent : isSunday ? '#ff4d4d' : C.text,
               }}>
                 {d}
               </span>

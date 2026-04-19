@@ -10,33 +10,28 @@ import type { PatientSummary } from '../types/patient';
 
 // ── Стат-карточка ─────────────────────────────────────────────────────────────
 
-function StatCard({ label, value, color, sub }: {
-  label: string; value: string | number; color: string; sub?: string | null;
-}) {
-  return (
-    <div style={{ background: C.surface, borderRadius: 14, padding: '12px' }}>
-      <div style={{ fontFamily: F.sans, fontSize: 9, fontWeight: 600, color: C.muted, letterSpacing: '.07em', textTransform: 'uppercase', marginBottom: 6 }}>
-        {label}
-      </div>
-      <div style={{ fontFamily: F.mono, fontSize: 22, fontWeight: 700, color }}>
-        {value}
-      </div>
-      {sub && (
-        <div style={{ fontFamily: F.sans, fontSize: 10, color: C.muted, marginTop: 2 }}>{sub}</div>
-      )}
-    </div>
-  );
-}
+const StatCard = ({ label, value, color, sub }: { label: string; value: string | number; color: string; sub?: string | null }) => (
+  <div style={{
+    background: C.surface2, border: `1px solid ${C.border}`,
+    borderRadius: 12, padding: '8px 10px', flex: 1,
+    display: 'flex', flexDirection: 'column', gap: 2,
+    boxShadow: '0 4px 12px rgba(0,0,0,0.05)'
+  }}>
+    <span style={{ fontFamily: F.sans, fontSize: 8, fontWeight: 800, color: C.muted, letterSpacing: '.05em', textTransform: 'uppercase' }}>{label}</span>
+    <span style={{ fontFamily: F.mono, fontSize: 18, fontWeight: 800, color, lineHeight: 1 }}>{value}</span>
+    {sub && <span style={{ fontFamily: F.sans, fontSize: 7, color: C.muted, fontWeight: 700 }}>{sub}</span>}
+  </div>
+);
 
 // ── Карточка результата ───────────────────────────────────────────────────────
 
-function EyeResultRow({ label, sph, cyl, ax, target, color }: {
-  label: string; sph?: any; cyl?: any; ax?: any; target: number; color: string;
+function EyeResultRow({ label, sph, cyl, ax, target, color, flapDiam, capOrFlap }: {
+  label: string; sph?: any; cyl?: any; ax?: any; target: number; color: string; flapDiam?: string; capOrFlap?: string;
 }) {
   if (sph === undefined || sph === null) return null;
   const numSph = parseFloat(String(sph || 0));
   const numCyl = parseFloat(String(cyl || 0));
-  const numAx = ax ? parseFloat(String(ax)) : null;
+  const numAx = (ax !== undefined && ax !== null && ax !== '') ? parseFloat(String(ax)) : null;
   
   const se = numSph + numCyl / 2;
   const hit = Math.abs(se - target) <= 0.5;
@@ -44,25 +39,45 @@ function EyeResultRow({ label, sph, cyl, ax, target, color }: {
   return (
     <div style={{
       background: C.surface2, border: `1px solid ${C.border}`,
-      borderRadius: 12, padding: '10px 12px',
+      borderRadius: 12, padding: '6px 10px',
       display: 'flex', flexDirection: 'column', gap: 4, flex: 1, minWidth: 0
     }}>
+      {/* Верхний ярус: Глаз и SE */}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-        <span style={{ fontFamily: F.sans, fontSize: 10, fontWeight: 800, color }}>{label}</span>
-      </div>
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
-        <div style={{ fontFamily: F.mono, fontSize: 13, fontWeight: 700, color: C.text }}>
-          {fmt(numSph)}{numCyl !== 0 ? ` / ${fmt(numCyl)}` : ''}
-        </div>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-          <span style={{ fontFamily: F.mono, fontSize: 11, color: C.accent, fontWeight: 600 }}>
-            {numAx ? `Ax: ${numAx}°` : ''}
-          </span>
-          <div style={{ color: C.muted, fontSize: 8, fontWeight: 700, fontFamily: F.sans, flexShrink: 0 }}>
+        <span style={{ fontFamily: F.sans, fontSize: 10, fontWeight: 900, color }}>{label}</span>
+        <div style={{ color: C.muted, fontSize: 8, fontWeight: 800, fontFamily: F.sans }}>
             SE: <span style={{ color: hit ? C.green : C.text }}>{fmt(se)}</span>
-          </div>
         </div>
       </div>
+
+      {/* Средний ярус: Основная рефракция (шрифт чуть меньше чтобы влезло) */}
+      <div style={{ fontFamily: F.mono, fontSize: 12, fontWeight: 800, color: C.text, letterSpacing: '-0.02em', whiteSpace: 'nowrap' }}>
+        {fmt(numSph)}{numCyl !== 0 ? ` / ${fmt(numCyl)}` : ''}{numAx !== null ? ` ×${numAx}°` : ''}
+      </div>
+
+      {/* Нижний ярус: Параметры флэпа / Метод */}
+      {(flapDiam || capOrFlap) && (
+        <div style={{ display: 'flex', gap: 6, borderTop: `1px solid ${C.border}`, paddingTop: 2 }}>
+          {capOrFlap === 'ФРК' ? (
+            <span style={{ fontFamily: F.sans, fontSize: 9, color: C.accent, fontWeight: 900, letterSpacing: '0.05em' }}>
+              МЕТОД: ФРК
+            </span>
+          ) : (
+            <>
+              {capOrFlap && (
+                <span style={{ fontFamily: F.mono, fontSize: 9, color: C.muted, fontWeight: 600 }}>
+                  <span style={{ fontSize: 7, opacity: 0.7, fontWeight: 800 }}>FLAP:</span> {capOrFlap}
+                </span>
+              )}
+              {flapDiam && (
+                <span style={{ fontFamily: F.mono, fontSize: 9, color: C.muted, fontWeight: 600 }}>
+                  <span style={{ fontSize: 7, opacity: 0.7, fontWeight: 800 }}>Ø</span> {flapDiam}
+                </span>
+              )}
+            </>
+          )}
+        </div>
+      )}
     </div>
   );
 }
@@ -116,17 +131,21 @@ function ResultCard({ patient, onOpen }: { patient: PatientSummary; onOpen: () =
       </div>
 
       {/* Результаты по глазам */}
-      <div style={{ display: 'flex', gap: 8 }}>
-        {showOD && (
-          <EyeResultRow label="OD" sph={p.postSphOD} cyl={p.postCylOD} ax={p.postAxOD} target={target} color={C.od} />
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+        <div style={{ display: 'flex', gap: 8 }}>
+          {showOD && (
+            <EyeResultRow label="OD" sph={p.postSphOD} cyl={p.postCylOD} ax={p.postAxOD} target={target} color={C.od} flapDiam={p.flapDiam} capOrFlap={p.capOrFlap} />
+          )}
+          {showOS && (
+            <EyeResultRow label="OS" sph={p.postSphOS} cyl={p.postCylOS} ax={p.postAxOS} target={target} color={C.os} flapDiam={p.flapDiam} capOrFlap={p.capOrFlap} />
+          )}
+        </div>
+        
+        {showFallback && (
+          <EyeResultRow label={patient.eye ?? ''} sph={patient.postSph} cyl={patient.postCyl} ax={p.postAxOD || p.postAxOS} target={target} color={C.accent} flapDiam={p.flapDiam} capOrFlap={p.capOrFlap} />
         )}
-        {showOS && (
-          <EyeResultRow label="OS" sph={p.postSphOS} cyl={p.postCylOS} ax={p.postAxOS} target={target} color={C.os} />
-        )}
+
       </div>
-      {showFallback && (
-        <EyeResultRow label={patient.eye ?? ''} sph={patient.postSph} cyl={patient.postCyl} ax={p.postAxOD || p.postAxOS} target={target} color={C.accent} />
-      )}
     </div>
   );
 }
@@ -136,7 +155,7 @@ function ResultCard({ patient, onOpen }: { patient: PatientSummary; onOpen: () =
 export function ResultsPage() {
   const { patients } = usePatientStore();
   const { openPatient } = useUIStore();
-  const { activeRefNomo, setRefNomo } = useClinicStore();
+  const { activeRefNomo, setRefNomo, activeRefNomoCyl, setRefNomoCyl } = useClinicStore();
   const [filter, setFilter] = useState<'all' | 'refraction' | 'cataract'>('all');
   const [search, setSearch] = useState('');
   const [nomo, setNomo] = useState<any>(null);
@@ -197,19 +216,65 @@ export function ResultsPage() {
     ];
   }, [done, filter]);
 
+  // UI Recommendation logic
+  const renderNomoRow = (label: string, field: 'sph' | 'cyl') => {
+    const proposed = field === 'sph' ? nomo.proposed_offset_sph : nomo.proposed_offset_cyl;
+    const avgErr = field === 'sph' ? nomo.avg_sph_error : nomo.avg_cyl_error;
+    const active = field === 'sph' ? activeRefNomo : activeRefNomoCyl;
+    const setter = field === 'sph' ? setRefNomo : setRefNomoCyl;
+
+    if (proposed === 0 && avgErr === 0) return null;
+
+    return (
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: field === 'cyl' ? 4 : 0 }}>
+        <div style={{ fontFamily: F.sans, fontSize: 11, color: C.text, fontWeight: 500 }}>
+          {label}: <span style={{ 
+            color: parseFloat(String(avgErr)) > 0 ? '#f87171' : C.green, 
+            fontWeight: 700 
+          }}>
+            {parseFloat(String(avgErr)) > 0 ? '+' : ''}{avgErr}D
+          </span>
+        </div>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+          <div style={{ textAlign: 'right' }}>
+            <div style={{ fontFamily: F.sans, fontSize: 7, color: C.muted, textTransform: 'uppercase', lineHeight: 1 }}>Поправка</div>
+            <div style={{ fontFamily: F.mono, fontSize: 13, color: C.green, fontWeight: 800, lineHeight: 1.1 }}>
+              {proposed > 0 ? '+' : ''}{proposed} D
+            </div>
+          </div>
+          <button
+            onClick={() => {
+              if (active === proposed) setter(null);
+              else setter(proposed);
+            }}
+            style={{
+              background: active === proposed ? C.green : C.accent,
+              border: 'none', borderRadius: 8, padding: '4px 10px',
+              color: '#fff', fontFamily: F.sans, fontSize: 10, fontWeight: 800,
+              cursor: 'pointer', boxShadow: '0 4px 12px rgba(0,0,0,0.15)',
+              transition: 'all 0.2s', width: 80, height: 26
+            }}
+          >
+            {active === proposed ? 'АКТИВНО' : 'ПРИМЕНИТЬ'}
+          </button>
+        </div>
+      </div>
+    );
+  };
+
   return (
     <div style={{ display: 'flex', flexDirection: 'column', height: '100%', overflow: 'hidden', position: 'relative' }}>
       {/* Шапка со статистикой и фильтрами */}
       <div style={{ 
-        padding: '14px 16px 14px', 
+        padding: '10px 14px 10px', 
         display: 'flex', 
         flexDirection: 'column', 
-        gap: 12,
+        gap: 10,
         background: C.bg,
         borderBottom: `1px solid ${C.border}`,
         flexShrink: 0
       }}>
-        <div style={{ display: 'grid', gridTemplateColumns: `repeat(${stats.length},1fr)`, gap: 8 }}>
+        <div style={{ display: 'grid', gridTemplateColumns: `repeat(${stats.length},1fr)`, gap: 6 }}>
           {stats.map(s => (
             <StatCard key={s.label} label={s.label} value={s.val} color={s.color} sub={s.sub} />
           ))}
@@ -218,51 +283,21 @@ export function ResultsPage() {
         {/* Nomogram Recommendation Card */}
         {nomo && (
           <div style={{
-            background: 'linear-gradient(135deg,rgba(99,102,241,0.1) 0%,rgba(168,85,247,0.1) 100%)',
-            border: `1px solid rgba(168,85,247,0.2)`,
-            borderRadius: 14, padding: '12px 14px',
-            display: 'flex', flexDirection: 'column', gap: 6
+            background: 'linear-gradient(135deg,rgba(99,102,241,0.08) 0%,rgba(168,85,247,0.08) 100%)',
+            border: `1px solid rgba(168,85,247,0.15)`,
+            borderRadius: 12, padding: '8px 12px',
+            display: 'flex', flexDirection: 'column', gap: 4
           }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 2 }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                <span style={{ fontSize: 14 }}>🧠</span>
-                <span style={{ fontFamily: F.sans, fontSize: 10, fontWeight: 800, color: C.accent, letterSpacing: '.05em' }}>AUTO-NOMOGRAM (BETA)</span>
+                <span style={{ fontSize: 12 }}>🧠</span>
+                <span style={{ fontFamily: F.sans, fontSize: 9, fontWeight: 800, color: C.accent, letterSpacing: '.05em' }}>AUTO-NOMOGRAM</span>
               </div>
-              <span style={{ fontFamily: F.sans, fontSize: 9, color: C.muted }}>{nomo.count} ГЛАЗ ПРОАНАЛИЗИРОВАНО</span>
+              <span style={{ fontFamily: F.sans, fontSize: 8, color: C.muted, fontWeight: 600 }}>{nomo.count} ГЛАЗ ПРОАНАЛИЗИРОВАНО</span>
             </div>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-              <div style={{ fontFamily: F.sans, fontSize: 12, color: C.text, fontWeight: 500 }}>
-                Среднее SE: <span style={{ 
-                  color: parseFloat(nomo.avg_sph_error) > 0 ? '#f87171' : C.green, 
-                  fontWeight: 700 
-                }}>
-                  {parseFloat(nomo.avg_sph_error) > 0 ? '+' : ''}{nomo.avg_sph_error}D
-                </span>
-              </div>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-                <div style={{ textAlign: 'right' }}>
-                  <div style={{ fontFamily: F.sans, fontSize: 8, color: C.muted, textTransform: 'uppercase' }}>Рекомендация</div>
-                  <div style={{ fontFamily: F.mono, fontSize: 16, color: C.green, fontWeight: 800 }}>
-                    {nomo.proposed_offset_sph > 0 ? '+' : ''}{nomo.proposed_offset_sph} D
-                  </div>
-                </div>
-                <button
-                  onClick={() => {
-                    if (activeRefNomo === nomo.proposed_offset_sph) setRefNomo(null);
-                    else setRefNomo(nomo.proposed_offset_sph);
-                  }}
-                  style={{
-                    background: activeRefNomo === nomo.proposed_offset_sph ? C.green : C.accent,
-                    border: 'none', borderRadius: 10, padding: '8px 12px',
-                    color: '#fff', fontFamily: F.sans, fontSize: 11, fontWeight: 700,
-                    cursor: 'pointer', boxShadow: '0 4px 12px rgba(0,0,0,0.2)',
-                    transition: 'all 0.2s'
-                  }}
-                >
-                  {activeRefNomo === nomo.proposed_offset_sph ? 'АКТИВНО ✓' : 'ПРИМЕНИТЬ'}
-                </button>
-              </div>
-            </div>
+            
+            {renderNomoRow('Сфера (SE)', 'sph')}
+            {renderNomoRow('Цилиндр', 'cyl')}
           </div>
         )}
 

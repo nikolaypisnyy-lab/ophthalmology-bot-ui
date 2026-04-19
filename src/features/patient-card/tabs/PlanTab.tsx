@@ -345,32 +345,61 @@ function PlanResult({ eye, onReset, laser }: { eye: 'od' | 'os'; onReset: () => 
               textColor={C.text}
               unit="мм"
             />
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
-            <label style={{
-              fontFamily: F.sans, fontSize: 8, fontWeight: 800, color: C.muted,
-              letterSpacing: '.07em', textTransform: 'uppercase', paddingLeft: 2
-            }}>
-              FLAP (мкм)
-            </label>
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 4 }}>
-              {['90', '100', '110'].map(val => (
-                <button
-                  key={val}
-                  onClick={() => setDraft({ capOrFlap: val })}
-                  style={{
-                    height: 28, borderRadius: 14,
-                    background: (draft?.capOrFlap === val) ? `${C.accent}20` : C.surface3,
-                    border: `1px solid ${(draft?.capOrFlap === val) ? C.accent : C.border}`,
-                    color: (draft?.capOrFlap === val) ? C.accent : C.text,
-                    fontFamily: F.mono, fontSize: 11, fontWeight: 700,
-                    cursor: 'pointer', transition: 'all .15s'
-                  }}
-                >
-                  {val}
-                </button>
-              ))}
-            </div>
+            {!draft?.isPRK && (
+              <WheelField
+                label="ФЛЭП Ø"
+                value={draft?.flapDiam ?? '8.8'}
+                onChange={v => setDraft({ flapDiam: v })}
+                min={8.6} max={9.0} step={0.1}
+                accentColor={ec.color}
+                textColor={C.text}
+                unit="мм"
+              />
+            )}
           </div>
+
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', paddingRight: 4 }}>
+              <label style={{
+                fontFamily: F.sans, fontSize: 8, fontWeight: 800, color: C.muted,
+                letterSpacing: '.07em', textTransform: 'uppercase', paddingLeft: 2
+              }}>
+                {draft?.isPRK ? 'МЕТОД ОПЕРАЦИИ' : 'ТОЛЩИНА ФЛЭПА (мкм)'}
+              </label>
+              <button
+                onClick={() => setDraft({ isPRK: !draft?.isPRK, capOrFlap: !draft?.isPRK ? 'ФРК' : '110' })}
+                style={{
+                  padding: '2px 8px', borderRadius: 10,
+                  background: draft?.isPRK ? `${C.accent}20` : C.surface3,
+                  border: `1px solid ${draft?.isPRK ? C.accent : C.border}`,
+                  color: draft?.isPRK ? C.accent : C.muted,
+                  fontFamily: F.sans, fontSize: 8, fontWeight: 900,
+                  cursor: 'pointer', transition: 'all .2s'
+                }}
+              >
+                {draft?.isPRK ? 'ФРК: ВКЛ' : 'ВКЛЮЧИТЬ ФРК'}
+              </button>
+            </div>
+            {!draft?.isPRK && (
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 4 }}>
+                {['90', '100', '110'].map(val => (
+                  <button
+                    key={val}
+                    onClick={() => setDraft({ capOrFlap: val })}
+                    style={{
+                      height: 28, borderRadius: 14,
+                      background: (draft?.capOrFlap === val) ? `${C.accent}20` : C.surface3,
+                      border: `1px solid ${(draft?.capOrFlap === val) ? C.accent : C.border}`,
+                      color: (draft?.capOrFlap === val) ? C.accent : C.text,
+                      fontFamily: F.mono, fontSize: 11, fontWeight: 700,
+                      cursor: 'pointer', transition: 'all .15s'
+                    }}
+                  >
+                    {val}
+                  </button>
+                ))}
+              </div>
+            )}
           </div>
 
           {/* Индикаторы */}

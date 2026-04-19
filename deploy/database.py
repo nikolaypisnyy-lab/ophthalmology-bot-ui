@@ -9,7 +9,7 @@ BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 class MedEyeDB:
     def __init__(self, db_path="medeye.db"):
         # На сервере данные лежат в отдельной папке для сохранности при деплое
-        DATA_DIR = "/root/app/data"
+        DATA_DIR = "/root/medeye/data"
         
         # Если передан только флаг/имя файла, делаем его абсолютным
         if not os.path.isabs(db_path):
@@ -50,9 +50,20 @@ class MedEyeDB:
                 name TEXT,
                 phone TEXT,
                 created_at TEXT,
-                archived INTEGER DEFAULT 0
+                archived INTEGER DEFAULT 0,
+                status TEXT DEFAULT 'planned',
+                flapDiam TEXT,
+                capOrFlap TEXT
             )
         """, commit=True)
+        # Миграция
+        try:
+            self.execute("ALTER TABLE patients ADD COLUMN flapDiam TEXT", commit=True)
+        except: pass
+        try:
+            self.execute("ALTER TABLE patients ADD COLUMN capOrFlap TEXT", commit=True)
+        except: pass
+
         self.execute("CREATE TABLE IF NOT EXISTS forms (patient_id TEXT PRIMARY KEY, op_date TEXT, op_time TEXT, primary_data TEXT)", commit=True)
         self.execute("CREATE TABLE IF NOT EXISTS visits (visit_id TEXT PRIMARY KEY, patient_id TEXT, status TEXT, active INTEGER, created_at TEXT)", commit=True)
         self.execute("CREATE TABLE IF NOT EXISTS measurements (visit_id TEXT PRIMARY KEY, data TEXT)", commit=True)
@@ -62,21 +73,58 @@ class MedEyeDB:
 
     # --- Patients ---
     def get_all_patients(self):
-        rows = self.execute("SELECT * FROM patients ORDER BY created_at DESC").fetchall()
-        return [dict(r) for r in rows]
+        # Умный запрос: соединяем пациентов с данными об их операциях (results)
+        rows = self.execute("""
+            SELECT p.*, m.data as meas_data
+            FROM patients p
+            LEFT JOIN visits v ON p.patient_id = v.patient_id
+            LEFT JOIN measurements m ON v.visit_id = m.visit_id
+            ORDER BY p.created_at DESC
+        """).fetchall()
+        
+        res = []
+        for r in rows:
+            d = dict(r)
+            # Если в базе статус не done, но в measurements есть периоды (осмотры) - считаем 'done'
+            if d.get('status') != 'done' and d.get('meas_data'):
+                try:
+                    meas = json.loads(d['meas_data'])
+                    periods = meas.get('periods', {})
+                    if periods and any(periods.values()):
+                        d['status'] = 'done'
+                except:
+                    pass
+            d.pop('meas_data', None) # Удаляем сырые данные из ответа списка
+            res.append(d)
+        return res
 
     def get_patient(self, pid):
-        row = self.execute("SELECT * FROM patients WHERE patient_id = ?", (str(pid),)).fetchone()
-        return dict(row) if row else None
+        row = self.execute("""
+            SELECT p.*, m.data as meas_data
+            FROM patients p
+            LEFT JOIN visits v ON p.patient_id = v.patient_id
+            LEFT JOIN measurements m ON v.visit_id = m.visit_id
+            WHERE p.patient_id = ?
+        """, (str(pid),)).fetchone()
+        if not row: return None
+        d = dict(row)
+        if d.get('status') != 'done' and d.get('meas_data'):
+            try:
+                meas = json.loads(d['meas_data'])
+                if meas.get('periods') and any(meas['periods'].values()):
+                    d['status'] = 'done'
+            except: pass
+        d.pop('meas_data', None)
+        return d
         
     def find_patient_by_chat(self, chat_id):
         row = self.execute("SELECT * FROM patients WHERE chat_id = ?", (chat_id,)).fetchone()
         return dict(row) if row else None
 
-    def save_patient(self, pid, chat_id, name, phone, created_at, archived=0):
+    def save_patient(self, pid, chat_id, name, phone, created_at, archived=0, flapDiam=None, capOrFlap=None):
         self.execute(
-            "INSERT OR REPLACE INTO patients (patient_id, chat_id, name, phone, created_at, archived) VALUES (?, ?, ?, ?, ?, ?)",
-            (str(pid), chat_id, name, phone, created_at, archived),
+            "INSERT OR REPLACE INTO patients (patient_id, chat_id, name, phone, created_at, archived, flapDiam, capOrFlap) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
+            (str(pid), chat_id, name, phone, created_at, archived, flapDiam, capOrFlap),
             commit=True
         )
 

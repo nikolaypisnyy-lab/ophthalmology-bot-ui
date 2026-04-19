@@ -48,7 +48,7 @@ function CompareRow({ label, pre, plan, result, unit = '', hidePlan = false, col
     return n > 0 ? `+${n.toFixed(2)}` : n === 0 ? '0.00' : n.toFixed(2);
   };
   const fmtRaw = (v: string | number | undefined) => {
-    if (v === undefined || v === '') return '—';
+    if (v === undefined || v === '' || v === null) return '—';
     return String(v);
   };
   const isNum = unit !== '°' && unit !== '';
@@ -120,6 +120,37 @@ export function ResultTab({ onSave, isSaving }: { onSave: () => void, isSaving: 
       <div style={{ display: 'flex', justifyContent: 'center' }}>
         <EyeToggle value={resultEye} onChange={setResultEye} />
       </div>
+
+      {/* Параметры флэпа (только для рефракции) */}
+      {!isCat && (
+        <div style={{
+          background: 'rgba(255,255,255,0.03)',
+          border: `1px solid ${C.border}`,
+          borderRadius: 12, padding: '10px 14px',
+          display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 16
+        }}>
+          {(!draft.capOrFlap && !draft.flapDiam) ? (
+             <span style={{ fontFamily: F.sans, fontSize: 10, color: C.muted2, fontStyle: 'italic' }}>
+                Параметры флэпа не заполнены в плане
+             </span>
+          ) : (
+            <>
+              {draft.capOrFlap && (
+                <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+                  <span style={{ fontFamily: F.sans, fontSize: 8, fontWeight: 800, color: C.muted, textTransform: 'uppercase' }}>Толщина:</span>
+                  <span style={{ fontFamily: F.mono, fontSize: 12, fontWeight: 700, color: C.text }}>{draft.capOrFlap} мкм</span>
+                </div>
+              )}
+              {draft.flapDiam && (
+                <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+                  <span style={{ fontFamily: F.sans, fontSize: 8, fontWeight: 800, color: C.muted, textTransform: 'uppercase' }}>Диаметр:</span>
+                  <span style={{ fontFamily: F.mono, fontSize: 12, fontWeight: 700, color: C.text }}>Ø {draft.flapDiam} мм</span>
+                </div>
+              )}
+            </>
+          )}
+        </div>
+      )}
 
       {/* Pre / Plan / Result comparison (refraction only) */}
       {!isCat && (preSph || planEye) && (

@@ -35,6 +35,7 @@ def get_nomogram_offsets(clinic_db_path):
         return {"count": 0, "proposed_offset_sph": 0, "avg_sph_error": 0}
     
     sph_errors = []
+    cyl_errors = []
     
     for row in rows:
         try:
@@ -68,6 +69,7 @@ def get_nomogram_offsets(clinic_db_path):
                 try:
                     p_sph = float(p_eye['sph'] or 0)
                     r_sph = float(r_eye['sph'] or 0)
+                    r_cyl = float(r_eye.get('cyl') or 0)
                     
                     # Разная логика для ЛКЗ и Катаракты
                     p_type = prim.get('patient_type', 'refraction')
@@ -76,22 +78,26 @@ def get_nomogram_offsets(clinic_db_path):
                         sph_errors.append(r_sph - p_sph)
                     else:
                         # Для ЛКЗ p_sph — это сила абляции (обработана номограммой)
-                        # Мы рассчитываем ошибку как остаточную рефракцию (предполагая цель 0)
-                        # Но если есть поправка в плане, ее надо учесть? 
-                        # В текущей версии для ЛКЗ считаем просто r_sph как ошибку
                         sph_errors.append(r_sph)
+                    
+                    # Ошибка по цилиндру (всегда считаем как остаточный цилиндр)
+                    if r_cyl != 0:
+                        cyl_errors.append(r_cyl)
                 except:
                     continue
                     
     if not sph_errors:
-        return {"count": 0, "avg_sph_error": 0, "proposed_offset_sph": 0}
+        return {"count": 0, "avg_sph_error": 0, "proposed_offset_sph": 0, "avg_cyl_error": 0, "proposed_offset_cyl": 0}
         
     avg_sph = sum(sph_errors) / len(sph_errors)
+    avg_cyl = sum(cyl_errors) / len(cyl_errors) if cyl_errors else 0
     
     return {
         "count": len(sph_errors),
         "avg_sph_error": round(float(avg_sph), 3),
         "proposed_offset_sph": round(float(-avg_sph), 2),
+        "avg_cyl_error": round(float(avg_cyl), 3),
+        "proposed_offset_cyl": round(float(avg_cyl), 2),
     }
 
 if __name__ == "__main__":

@@ -7,7 +7,7 @@ import os
 
 # Путь к мастер-базе
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
-DATA_DIR = "/root/app/data"
+DATA_DIR = "/root/medeye/data"
 
 if os.path.exists(DATA_DIR):
     DEFAULT_DB_PATH = os.path.join(DATA_DIR, "master.db")
@@ -128,4 +128,4 @@ class MasterDB:
             commit=True
         )
 
-master_db = MasterDB()
+master_db = MasterDB("/root/medeye/data/master.db")

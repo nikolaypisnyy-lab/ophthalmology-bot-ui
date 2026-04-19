@@ -127,7 +127,7 @@ function AppHeader({ title }: { title: string }) {
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
         <div>
           <div style={{ fontFamily: F.sans, fontSize: 10, fontWeight: 500, color: C.muted, letterSpacing: '.14em', textTransform: 'uppercase' }}>
-            RefMaster v2.3.1
+            RefMaster v2.57
           </div>
           <div style={{ fontFamily: F.sans, fontSize: 20, fontWeight: 700, color: C.text, marginTop: 2 }}>
             {title}

@@ -60,6 +60,8 @@ export interface CreatePatientRequest {
   op_eye?: string;
   op_date?: string;
   isEnhancement?: boolean;
+  flapDiam?: string;
+  capOrFlap?: string;
   od?: any;
   os?: any;
 }
@@ -89,6 +91,8 @@ export interface UpdatePatientRequest {
   patient_type?: 'refraction' | 'cataract';
   isEnhancement?: boolean;
   surgical_order?: number;
+  flapDiam?: string;
+  capOrFlap?: string;
   od?: any;
   os?: any;
 }
@@ -129,6 +133,8 @@ export async function savePatientMeta(patient: Partial<Patient>): Promise<SaveRe
       op_eye: patient.eye,
       op_date: patient.date,
       isEnhancement: patient.isEnhancement,
+      flapDiam: (patient as any).flapDiam,
+      capOrFlap: (patient as any).capOrFlap,
       od: patient.od,
       os: patient.os,
     });
@@ -153,6 +159,8 @@ export async function savePatientMeta(patient: Partial<Patient>): Promise<SaveRe
       op_eye: patient.eye,
       patient_type: patient.type,
       isEnhancement: patient.isEnhancement,
+      flapDiam: (patient as any).flapDiam,
+      capOrFlap: (patient as any).capOrFlap,
       od: patient.od,
       os: patient.os,
     });

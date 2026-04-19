@@ -157,6 +157,8 @@ export const usePatientStore = create<PatientStore>((set, get) => ({
           postAxOS:  ex?.postAxOS  ?? compOS?.ax    ?? p.postAxOS,
           postVaOS:  ex?.postVaOS  ?? compOS?.va    ?? p.postVaOS,
           surgicalOrder: ex?.surgicalOrder ?? p.surgicalOrder,
+          flapDiam:  ex?.flapDiam  ?? p.flapDiam,
+          capOrFlap: ex?.capOrFlap ?? p.capOrFlap,
         };
       });
 
@@ -345,6 +347,8 @@ export const usePatientStore = create<PatientStore>((set, get) => ({
       postVaOS:  (patient as any).postVaOS,
       targetRefr: patient.targetRefr,
       isEnhancement: patient.isEnhancement,
+      flapDiam: (patient as any).flapDiam,
+      capOrFlap: (patient as any).capOrFlap,
     };
 
     const plist = lsGetPatients();

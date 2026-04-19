@@ -2,10 +2,12 @@ import React, { useState } from 'react';
 import { C, F, eyeColors } from '../../../constants/design';
 import { useSessionStore } from '../../../store/useSessionStore';
 import { useUIStore } from '../../../store/useUIStore';
-import { IOL_DB, searchIOL } from '../../../constants/iol-db';
+import { IOL_DB, searchIOL, findIOL } from '../../../constants/iol-db';
 import { validateBiometry } from '../../../calculators/iolSrkt';
+import { calcHaigis, haigisConstFromA } from '../../../calculators/haigis';
 import { toricIndication } from '../../../calculators/validators';
 import { calculateIOL } from '../../../api/calculate';
+import { calculateAutonomousToric } from '../../../calculators/toricEngine';
 import { DField } from '../../../ui/DField';
 import { WheelField } from '../../../ui/WheelField';
 import { Btn } from '../../../ui/Btn';
@@ -31,16 +33,20 @@ function FormulaColumn({
   toricAx,
   onSelectPower,
   onSelectToric,
+  sia,
+  siaAx,
 }: {
   formula: string;
   result: IOLFormulaResult;
   eye: 'od' | 'os';
   selectedFormula?: string;
   selectedPower?: number;
-  toricCyl?: string;
-  toricAx?: string;
   onSelectPower: (power: number, formula: string, ref: number) => void;
   onSelectToric: (cyl: number, ax: number, residual: string) => void;
+  toricCyl?: string;
+  toricAx?: string;
+  sia?: string;
+  siaAx?: string;
 }) {
   const ec = eyeColors(eye);
   const isBest = selectedFormula === formula;
@@ -64,13 +70,23 @@ function FormulaColumn({
         {/* Header */}
         <div style={{ padding: '7px 7px 5px', borderBottom: `1px solid rgba(245,158,11,.3)`, background: 'rgba(245,158,11,.06)' }}>
           <div style={{ fontFamily: F.sans, fontSize: 8, fontWeight: 700, color: C.amber, letterSpacing: '.06em', textTransform: 'uppercase', marginBottom: 2 }}>
-            Kane Toric · ИОЛ
+            RefMaster Toric · ИОЛ (v2.1.4-STABLE)
           </div>
           <div style={{ fontFamily: F.mono, fontSize: 16, fontWeight: 700, color: C.text, lineHeight: 1 }}>
             {selCyl != null ? `${selCyl > 0 ? '+' : ''}${selCyl.toFixed(2)}` : '—'}
             <span style={{ fontSize: 9, color: C.muted, marginLeft: 2 }}>D</span>
             {implAxis != null && <span style={{ fontSize: 14, color: C.yellow, marginLeft: 6 }}>@{implAxis}°</span>}
           </div>
+          {formula === 'RefMaster Toric' && (
+             <div style={{ marginTop: 2 }}>
+               <div style={{ fontFamily: F.sans, fontSize: 8, color: C.green, fontWeight: 700 }}>
+                  POSTERIOR AST: ON
+               </div>
+               <div style={{ fontFamily: F.sans, fontSize: 8, color: C.accent, fontWeight: 700, marginTop: 1 }}>
+                  SIA: {sia}D @ {siaAx}°
+               </div>
+             </div>
+          )}
           <div style={{ fontFamily: F.sans, fontSize: 7, color: C.amber, marginTop: 2, fontWeight: 600 }}>
             Остаток @ Ось
           </div>
@@ -81,7 +97,7 @@ function FormulaColumn({
             const isBestRow = bestCyl != null && Math.abs(row.cyl_power - bestCyl) < 0.01;
             const sel = selCyl != null && Math.abs(row.cyl_power - selCyl) < 0.01;
             const resColor = row.residual_cyl <= 0.25 ? C.green : row.residual_cyl <= 0.5 ? C.yellow : C.muted2;
-            const resAx = (Math.round(row.axis) + 90) % 180 || 180;
+            const resAx = row.residual_axis || ((Math.round(row.axis) + 90) % 180 || 180);
             return (
               <div
                 key={idx}
@@ -179,6 +195,7 @@ export function CalcTab() {
   const toricMode = !!draft.toricMode;
   const sia = draft.sia ?? '0.1';
   const siaAx = draft.siaAx ?? '90';
+  const onlineMode = (draft as any).onlineMode ?? true;
 
   const filteredLenses = searchIOL(lensSearch);
 
@@ -198,9 +215,52 @@ export function CalcTab() {
     const target = parseFloat(targetRefr) || 0;
 
     const localResults: EyeFormulaMap = { od: {}, os: {} };
-    let hasData = true; // Будем ждать расчетов от сервера
+
+    // Haigis — локальный расчёт, показываем сразу до ответа сервера
+    const selectedLens = findIOL(lensName);
+    const hConst = selectedLens?.haigis ?? haigisConstFromA(aConstN);
+    (['od', 'os'] as const).forEach(ek => {
+      const bio = draft[`bio_${ek}`] ?? newBiometryData();
+      const al = parseFloat(bio.al);
+      const k1 = parseFloat(bio.k1);
+      const k2 = parseFloat(bio.k2);
+      const acd = parseFloat(bio.acd);
+        if (al && k1 && k2 && acd) {
+          const hr = calcHaigis(al, acd, k1, k2, target, hConst);
+          if (hr) localResults[ek]['Haigis'] = { p_emmetropia: hr.p_emmetropia, table: hr.table };
+          
+          if (toricMode) {
+             const tRes = calculateAutonomousToric(
+                k1, k2, parseFloat(bio.k1_ax) || 0,
+                parseFloat(sia) || 0,
+                parseFloat(siaAx) || 90,
+                al
+             );
+             localResults[ek]['RefMaster Toric'] = {
+                p_emmetropia: 0, 
+                table: [], 
+                _toricMode: true,
+                best_cyl: tRes.table.find((t: any) => t.model === tRes.bestModel)?.cylIol,
+                toric_table: tRes.table.map((t: any) => ({
+                   cyl_power: t.cylIol,
+                   residual_cyl: t.residual,
+                   axis: tRes.adjAxis,
+                   residual_axis: t.resAxis,
+                   model: t.model
+                }))
+             };
+          }
+        }
+      });
 
     setFormulaResults(localResults);
+    
+    // Если онлайн режим выключен — останавливаемся на локальных результатах
+    if (!onlineMode) {
+      setIOLLoading(false, 100);
+      return;
+    }
+
     setIOLLoading(true, 0);
 
     const start = Date.now();
@@ -213,7 +273,7 @@ export function CalcTab() {
       const reqData: any = {
         use_barrett: true,
         use_kane: true,
-        use_kane_toric: toricMode,
+        use_kane_toric: false,
         name: draft.name ?? 'Patient',
         age: draft.age ?? '',
         sex: draft.sex ?? '',
@@ -236,29 +296,37 @@ export function CalcTab() {
       const res = await calculateIOL(reqData);
 
       if (res.results) {
-        const finalResults: EyeFormulaMap = { od: {}, os: {} };
+        // Создаем копию текущих локальных данных для каждого глаза
+        const merged: EyeFormulaMap = { 
+          od: { ...(localResults.od || {}) }, 
+          os: { ...(localResults.os || {}) } 
+        };
 
         (['od', 'os'] as const).forEach(ek => {
           const barrEye = res.results?.barrett?.[ek];
           const kaneEye = res.results?.kane?.[ek];
+          const haigisEye = res.results?.haigis?.[ek];
+          const autoToric = res.results?.autonomous_toric?.[ek];
 
           if (barrEye?.table) {
-            finalResults[ek]['Barrett Universal II'] = barrEye;
+            merged[ek]['Barrett Universal II'] = barrEye;
           }
           if (kaneEye?.table) {
-            if (toricMode && kaneEye.toric_table?.length) {
-              finalResults[ek]['Kane Toric'] = { ...kaneEye, _toricMode: true };
-            } else {
-              finalResults[ek]['Kane Formula'] = kaneEye;
-            }
+            merged[ek]['Kane Formula'] = kaneEye;
+          }
+          if (haigisEye?.table) {
+            merged[ek]['Haigis'] = haigisEye;
+          }
+          if (autoToric?.toric_table) {
+            merged[ek]['RefMaster Toric'] = autoToric;
           }
         });
 
-        setFormulaResults(finalResults);
+        setFormulaResults(merged);
 
         // Устанавливаем лучший результат в iolResult
         const buildEyeResult = (ek: 'od' | 'os') => {
-          const frm = finalResults[ek];
+          const frm = merged[ek];
           const bio = draft[`bio_${ek}`] ?? newBiometryData();
           const al = parseFloat(bio.al);
           const isLongEye = al > 25.0;
@@ -324,8 +392,9 @@ export function CalcTab() {
         if (!odResult && osResult) setActiveEye('os');
         else if (odResult && !osResult) setActiveEye('od');
       }
-    } catch {
-      // Ошибка расчёта
+    } catch (err: any) {
+      console.error("[CALC ERROR]", err);
+      alert(`Ошибка расчёта: ${err.message || String(err)}`);
     } finally {
       clearInterval(interval);
       setIOLLoading(false, 100);
@@ -472,6 +541,25 @@ export function CalcTab() {
         )}
       </div>
 
+      {/* Online Calculators Toggle */}
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '10px 12px', background: C.surface2, border: `1px solid ${C.border}`, borderRadius: 12 }}>
+         <span style={{ fontFamily: F.sans, fontSize: 12, fontWeight: 600, color: onlineMode ? C.accent : C.muted }}>Online Calculators (Barrett)</span>
+         <button
+            onClick={() => setDraft({ onlineMode: !onlineMode } as any)}
+            style={{
+              width: 44, height: 24, borderRadius: 12, border: 'none',
+              background: onlineMode ? C.accent : C.surface3,
+              cursor: 'pointer', position: 'relative', transition: 'background .2s', flexShrink: 0,
+            }}
+          >
+            <span style={{
+              position: 'absolute', top: 3, left: onlineMode ? 22 : 3,
+              width: 18, height: 18, borderRadius: '50%',
+              background: '#fff', transition: 'left .2s',
+            }} />
+          </button>
+      </div>
+
       {/* Кнопка расчёта */}
       <Btn variant="primary" onClick={runCalc} disabled={iolLoading} full>
         {iolLoading ? `Расчёт... ${iolProgress}%` : 'Рассчитать ИОЛ'}
@@ -486,7 +574,9 @@ export function CalcTab() {
       {/* Предупреждения */}
       {bioValidation.warnings.length > 0 && (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-          {bioValidation.warnings.map((w, i) => (
+          {bioValidation.warnings
+            .filter(w => !toricMode || !w.includes('рекомендуется торическая ИОЛ'))
+            .map((w, i) => (
             <div key={i} style={{ background: C.yellowLt, border: `1px solid ${C.yellow}40`, borderRadius: 10, padding: '7px 12px', fontFamily: F.sans, fontSize: 11, color: C.yellow }}>
               ⚠ {w}
             </div>
@@ -495,7 +585,7 @@ export function CalcTab() {
       )}
 
       {/* Подсказка торика */}
-      {toricHint.indicated && !toricMode && !iolLoading && (
+      {toricHint.indicated && !toricMode && !iolLoading && !hasFormulas && (
         <div style={{ background: 'rgba(245,158,11,.12)', border: '1px solid rgba(245,158,11,.35)', borderRadius: 10, padding: '8px 12px', fontFamily: F.sans, fontSize: 11, color: C.amber }}>
           {toricHint.recommended
             ? `★ Показана торическая ИОЛ — астигматизм ${toricHint.delta.toFixed(2)} D`
@@ -517,14 +607,18 @@ export function CalcTab() {
           </div>
 
           <div style={{ display: 'flex', gap: 8, overflowX: 'auto', paddingBottom: 4 }}>
-            {['Barrett Universal II', 'Kane Toric', 'Kane Formula'].map(name => {
-              // В торическом режиме показываем только Barrett (сферу) и Kane Toric
-              if (toricMode) {
-                if (name === 'Kane Formula') return null;
-                // Если считаем торику, Barrett всегда есть, а Kane Toric появится если успешно распарсился
+            {['Haigis', 'RefMaster Toric', 'Barrett Universal II', 'Kane Formula'].map(name => {
+              // НОВАЯ МАТРИЦА ОТОБРАЖЕНИЯ:
+              if (onlineMode) {
+                 // ОНЛАЙН РЕЖИМ (Барретт и Кейн всегда)
+                 if (name === 'Haigis') return null;
+                 // Торику показываем только если ВКЛ toricMode
+                 if (name === 'RefMaster Toric' && !toricMode) return null;
               } else {
-                // В обычном режиме убираем торическую колонку
-                if (name === 'Kane Toric') return null;
+                 // ОФФЛАЙН РЕЖИМ (Хайгис всегда)
+                 if (name === 'Barrett Universal II' || name === 'Kane Formula') return null;
+                 // Торику показываем только если ВКЛ toricMode
+                 if (name === 'RefMaster Toric' && !toricMode) return null;
               }
 
               const res = formulaResults[activeEye][name];
@@ -539,6 +633,8 @@ export function CalcTab() {
                   selectedPower={eyeResult?.selectedPower ?? eyeResult?.p_emmetropia}
                   toricCyl={draft.toricCyl}
                   toricAx={draft.toricAx}
+                  sia={draft.sia}
+                  siaAx={draft.siaAx}
                   onSelectPower={(p, f, r) => handleSelectPower(activeEye, p, f, r)}
                   onSelectToric={(c, a, res) => handleSelectToric(activeEye, c, a, res)}
                 />
