@@ -53,28 +53,39 @@ def scrape_barrett_universal2_both(data: dict) -> dict:
             except: pass
             
             page.wait_for_selector("#MainContent_Axlength", timeout=15000)
-            page.fill("#MainContent_PatientName", str(data.get("patient_name", "Patient")))
-            a = data.get("od", {}).get("a_const") or data.get("os", {}).get("a_const")
-            if a: page.fill("#MainContent_Aconstant", str(a))
+            
+            # Use press_sequentially for human-like input
+            print(f"[{data.get('formula', 'Barrett')}] Typing patient name...")
+            page.locator("#MainContent_PatientName").press_sequentially(str(data.get("patient_name", "Patient")), delay=random.randint(50, 100))
+            
+            a_const = data.get("od", {}).get("a_const") or data.get("os", {}).get("a_const")
+            if a_const: 
+                page.locator("#MainContent_Aconstant").press_sequentially(str(a_const), delay=random.randint(50, 100))
             
             sides = [s for s in ["od", "os"] if s in data and data[s].get("al")]
             for side in sides:
                 sfx = "0" if side == "os" else ""
-                page.fill(f"#MainContent_Axlength{sfx}", str(data[side]["al"]))
-                page.fill(f"#MainContent_MeasuredK1{sfx}", str(data[side]["k1"]))
-                page.fill(f"#MainContent_MeasuredK2{sfx}", str(data[side]["k2"]))
-                if data[side].get("acd"): page.fill(f"#MainContent_OpticalACD{sfx}", str(data[side]["acd"]))
+                page.locator(f"#MainContent_Axlength{sfx}").press_sequentially(str(data[side]["al"]), delay=random.randint(50, 100))
+                page.locator(f"#MainContent_MeasuredK1{sfx}").press_sequentially(str(data[side]["k1"]), delay=random.randint(50, 100))
+                page.locator(f"#MainContent_MeasuredK2{sfx}").press_sequentially(str(data[side]["k2"]), delay=random.randint(50, 100))
+                if data[side].get("acd"): 
+                    page.locator(f"#MainContent_OpticalACD{sfx}").press_sequentially(str(data[side]["acd"]), delay=random.randint(50, 100))
 
             page.evaluate("() => { if(typeof Page_ClientValidate === 'function') window.Page_ClientValidate = () => true; }")
+            print(f"[{data.get('formula', 'Barrett')}] Clicking Calculate...")
             page.click("#MainContent_Button1")
+            
+            # Ожидание перехода на вкладку результатов
             page.wait_for_timeout(3000)
-
             try:
-                page.locator("a", has_text="Universal Formula").first.click(timeout=5000)
-                page.wait_for_timeout(1000)
-            except: pass
+                print(f"[{data.get('formula', 'Barrett')}] Clicking Universal Formula tab...")
+                page.locator("a", has_text="Universal Formula").first.click(timeout=7000)
+                page.wait_for_timeout(2000)
+            except Exception as te:
+                print(f"[{data.get('formula', 'Barrett')}] Warning: Could not click Universal Formula tab: {te}")
 
             valid_tables = []
+            print(f"[{data.get('formula', 'Barrett')}] Awaiting results table...")
             for _ in range(40):
                 page.wait_for_timeout(300)
                 raw_tables = page.evaluate("""() => {
@@ -128,10 +139,17 @@ def scrape_kane_formula_both(data: dict) -> dict:
     try:
         with sync_playwright() as p:
             browser = p.chromium.launch(headless=True, args=['--no-sandbox', '--disable-blink-features=AutomationControlled'])
+            # Use a more common Windows User Agent
             context = browser.new_context(
-                user_agent='Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/123.0.0.0 Safari/537.36'
+                user_agent='Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/128.0.0.0 Safari/537.36',
+                viewport={'width': 1366, 'height': 768},
+                device_scale_factor=1,
             )
             page = context.new_page()
+            
+            # Additional Webdriver detection masking at JS level
+            page.add_init_script("Object.defineProperty(navigator, 'webdriver', {get: () => undefined})")
+            
             try:
                 playwright_stealth.stealth.stealth_sync(page)
             except:
@@ -139,8 +157,9 @@ def scrape_kane_formula_both(data: dict) -> dict:
                 except: pass
             
             print("[Kane] Navigating...")
-            page.goto("https://www.iolformula.com/", timeout=60000, wait_until="domcontentloaded")
-            page.wait_for_timeout(random.randint(1500, 3000))
+            # Use 'networkidle' to ensure Cloudflare checks completion
+            page.goto("https://www.iolformula.com/", timeout=60000, wait_until="networkidle")
+            page.wait_for_timeout(random.randint(5000, 7000)) # Human-like wait
             
             # I Agree
             try:
@@ -159,7 +178,8 @@ def scrape_kane_formula_both(data: dict) -> dict:
                 page.wait_for_timeout(500)
             
             if not calc_frame:
-                browser.close(); return {"error": "Calc not found"}
+                page.screenshot(path="/root/app/backups/kane_init_error.png")
+                browser.close(); return {"error": "Calc not found (Screenshot saved)"}
 
             is_toric = data.get("use_kane_toric", False)
             if is_toric:
@@ -172,11 +192,20 @@ def scrape_kane_formula_both(data: dict) -> dict:
                 }""")
                 page.wait_for_timeout(1500)
 
-            # Demographics
-            calc_frame.locator("#Patient").fill(str(data.get("patient_name", "Patient")))
+            # Human-like typing for Demographics
+            print("[KANE] Typing patient name...")
+            calc_frame.locator("#Patient").press_sequentially(str(data.get("patient_name", "Patient")), delay=random.randint(50, 150))
             sex_val = str(data.get("od", {}).get("sex", "")).lower() or str(data.get("os", {}).get("sex", "")).lower()
             sex_label = "F" if sex_val in ("ж", "f", "female") else "M"
-            page.evaluate(f"() => {{ let l = Array.from(document.querySelectorAll('label')).find(x => x.innerText.trim() === '{sex_label}'); if(l) l.click(); }}")
+            print(f"[KANE] Selecting Sex: {sex_label}")
+            page.evaluate(f"""() => {{
+                let label = Array.from(document.querySelectorAll('label')).find(x => x.innerText.trim() === '{sex_label}');
+                if (label) {{
+                    label.click();
+                    let input = label.querySelector('input') || document.querySelector('input[value="' + ("{sex_label}" === "F" ? "2" : "1") + '"]');
+                    if (input) {{ input.checked = true; input.click(); }}
+                }}
+            }}""")
             
             sia = data.get("kane_sia", 0.2)
             inc = data.get("kane_incision", 90)
@@ -188,36 +217,37 @@ def scrape_kane_formula_both(data: dict) -> dict:
                 val_k1 = str(d.get("k1", ""))
                 val_k2 = str(d.get("k2", ""))
                 
-                suff = "1" if side == "od" else "2"
                 side_label = "right" if side == "od" else "left"
                 sfx_f = f"-{side_label}" + ("-t" if is_toric else "")
+                suff = "1" if side == "od" else "2"
 
-                fill_js = f"""() => {{
-                    const fv = (s, v) => {{
-                        let el = document.querySelector(s);
-                        if(el && v!=="") {{ 
-                           el.value = String(v); 
-                           el.dispatchEvent(new Event('input', {{bubbles:true}}));
-                           el.dispatchEvent(new Event('change', {{bubbles:true}}));
-                           el.dispatchEvent(new Event('blur', {{bubbles:true}}));
-                        }}
-                    }};
-                    fv('#A-Constant{suff}', '{d.get("a_const", "118.8")}');
-                    fv('#{side_label}-target', '{d.get("target", "0")}');
-                    fv('#al{sfx_f}', '{val_al}');
-                    fv('#k1{sfx_f}', '{val_k1}');
-                    fv('#k2{sfx_f}', '{val_k2}');
-                    fv('#acd{sfx_f}', '{d.get("acd", "")}');
-                    if({str(is_toric).lower()}) {{
-                        fv('#k1{sfx_f}-axis', '{d.get("k1_ax", "0")}');
-                        fv('#sia-{side_label}', '{sia}');
-                        fv('#inc-{side_label}', '{inc}');
-                    }}
-                }}"""
-                calc_frame.evaluate(fill_js)
+                # Typing numerical fields
+                if val_al: calc_frame.locator(f"#al{sfx_f}").press_sequentially(val_al, delay=random.randint(50, 100))
+                if val_k1: calc_frame.locator(f"#k1{sfx_f}").press_sequentially(val_k1, delay=random.randint(50, 100))
+                if val_k2: calc_frame.locator(f"#k2{sfx_f}").press_sequentially(val_k2, delay=random.randint(50, 100))
+                
+                acd = str(d.get("acd", ""))
+                if acd: calc_frame.locator(f"#acd{sfx_f}").press_sequentially(acd, delay=random.randint(50, 100))
+                
+                target = str(d.get("target", "0"))
+                if target: calc_frame.locator(f"#{side_label}-target").press_sequentially(target, delay=random.randint(50, 100))
+                
+                a_const = str(d.get("a_const", "118.8"))
+                if a_const: calc_frame.locator(f"#A-Constant{suff}").press_sequentially(a_const, delay=random.randint(50, 100))
 
-            page.wait_for_timeout(random.randint(2000, 4000))
+                if is_toric:
+                    axis = str(d.get("k1_ax", "0"))
+                    if axis: calc_frame.locator(f"#k1{sfx_f}-axis").press_sequentially(axis, delay=random.randint(50, 100))
+                    
+                    sia_val = str(sia)
+                    if sia_val: calc_frame.locator(f"#sia-{side_label}").press_sequentially(sia_val, delay=random.randint(50, 100))
+                    
+                    inc_val = str(inc)
+                    if inc_val: calc_frame.locator(f"#inc-{side_label}").press_sequentially(inc_val, delay=random.randint(50, 100))
+
+            page.wait_for_timeout(random.randint(3000, 5000))
             print("[KANE] Нажимаем Calculate...")
+            # Human-like interaction: mouse move + element specific click
             page.mouse.move(random.randint(100, 500), random.randint(100, 500))
             page.evaluate("() => { const btn = document.querySelector('input.calculate'); if(btn) btn.click(); }")
 
@@ -225,10 +255,11 @@ def scrape_kane_formula_both(data: dict) -> dict:
             print("[KANE] Ожидание результатов на странице...")
             try:
                 page.wait_for_selector(".results-table, .eye-res, .res-row", timeout=45000)
-                page.wait_for_timeout(2000)
-            except:
+                page.wait_for_timeout(3000)
+            except Exception as fe:
+                page.screenshot(path="/root/app/backups/kane_last_error.png")
                 browser.close()
-                return {"error": "Kane: результаты не появились. Возможно блокировка."}
+                return {"error": f"Kane: результаты не появились. См. скриншот. Err: {fe}"}
 
             results_data = page.evaluate("""() => {
                 const parseEye = (eyeNum) => {
@@ -236,14 +267,12 @@ def scrape_kane_formula_both(data: dict) -> dict:
                     let container = document.querySelector(`#eye${eyeNum}`);
                     if (!container) return { data: [] };
                     
-                    // Поиск строк со сферическими данными
                     container.querySelectorAll('.res-row').forEach(row => {
                         let p = row.querySelector('.res-p')?.innerText;
                         let r = row.querySelector('.res-ref')?.innerText;
                         if (p && r) res.push([parseFloat(p.replace(/[^0-9.-]/g, '')), parseFloat(r.replace(/[^0-9.-]/g, ''))]);
                     });
 
-                    // Поиск торики
                     let t_res = [];
                     container.querySelectorAll('.toric-res-row').forEach(row => {
                         let cells = row.querySelectorAll('div');
