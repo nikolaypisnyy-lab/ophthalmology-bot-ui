@@ -41,6 +41,34 @@ def create_backup():
     print(f"Backup created at {daily_folder}")
     cleanup_old_backups(backup_path)
 
+def create_code_snapshot():
+    # На сервере код лежит в /root/medeye_bot
+    if not Path("/root/medeye_bot").exists():
+        print("Not on server, skipping code snapshot.")
+        return
+        
+    SNAPSHOT_DIR = Path("/root/app/backups/manual_code_snapshots")
+    SNAPSHOT_DIR.mkdir(parents=True, exist_ok=True)
+    
+    timestamp = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
+    archive_name = SNAPSHOT_DIR / f"code_manual_{timestamp}.tar.gz"
+    
+    import subprocess
+    cmd = [
+        "tar", "-czf", str(archive_name),
+        "-C", "/root", "medeye_bot",
+        "--exclude=__pycache__", "--exclude=venv", "--exclude=*.db", "--exclude=*.log"
+    ]
+    res = subprocess.run(cmd, capture_output=True, text=True)
+    if res.returncode == 0:
+        print(f"Code snapshot created: {archive_name.name}")
+    else:
+        print(f"Error creating code snapshot: {res.stderr}")
+
+def create_all():
+    create_backup()
+    create_code_snapshot()
+
 def cleanup_old_backups(backup_path):
     now = datetime.datetime.now()
     backups = sorted(backup_path.iterdir(), key=os.path.getmtime)
@@ -88,7 +116,7 @@ if __name__ == "__main__":
     import sys
     if len(sys.argv) > 1:
         cmd = sys.argv[1]
-        if cmd == "create": create_backup()
+        if cmd == "create": create_all()
         elif cmd == "list": list_backups()
         elif cmd == "restore" and len(sys.argv) > 2:
             restore_backup(int(sys.argv[2]))

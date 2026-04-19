@@ -27,6 +27,19 @@ jobs:
         rm -rf deploy/dist
         cp -r dist deploy/dist
 
+    - name: Pre-deploy code snapshot
+      uses: appleboy/ssh-action@master
+      with:
+        host: ${{ secrets.SERVER_IP }}
+        username: ${{ secrets.SERVER_USER }}
+        key: ${{ secrets.SSH_PRIVATE_KEY }}
+        script: |
+          mkdir -p /root/app/backups/code_snapshots
+          # Сохраняем только последние 5 архивов кода, чтобы не занимать место
+          cd /root/app/backups/code_snapshots && ls -t | tail -n +6 | xargs rm -rf --
+          # Создаем новый снимок текущего кода
+          tar -czf /root/app/backups/code_snapshots/code_pre_deploy_$(date +%Y%m%d_%H%M%S).tar.gz -C /root medeye_bot --exclude=__pycache__ --exclude=venv --exclude=*.db --exclude=*.log
+
     - name: Deploy to Server via rsync
       uses: easingthemes/ssh-deploy@main
       env:
