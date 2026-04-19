@@ -1,6 +1,8 @@
 import math
 import json as json_lib
 import re
+import random
+import time
 from typing import Dict, Any, Optional
 from playwright.sync_api import sync_playwright
 import playwright_stealth
@@ -46,7 +48,6 @@ def scrape_barrett_universal2_both(data: dict) -> dict:
             
             print(f"[{data.get('formula', 'Barrett')}] Navigating...")
             page.goto("https://calc.apacrs.org/barrett_universal2105/", timeout=60000)
-            page.screenshot(path="debug_barrett_start.png")
             
             try: page.locator("input[value*='Agree' i]").first.click(timeout=3000)
             except: pass
@@ -68,12 +69,10 @@ def scrape_barrett_universal2_both(data: dict) -> dict:
             page.click("#MainContent_Button1")
             page.wait_for_timeout(3000)
 
-            # Click "Universal Formula" tab to show results
             try:
                 page.locator("a", has_text="Universal Formula").first.click(timeout=5000)
                 page.wait_for_timeout(1000)
-            except:
-                pass
+            except: pass
 
             valid_tables = []
             for _ in range(40):
@@ -105,11 +104,8 @@ def scrape_barrett_universal2_both(data: dict) -> dict:
                         seen = set()
                         u = [seen.add(x['power']) or x for x in parsed if x['power'] not in seen]
                         valid_tables.append(sorted(u, key=lambda x: x["power"], reverse=True))
-                if len(valid_tables) >= len(sides):
-                    break
+                if len(valid_tables) >= len(sides): break
 
-            # Barrett всегда показывает OD первым, OS вторым — даже если OD пустой
-            # Если считали только OS — берём последнюю таблицу
             for i, side in enumerate(sides):
                 tbl_idx = 1 if side == 'os' and 'od' not in sides else i
                 if tbl_idx < len(valid_tables):
@@ -131,18 +127,20 @@ def scrape_kane_formula_both(data: dict) -> dict:
     out = {}
     try:
         with sync_playwright() as p:
-            import time, random
             browser = p.chromium.launch(headless=True, args=['--no-sandbox', '--disable-blink-features=AutomationControlled'])
             context = browser.new_context(
                 user_agent='Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/123.0.0.0 Safari/537.36'
             )
             page = context.new_page()
-            playwright_stealth.stealth(page)
+            try:
+                playwright_stealth.stealth.stealth_sync(page)
+            except:
+                try: playwright_stealth.stealth(page)
+                except: pass
             
             print("[Kane] Navigating...")
             page.goto("https://www.iolformula.com/", timeout=60000, wait_until="domcontentloaded")
             page.wait_for_timeout(random.randint(1500, 3000))
-            page.screenshot(path="debug_kane_start.png")
             
             # I Agree
             try:
@@ -176,7 +174,8 @@ def scrape_kane_formula_both(data: dict) -> dict:
 
             # Demographics
             calc_frame.locator("#Patient").fill(str(data.get("patient_name", "Patient")))
-            sex_label = "F" if str(data.get("od", {}).get("sex", "")).lower() in ("ж", "f", "female") else "M"
+            sex_val = str(data.get("od", {}).get("sex", "")).lower() or str(data.get("os", {}).get("sex", "")).lower()
+            sex_label = "F" if sex_val in ("ж", "f", "female") else "M"
             page.evaluate(f"() => {{ let l = Array.from(document.querySelectorAll('label')).find(x => x.innerText.trim() === '{sex_label}'); if(l) l.click(); }}")
             
             sia = data.get("kane_sia", 0.2)
@@ -219,57 +218,70 @@ def scrape_kane_formula_both(data: dict) -> dict:
 
             page.wait_for_timeout(random.randint(2000, 4000))
             print("[KANE] Нажимаем Calculate...")
+            page.mouse.move(random.randint(100, 500), random.randint(100, 500))
+            page.evaluate("() => { const btn = document.querySelector('input.calculate'); if(btn) btn.click(); }")
 
-            def is_api(r): return ("iolformula.com/wp-admin/admin-ajax.php" in r.url or "iolformula.com/api/" in r.url) and r.method == "POST"
+            # Ждем появления результатов
+            print("[KANE] Ожидание результатов на странице...")
             try:
-                # Эмуляция движения мыши к кнопке
-                page.mouse.move(random.randint(100, 500), random.randint(100, 500))
-                
-                with page.expect_response(is_api, timeout=45000) as resp_info:
-                    page.evaluate("() => { const btn = document.querySelector('input.calculate'); if(btn) btn.click(); }")
+                page.wait_for_selector(".results-table, .eye-res, .res-row", timeout=45000)
+                page.wait_for_timeout(2000)
+            except:
+                browser.close()
+                return {"error": "Kane: результаты не появились. Возможно блокировка."}
 
-                resp_body = resp_info.value.text()
-                raw_data = json_lib.loads(resp_body)
+            results_data = page.evaluate("""() => {
+                const parseEye = (eyeNum) => {
+                    let res = [];
+                    let container = document.querySelector(`#eye${eyeNum}`);
+                    if (!container) return { data: [] };
+                    
+                    // Поиск строк со сферическими данными
+                    container.querySelectorAll('.res-row').forEach(row => {
+                        let p = row.querySelector('.res-p')?.innerText;
+                        let r = row.querySelector('.res-ref')?.innerText;
+                        if (p && r) res.push([parseFloat(p.replace(/[^0-9.-]/g, '')), parseFloat(r.replace(/[^0-9.-]/g, ''))]);
+                    });
 
-                eye_data_bundle = None
-                if isinstance(raw_data, list):
-                    for item in raw_data:
-                        if isinstance(item, list) and len(item) >= 3 and item[1] == "res":
-                            eye_data_bundle = item[2]
-                            break
-                elif isinstance(raw_data, dict):
-                    eye_data_bundle = raw_data.get("data") or raw_data
+                    // Поиск торики
+                    let t_res = [];
+                    container.querySelectorAll('.toric-res-row').forEach(row => {
+                        let cells = row.querySelectorAll('div');
+                        if (cells.length >= 3) {
+                            t_res.push([
+                                parseFloat(cells[0].innerText.replace(/[^0-9.-]/g, '')), 
+                                parseFloat(cells[1].innerText.replace(/[^0-9.-]/g, '')),
+                                parseFloat(cells[2].innerText.replace(/[^0-9.-]/g, ''))
+                            ]);
+                        }
+                    });
 
-                if not eye_data_bundle:
-                    return {"error": f"Kane: нет данных в ответе. Raw: {resp_body[:200]}"}
+                    let best_cyl = container.querySelector('.recommended-cyl')?.innerText || "";
+                    return { data: res, data2: t_res, best_cyl: best_cyl };
+                };
+                return { eye1: parseEye(1), eye2: parseEye(2) };
+            }""")
 
-                for side in sides:
-                    eye_key = "eye1" if side == "od" else "eye2"
-                    eye_res = eye_data_bundle.get(eye_key, {})
-                    rows = eye_res.get("data", [])
-                    if not rows: continue
+            for side in sides:
+                eye_key = "eye1" if side == "od" else "eye2"
+                eye_res = results_data.get(eye_key, {})
+                rows = eye_res.get("data", [])
+                if not rows: continue
 
-                    tbl = [{"power": float(r[0]), "ref": float(r[1])} for r in rows]
-                    tbl.sort(key=lambda x: x["power"], reverse=True)
-                    target = float(data[side].get("target", 0.0))
-                    em_row = min(tbl, key=lambda x: abs(x["ref"] - target))
-                    out_eye = {"p_emmetropia": em_row["power"], "table": tbl}
+                tbl = [{"power": r[0], "ref": r[1]} for r in rows]
+                tbl.sort(key=lambda x: x["power"], reverse=True)
+                target = float(data[side].get("target", 0.0))
+                em_row = min(tbl, key=lambda x: abs(x["ref"] - target))
+                out_eye = {"p_emmetropia": em_row["power"], "table": tbl}
 
-                    if is_toric:
-                        t_rows = eye_res.get("data2", [])
-                        rec_cyl = eye_res.get("data_ch", [[]])
-                        if rec_cyl and rec_cyl[0]: out_eye["best_cyl"] = float(rec_cyl[0][0])
-                        out_eye["toric_table"] = [
-                            {"cyl_power": float(r[0]), "residual_cyl": float(r[1]), "axis": float(r[2])}
-                            for r in t_rows if len(r) >= 3
-                        ]
-                    out[side] = out_eye
-
-            except Exception as e:
-                return {"error": f"Kane: {e}"}
-
-            browser.close()
-            return {"result": out}
+                if is_toric:
+                    t_rows = eye_res.get("data2", [])
+                    out_eye["best_cyl"] = eye_res.get("best_cyl", "")
+                    out_eye["toric_table"] = [
+                        {"cyl_power": r[0], "residual_cyl": r[1], "axis": r[2]}
+                        for r in t_rows if len(r) >= 3
+                    ]
+                out[side] = out_eye
 
             browser.close()
             return {"result": out}
