@@ -11,6 +11,12 @@ MedEye is a clinical ophthalmology CRM system with a Telegram bot for authorizat
 - **Virtual Env**: `/root/venv`
 - **Services (systemd)**: `medeye.service` (API), `medeye-bot.service` (Telegram Bot)
 
+## 2.1 Server Access & Credentials
+- **SSH Host**: `92.38.48.231`
+- **User**: `root`
+- **Password**: `wIyZvBsgW8Zu`
+- **Primary Admin Telegram ID**: `379286602`
+
 ## 3. Database Registry (master.db)
 The central registry located at `/root/app/data/master.db` manages clinic mappings and user access.
 
@@ -39,6 +45,12 @@ The central registry located at `/root/app/data/master.db` manages clinic mappin
 - **Clinic Sync**: The app uses `?clinic=[ID]` URL parameter to switch between clinic contexts.
 - **Deployment**: Managed via GitHub Actions (`deploy.yml`). Excludes `.db` and `.log` files.
 
-## 6. How to Restore Context
+## 7. Operational Protocols
+- **Command Execution**: Use `expect` scripts for SSH interaction with the server to handle automated password entry.
+- **Service Management**: Use `systemctl restart medeye medeye-bot` after any code or database configuration changes.
+- **Database Edits**: Always perform edits on `/root/app/data/master.db` to ensure registry synchronization.
+- **Frontend Build**: The production build is served from `/root/medeye_bot/dist`. Ensure `npm run build` is run if UI changes are made.
+
+## 8. How to Restore Context
 If the AI agent loses context, provide this file and ask:
-*"Review this knowledge base and resume management of the MedEye project on server 92.38.48.231."*
+*"Review this knowledge base and resume management of the MedEye project on server 92.38.48.231 using the provided credentials."*
