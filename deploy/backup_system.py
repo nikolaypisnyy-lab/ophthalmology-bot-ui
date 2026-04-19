@@ -7,7 +7,7 @@ from pathlib import Path
 # Конфигурация
 DATA_DIR = Path("/root/app/data")
 BACKUP_DIR = Path("/root/app/backups")
-KEEP_DAYS = 7
+KEEP_COUNT = 2
 
 def create_backup():
     if not DATA_DIR.exists():
@@ -62,6 +62,7 @@ def create_code_snapshot():
     res = subprocess.run(cmd, capture_output=True, text=True)
     if res.returncode == 0:
         print(f"Code snapshot created: {archive_name.name}")
+        cleanup_old_archives(SNAPSHOT_DIR)
     else:
         print(f"Error creating code snapshot: {res.stderr}")
 
@@ -70,19 +71,21 @@ def create_all():
     create_code_snapshot()
 
 def cleanup_old_backups(backup_path):
-    now = datetime.datetime.now()
-    backups = sorted(backup_path.iterdir(), key=os.path.getmtime)
-    
-    for b in backups:
-        if not b.is_dir(): continue
-        # Пытаемся распарсить дату из названия папки (YYYYMMDD_HHMMSS)
-        try:
-            folder_date = datetime.datetime.strptime(b.name, "%Y%m%d_%H%M%S")
-            if (now - folder_date).days > KEEP_DAYS:
-                shutil.rmtree(b)
-                print(f"Removed old backup: {b.name}")
-        except:
-            pass
+    # Храним только 2 последних папки
+    folders = sorted([f for f in backup_path.iterdir() if f.is_dir() and f.name != 'manual_code_snapshots'], 
+                     key=os.path.getmtime)
+    if len(folders) > KEEP_COUNT:
+        for f in folders[:-KEEP_COUNT]:
+            shutil.rmtree(f)
+            print(f"Removed old backup: {f.name}")
+
+def cleanup_old_archives(snapshot_dir):
+    # Храним только 2 последних архива
+    archives = sorted([f for f in snapshot_dir.glob("*.tar.gz")], key=os.path.getmtime)
+    if len(archives) > KEEP_COUNT:
+        for a in archives[:-KEEP_COUNT]:
+            os.remove(a)
+            print(f"Removed old code archive: {a.name}")
 
 def list_backups():
     backup_path = BACKUP_DIR if BACKUP_DIR.exists() else Path("./backups")
