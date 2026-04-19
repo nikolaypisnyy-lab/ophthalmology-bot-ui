@@ -102,6 +102,7 @@ def main_menu_markup(uid: int):
         if u and (u["role"] == "admin" or uid in ADMIN_IDS):
             kb.row("👥 Управление доступом")
             kb.row("⚙️ Управление клиниками", "📦 Бэкап базы")
+            kb.row("🚀 Full Backup (Code+DB)")
     
     kb.row("ℹ️ Инфо")
     return kb
@@ -431,6 +432,7 @@ def move_patient_cmd(message):
     except Exception as e:
         bot.send_message(uid, f"❌ <b>Системная ошибка:</b>\n{str(e)}")
 
+@bot.message_handler(func=lambda m: m.text == "🚀 Full Backup (Code+DB)")
 @bot.message_handler(commands=['full_backup'])
 def full_backup_cmd(message):
     uid = message.from_user.id
