@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { C, F, typeColors, eyeColors } from '../constants/design';
+import { C, F, R, typeColors, eyeColors } from '../constants/design';
 import { usePatientStore } from '../store/usePatientStore';
 import { useUIStore } from '../store/useUIStore';
 import { useTelegram } from '../hooks/useTelegram';
@@ -24,197 +24,111 @@ function PatientCard({
   const { haptic } = useTelegram();
   const [swiped, setSwiped] = useState(false);
   const [startX, setStartX] = useState(0);
-  const [showMenu, setShowMenu] = useState(false);
-  const timerRef = React.useRef<any>(null);
-
-  const startPress = () => {
-    timerRef.current = setTimeout(() => {
-      haptic.medium();
-      setShowMenu(true);
-    }, 600);
-  };
-
-  const cancelPress = () => {
-    if (timerRef.current) clearTimeout(timerRef.current);
-  };
 
   const tc = typeColors(patient.type);
   const ec = eyeColors((patient.eye?.toLowerCase() === 'os' ? 'os' : 'od'));
 
-  const fmtDate = (d?: string) => {
-    if (!d) return '—';
-    const [y, m, day] = d.split('-');
-    const M = ['янв','фев','мар','апр','май','июн','июл','авг','сен','окт','ноя','дек'];
-    return `${+day} ${M[+m - 1]} ${y}`;
+  const handleTouchStart = (e: React.TouchEvent | React.MouseEvent) => {
+    const clientX = 'touches' in e ? e.touches[0].clientX : e.clientX;
+    setStartX(clientX);
   };
 
-  const initials = (name: string) =>
-    name.split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase();
+  const handleTouchEnd = (e: React.TouchEvent | React.MouseEvent) => {
+    const clientX = 'changedTouches' in e ? e.changedTouches[0].clientX : e.clientX;
+    const diff = startX - clientX;
+    
+    if (diff > 50 && !swiped) {
+      haptic.medium();
+      setSwiped(true);
+    } else if (diff < -40 && swiped) {
+      setSwiped(false);
+    }
+  };
 
   return (
-    <div
-      style={{
-        position: 'relative',
-        overflow: 'hidden',
-        borderRadius: 20,
-        userSelect: 'none',
-        WebkitUserSelect: 'none',
-        WebkitTouchCallout: 'none',
-        touchAction: 'pan-y',
-      }}
-      onContextMenu={e => e.preventDefault()}
-      onTouchStart={e => {
-        setStartX(e.touches[0].clientX);
-        startPress();
-      }}
-      onTouchEnd={e => {
-        cancelPress();
-        const delta = e.changedTouches[0].clientX - startX;
-        if (delta < -60) setSwiped(true);
-        else if (delta > 20) setSwiped(false);
-      }}
-      onTouchMove={cancelPress}
-    >
-      {/* Удалить (свайп) */}
-      <div
+    <div style={{ position: 'relative', borderRadius: R.lg, background: C.red, overflow: 'hidden' }}>
+      {/* Delete Background */}
+      <div 
+        onClick={(e) => { e.stopPropagation(); haptic.medium(); onDelete(String(patient.id)); }}
         style={{
-          position: 'absolute', right: 0, top: 0, bottom: 0,
-          width: 72, background: C.red + '20',
+          position: 'absolute', top: 0, bottom: 0, right: 0, width: 80,
           display: 'flex', alignItems: 'center', justifyContent: 'center',
-          cursor: 'pointer',
+          color: '#fff', fontFamily: F.sans, fontSize: 13, fontWeight: 700,
+          cursor: 'pointer'
         }}
-        onClick={() => { onDelete(String(patient.id)); setSwiped(false); }}
       >
-        <svg width="18" height="18" fill="none" viewBox="0 0 24 24" stroke={C.red} strokeWidth="2">
-          <polyline points="3 6 5 6 21 6" />
-          <path d="M19 6l-1 14H6L5 6" />
-          <path d="M10 11v6M14 11v6" />
-          <path d="M9 6V4h6v2" />
-        </svg>
+        Удалить
       </div>
 
-      {/* Основная карточка */}
+      {/* Main Card */}
       <div
-        onClick={() => {
-          const pid = String(patient.id ?? '');
-          if (!swiped && pid && pid !== 'undefined') onOpen(pid);
-        }}
+        onTouchStart={handleTouchStart}
+        onTouchEnd={handleTouchEnd}
+        onMouseDown={handleTouchStart}
+        onMouseUp={handleTouchEnd}
         style={{
-          background: C.surface,
+          position: 'relative',
+          borderRadius: R.lg,
+          background: C.card,
           border: `1px solid ${C.border}`,
-          borderRadius: 20,
+          transform: swiped ? 'translateX(-80px)' : 'translateX(0)',
+          transition: 'transform 0.3s cubic-bezier(0.2, 0.8, 0.2, 1)',
           padding: '12px 14px',
           display: 'flex',
           alignItems: 'center',
           gap: 12,
-          cursor: 'pointer',
-          transform: swiped ? 'translateX(-72px)' : 'translateX(0)',
-          transition: 'transform .25s cubic-bezier(.16,1,.3,1)',
-          position: 'relative',
-          animationDelay: `${index * 0.04}s`,
+          animationDelay: `${index * 0.03}s`,
         }}
       >
-        {/* Аватар */}
-        <div
-          style={{
-            width: 40, height: 40, borderRadius: 14, flexShrink: 0,
-            background: patient.sex === 'М'
-              ? 'linear-gradient(135deg, #1e3a8a, #1d4ed8)'
-              : patient.sex === 'Ж'
-              ? 'linear-gradient(135deg, #831843, #be185d)'
-              : `linear-gradient(135deg,${tc.color}30,${tc.color}10)`,
-            border: patient.sex === 'М'
-              ? '1px solid #3b82f640'
-              : patient.sex === 'Ж'
-              ? '1px solid #ec489940'
-              : `1px solid ${tc.color}30`,
-            display: 'flex', alignItems: 'center', justifyContent: 'center',
-            fontSize: patient.sex ? 20 : 13, fontWeight: 700,
-            color: patient.sex ? '#fff' : tc.color,
-          }}
-        >
-          {patient.sex === 'М' ? '♂' : patient.sex === 'Ж' ? '♀' : initials(patient.name)}
-        </div>
+        {/* Gender Indicator Bar */}
+        <div style={{
+          width: 4, height: 26, borderRadius: 2, flexShrink: 0,
+          background: (patient.sex?.startsWith('Ж') || patient.sex?.toUpperCase().startsWith('F')) ? '#f472b6' : 
+                      (patient.sex?.startsWith('М') || patient.sex?.toUpperCase().startsWith('M')) ? C.od : C.border,
+          boxShadow: `0 0 10px ${(patient.sex?.startsWith('Ж') || patient.sex?.toUpperCase().startsWith('F')) ? '#f472b640' : 
+                      (patient.sex?.startsWith('М') || patient.sex?.toUpperCase().startsWith('M')) ? `${C.od}40` : 'transparent'}`
+        }} />
 
-        {/* Инфо */}
         <div style={{ flex: 1, minWidth: 0 }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 7 }}>
-            <span style={{ fontFamily: F.sans, fontSize: 14, fontWeight: 600, color: C.text, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-              {patient.name}
-            </span>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            <span style={{ 
+              fontFamily: F.sans, fontSize: 15, fontWeight: 700, color: C.text, 
+              overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' 
+            }}>{patient.name}</span>
+            <span style={{
+              fontFamily: F.mono, fontSize: 9, fontWeight: 900, padding: '1px 6px', borderRadius: 4,
+              background: (patient.sex?.startsWith('Ж') || patient.sex?.toUpperCase().startsWith('F')) ? '#f472b615' : 
+                          (patient.sex?.startsWith('М') || patient.sex?.toUpperCase().startsWith('M')) ? `${C.od}15` : C.surface,
+              color: (patient.sex?.startsWith('Ж') || patient.sex?.toUpperCase().startsWith('F')) ? '#f472b6' : 
+                     (patient.sex?.startsWith('М') || patient.sex?.toUpperCase().startsWith('M')) ? C.od : C.muted2,
+              border: `1px solid ${(patient.sex?.startsWith('Ж') || patient.sex?.toUpperCase().startsWith('F')) ? '#f472b630' : 
+                          (patient.sex?.startsWith('М') || patient.sex?.toUpperCase().startsWith('M')) ? `${C.od}30` : C.border}`,
+              flexShrink: 0
+            }}>{(patient.sex?.startsWith('Ж') || patient.sex?.toUpperCase().startsWith('F')) ? 'F' : 
+                (patient.sex?.startsWith('М') || patient.sex?.toUpperCase().startsWith('M')) ? 'M' : 'P'}</span>
           </div>
-          <div style={{ fontFamily: F.sans, fontSize: 11, color: C.muted, marginTop: 2, display: 'flex', gap: 6, alignItems: 'center' }}>
-            <span style={{ fontFamily: F.mono, opacity: 0.7, color: C.accent }}>#{patient.id}</span>
-            <span style={{ opacity: 0.4 }}>·</span>
-            <span>{patient.age} лет</span>
-            <span style={{ opacity: 0.4 }}>·</span>
-            <span style={{ color: ec.color, fontWeight: 600 }}>{patient.eye}</span>
-            <span style={{ opacity: 0.4 }}>·</span>
-            <span>{fmtDate(patient.date)}</span>
+          <div style={{ fontFamily: F.mono, fontSize: 10, color: C.muted2, marginTop: 3, display: 'flex', gap: 6, alignItems: 'center' }}>
+            <span style={{ opacity: 0.6 }}>ID {patient.id}</span>
+            <span style={{ width: 2, height: 2, borderRadius: '50%', background: C.border2 }} />
+            <span>{patient.age || '—'}y</span>
+            <span style={{ width: 2, height: 2, borderRadius: '50%', background: C.border2 }} />
+            <span style={{ color: ec.color, fontWeight: 800 }}>{patient.eye}</span>
           </div>
         </div>
 
-        {/* Бейдж + результат */}
-        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 4, flexShrink: 0 }}>
-          <span style={{
-            background: tc.bg, color: tc.color,
-            fontFamily: F.sans, fontSize: 10, fontWeight: 600,
-            padding: '2px 8px', borderRadius: 20,
-          }}>
-            {patient.type === 'cataract' ? 'Катаракта' : 'Рефракция'}
-          </span>
+        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 6, flexShrink: 0 }}>
+          <div style={{
+            background: tc.bg, color: tc.color, fontFamily: F.mono, fontSize: 9, fontWeight: 700,
+            padding: '2px 8px', borderRadius: 6, textTransform: 'uppercase', border: `1px solid ${tc.color}40`,
+          }}>{patient.type === 'cataract' ? 'Cataract' : 'Refraction'}</div>
           {patient.status === 'done' && (
-            <span style={{ fontFamily: F.sans, fontSize: 10, color: C.green, fontWeight: 700 }}>
-              {patient.sex === 'Ж' ? 'ПРООПЕРИРОВАНА' : 'ПРООПЕРИРОВАН'} ✓
-            </span>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+               <div style={{ width: 5, height: 5, borderRadius: '50%', background: C.green, boxShadow: `0 0 6px ${C.green}` }} />
+               <span style={{ fontFamily: F.mono, fontSize: 9, color: C.green, fontWeight: 700, opacity: 0.8 }}>OPERATED</span>
+            </div>
           )}
         </div>
       </div>
-
-      {/* Меню удаления (по лонг-прессу) */}
-      {showMenu && (
-        <div 
-          onClick={() => setShowMenu(false)}
-          className="fi"
-          style={{
-            position: 'absolute', inset: 0, zIndex: 10,
-            background: 'rgba(0,0,0,0.85)',
-            display: 'flex', alignItems: 'center', justifyContent: 'center',
-            backdropFilter: 'blur(4px)', borderRadius: 14,
-          }}
-        >
-          <div style={{ display: 'flex', gap: 12 }}>
-            <button
-              onClick={(e) => { e.stopPropagation(); setShowMenu(false); }}
-              style={{
-                padding: '10px 16px', borderRadius: 12,
-                background: C.surface3, border: `1px solid ${C.border}`,
-                color: C.text, fontFamily: F.sans, fontSize: 13, fontWeight: 600,
-                cursor: 'pointer',
-              }}
-            >
-              Отмена
-            </button>
-            <button
-              onClick={(e) => {
-                e.stopPropagation();
-                haptic.medium();
-                onDelete(String(patient.id));
-                setShowMenu(false);
-              }}
-              style={{
-                padding: '10px 16px', borderRadius: 12,
-                background: C.red, border: 'none',
-                color: '#fff', fontFamily: F.sans, fontSize: 13, fontWeight: 600,
-                cursor: 'pointer',
-                boxShadow: `0 4px 12px ${C.red}40`,
-              }}
-            >
-              Удалить
-            </button>
-          </div>
-        </div>
-      )}
     </div>
   );
 }
@@ -236,64 +150,11 @@ function NewPatientModal({ onClose, onSave }: {
   const handleScan = () => {
     openOCR(undefined, (data) => {
       setOcrData(data);
-      if (data.name) setName(data.name);
-      else if (data.patient_name) setName(data.patient_name);
-      
-      if (data.age) setAge(String(data.age));
-      else if (data.patient_age) setAge(String(data.patient_age));
-
-      if (data.sex) {
-        const s = String(data.sex).toUpperCase();
-        if (s.startsWith('М')) setSex('М');
-        else if (s.startsWith('Ж')) setSex('Ж');
-      } else if (data.patient_sex) {
-        const s = String(data.patient_sex).toUpperCase();
-        if (s.startsWith('М')) setSex('М');
-        else if (s.startsWith('Ж')) setSex('Ж');
-      }
-
-      const isCat = type === 'cataract';
-      
-      if (data.od) {
-        if (isCat) {
-          setOcrData((prev: any) => ({
-            ...prev,
-            od: {
-              ...prev?.od,
-              al: data.od.al ?? prev?.od?.al,
-              acd: data.od.acd ?? prev?.od?.acd,
-              lt: data.od.lt ?? prev?.od?.lt,
-              wtw: data.od.wtw ?? prev?.od?.wtw,
-              k1: data.od.k1 ?? prev?.od?.k1,
-              k2: data.od.k2 ?? prev?.od?.k2,
-              k1_ax: data.od.k1_ax ?? prev?.od?.k1_ax,
-            }
-          }));
-        }
-      }
-      if (data.os) {
-        if (isCat) {
-          setOcrData((prev: any) => ({
-            ...prev,
-            os: {
-              ...prev?.os,
-              al: data.os.al ?? prev?.os?.al,
-              acd: data.os.acd ?? prev?.os?.acd,
-              lt: data.os.lt ?? prev?.os?.lt,
-              wtw: data.os.wtw ?? prev?.os?.wtw,
-              k1: data.os.k1 ?? prev?.os?.k1,
-              k2: data.os.k2 ?? prev?.os?.k2,
-              k1_ax: data.os.k1_ax ?? prev?.os?.k1_ax,
-            }
-          }));
-        }
-      }
-
-      if (data.type) setType(data.type);
-      if (data.eye) {
-        const e = String(data.eye).toUpperCase();
-        if (e === 'OD' || e === 'OS' || e === 'OU') setEye(e as any);
-      }
+      if (data.name || data.patient_name) setName(data.name || data.patient_name);
+      if (data.age || data.patient_age) setAge(String(data.age || data.patient_age));
+      const s = String(data.sex || data.patient_sex || '').toUpperCase();
+      if (s.startsWith('М')) setSex('М');
+      else if (s.startsWith('Ж')) setSex('Ж');
     });
   };
 
@@ -303,9 +164,9 @@ function NewPatientModal({ onClose, onSave }: {
     <div
       style={{
         position: 'fixed', inset: 0, zIndex: 150,
-        background: 'rgba(3, 5, 8, 0.92)',
-        backdropFilter: 'blur(20px) saturate(180%)',
-        WebkitBackdropFilter: 'blur(20px) saturate(180%)',
+        background: 'rgba(5, 6, 12, 0.85)',
+        backdropFilter: 'blur(20px)',
+        WebkitBackdropFilter: 'blur(20px)',
         display: 'flex', flexDirection: 'column', justifyContent: 'flex-end',
       }}
       onClick={onClose}
@@ -313,67 +174,62 @@ function NewPatientModal({ onClose, onSave }: {
       <div
         className="fi-up"
         style={{
-          background: 'linear-gradient(180deg, rgba(28,32,52,0.98) 0%, rgba(17,20,32,1) 100%)',
-          borderTop: `1px solid rgba(255,255,255,0.12)`,
-          boxShadow: '0 -24px 80px rgba(0,0,0,0.7), 0 -1px 0 rgba(255,255,255,0.06)',
-          borderRadius: '28px 28px 0 0',
-          padding: '20px 16px calc(20px + env(safe-area-inset-bottom,0px))',
-          display: 'flex', flexDirection: 'column', gap: 12,
+          background: C.bg,
+          borderTop: `1px solid ${C.border}`,
+          borderRadius: '32px 32px 0 0',
+          padding: '24px 20px calc(24px + env(safe-area-inset-bottom,0px))',
+          display: 'flex', flexDirection: 'column', gap: 16,
           maxHeight: '90vh', overflowY: 'auto'
         }}
         onClick={e => e.stopPropagation()}
       >
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-          <div style={{ display: 'flex', flexDirection: 'column' }}>
-            <h2 style={{ fontFamily: F.sans, fontSize: 18, fontWeight: 700, color: C.text, margin: 0 }}>
-              Новый пациент
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 4 }}>
+          <div>
+            <h2 style={{ fontFamily: F.sans, fontSize: 20, fontWeight: 700, color: C.text, margin: 0 }}>
+              New Patient
             </h2>
-            <p style={{ fontFamily: F.sans, fontSize: 11, color: C.muted, margin: '2px 0 0' }}>
-              Введите данные или используйте скан документа
+            <p style={{ fontFamily: F.sans, fontSize: 12, color: C.muted2, margin: '4px 0 0' }}>
+              Enter details or scan clinical records
             </p>
           </div>
-          <Btn
-            variant="ghost"
-            small
+          <button
             onClick={handleScan}
             style={{ 
-              padding: '8px 16px', borderRadius: 20, 
-              border: `1px solid ${C.accent}40`, background: `${C.accent}10`,
-              color: C.accent, fontWeight: 600 
+              padding: '10px 14px', borderRadius: 14, 
+              border: `1px solid ${C.indigo}40`, background: `${C.indigo}15`,
+              color: C.indigo, fontWeight: 700, fontSize: 13,
+              display: 'flex', alignItems: 'center', gap: 6,
+              cursor: 'pointer'
             }}
           >
-            <svg width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2.5" style={{ marginRight: 6 }}>
-              <path d="M3 7V5a2 2 0 012-2h2M17 3h2a2 2 0 012 2v2M21 17v2a2 2 0 01-2 2h-2M7 21H5a2 2 0 01-2-2v-2" />
-              <rect x="7" y="7" width="10" height="10" rx="1" />
+            <svg width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2.5">
+              <path d="M3 7V5a2 2 0 012-2h2M17 3h2a2 2 0 012 2v2M21 17v2a2 2 0 01-2 2h-2M7 21H5a2 2 0 01-2-2v-2M12 12h.01" strokeLinecap="round" />
             </svg>
-            Скан
-          </Btn>
+            SCAN
+          </button>
         </div>
 
-        {/* Имя */}
         <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-          <label style={{ fontFamily: F.sans, fontSize: 11, color: C.muted, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.5px' }}>ФИО Пациента</label>
+          <label style={{ fontFamily: F.mono, fontSize: 10, color: C.muted2, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.08em', marginLeft: 4 }}>Full Name</label>
           <input
             value={name}
             onChange={e => setName(e.target.value)}
-            placeholder="Фамилия Имя Отчество"
+            placeholder="John Doe"
             autoFocus
             style={{
-              background: C.surface3, border: `1px solid ${C.border}`,
-              borderRadius: 20, padding: '11px 14px',
-              fontFamily: F.sans, fontSize: 14, color: C.text,
-              outline: 'none', transition: 'border-color 0.2s',
-              boxShadow: 'inset 0 2px 4px rgba(0,0,0,0.2)'
+              background: C.surface, border: `1px solid ${C.border}`,
+              borderRadius: R.md, padding: '14px 16px',
+              fontFamily: F.sans, fontSize: 15, color: C.text,
+              outline: 'none', transition: 'all 0.2s',
             }}
-            onFocus={(e) => e.target.style.borderColor = C.accent}
+            onFocus={(e) => e.target.style.borderColor = C.indigo}
             onBlur={(e) => e.target.style.borderColor = C.border}
           />
         </div>
-        {/* Сетка: Возраст и Пол */}
-        <div style={{ display: 'grid', gridTemplateColumns: '72px 1fr', gap: 10 }}>
-          {/* Возраст */}
+
+        <div style={{ display: 'grid', gridTemplateColumns: '80px 1fr', gap: 12 }}>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-            <label style={{ fontFamily: F.sans, fontSize: 11, color: C.muted, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.5px' }}>Лет</label>
+            <label style={{ fontFamily: F.mono, fontSize: 10, color: C.muted2, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.08em', marginLeft: 4 }}>Age</label>
             <input
               type="number"
               value={age}
@@ -381,115 +237,95 @@ function NewPatientModal({ onClose, onSave }: {
               onChange={e => setAge(e.target.value.slice(0, 3))}
               style={{
                 width: '100%',
-                background: C.surface3, border: `1px solid ${C.border}`,
-                borderRadius: 20, padding: '11px 0',
-                fontFamily: F.mono, fontSize: 15, color: C.text,
+                background: C.surface, border: `1px solid ${C.border}`,
+                borderRadius: R.md, padding: '14px 0',
+                fontFamily: F.mono, fontSize: 16, color: C.text,
                 outline: 'none', textAlign: 'center',
-                boxShadow: 'inset 0 2px 4px rgba(0,0,0,0.1)'
               }}
             />
           </div>
 
-          {/* Пол */}
           <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-            <label style={{ fontFamily: F.sans, fontSize: 11, color: C.muted, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.5px' }}>Пол</label>
+            <label style={{ fontFamily: F.mono, fontSize: 10, color: C.muted2, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.08em', marginLeft: 4 }}>Gender</label>
             <div style={{ display: 'flex', gap: 8 }}>
-              <button
-                onClick={() => setSex('М')}
-                style={{
-                  flex: 1, borderRadius: 20, padding: '11px 0',
-                  fontFamily: F.sans, fontSize: 13, fontWeight: 800,
-                  background: sex === 'М' ? 'linear-gradient(135deg, #3B82F6, #1D4ED8)' : C.surface3,
-                  color: sex === 'М' ? '#fff' : C.muted,
-                  border: sex === 'М' ? 'none' : `1px solid ${C.border}`,
-                  transition: 'all 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275)',
-                  transform: sex === 'М' ? 'scale(1.02)' : 'none',
-                  boxShadow: sex === 'М' ? '0 4px 15px rgba(59, 130, 246, 0.4)' : 'none'
-                }}
-              >
-                ♂ МУЖ
-              </button>
-              <button
-                onClick={() => setSex('Ж')}
-                style={{
-                  flex: 1, borderRadius: 20, padding: '11px 0',
-                  fontFamily: F.sans, fontSize: 13, fontWeight: 800,
-                  background: sex === 'Ж' ? 'linear-gradient(135deg, #EC4899, #BE185D)' : C.surface3,
-                  color: sex === 'Ж' ? '#fff' : C.muted,
-                  border: sex === 'Ж' ? 'none' : `1px solid ${C.border}`,
-                  transition: 'all 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275)',
-                  transform: sex === 'Ж' ? 'scale(1.02)' : 'none',
-                  boxShadow: sex === 'Ж' ? '0 4px 15px rgba(236, 72, 153, 0.4)' : 'none'
-                }}
-              >
-                ♀ ЖЕН
-              </button>
+              {['М', 'Ж'].map(s => (
+                <button
+                  key={s}
+                  onClick={() => setSex(s as any)}
+                  style={{
+                    flex: 1, borderRadius: R.md, padding: '14px 0',
+                    fontFamily: F.sans, fontSize: 13, fontWeight: 700,
+                    background: sex === s ? (s === 'М' ? C.indigo : '#f472b6') : C.surface,
+                    color: sex === s ? '#fff' : C.muted2,
+                    border: sex === s ? 'none' : `1px solid ${C.border}`,
+                    transition: 'all 0.2s',
+                  }}
+                >
+                  {s === 'М' ? 'MALE' : 'FEMALE'}
+                </button>
+              ))}
             </div>
           </div>
         </div>
 
-        {/* Тип */}
         <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-          <label style={{ fontFamily: F.sans, fontSize: 11, color: C.muted, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.5px' }}>Направление</label>
+          <label style={{ fontFamily: F.mono, fontSize: 10, color: C.muted2, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.08em', marginLeft: 4 }}>Clinical Path</label>
           <div style={{ display: 'flex', gap: 8 }}>
             {(['refraction', 'cataract'] as const).map(t => (
-              <Chip
+              <button
                 key={t}
-                label={t === 'refraction' ? 'Рефракция' : 'Катаракта'}
-                active={type === t}
-                color={t === 'refraction' ? C.ref : C.cat}
                 onClick={() => setType(t)}
                 style={{
-                  flex: 1, padding: '10px 0', justifyContent: 'center', borderRadius: 20,
-                  boxShadow: type === t ? `0 3px 10px ${t === 'refraction' ? C.ref : C.cat}40` : 'none'
+                  flex: 1, borderRadius: R.md, padding: '14px 0',
+                  fontFamily: F.sans, fontSize: 13, fontWeight: 700,
+                  background: type === t ? C.indigo : C.surface,
+                  color: type === t ? '#fff' : C.muted2,
+                  border: type === t ? 'none' : `1px solid ${C.border}`,
+                  transition: 'all 0.2s',
                 }}
-              />
+              >
+                {t === 'refraction' ? 'Refractive' : 'Cataract'}
+              </button>
             ))}
           </div>
         </div>
 
-        {/* Глаз */}
         <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-          <label style={{ fontFamily: F.sans, fontSize: 11, color: C.muted, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.5px' }}>Оперируемый глаз</label>
+          <label style={{ fontFamily: F.mono, fontSize: 10, color: C.muted2, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.08em', marginLeft: 4 }}>Surgery Eye</label>
           <div style={{ display: 'flex', gap: 8 }}>
             {(['OU', 'OD', 'OS'] as const).map(e => (
-              <Chip
+              <button
                 key={e}
-                label={e === 'OU' ? 'Оба глаза' : e}
-                active={eye === e}
-                color={e === 'OD' ? C.od : e === 'OS' ? C.os : C.accent}
                 onClick={() => setEye(e)}
                 style={{
-                  flex: 1, padding: '10px 0', justifyContent: 'center', borderRadius: 20,
-                  boxShadow: eye === e ? `0 3px 10px ${e === 'OD' ? C.od : e === 'OS' ? C.os : C.accent}40` : 'none'
+                  flex: 1, borderRadius: R.md, padding: '14px 0',
+                  fontFamily: F.sans, fontSize: 13, fontWeight: 700,
+                  background: eye === e ? C.indigo : C.surface,
+                  color: eye === e ? '#fff' : C.muted2,
+                  border: eye === e ? 'none' : `1px solid ${C.border}`,
+                  transition: 'all 0.2s',
                 }}
-              />
+              >
+                {e}
+              </button>
             ))}
           </div>
         </div>
 
-        <div style={{ display: 'flex', gap: 10, marginTop: 4 }}>
-          <Btn
-            variant="outline"
-            onClick={onClose}
-            full
-            style={{ padding: '13px 0', borderRadius: 20, borderColor: C.border, color: C.muted }}
-          >
-            Отмена
-          </Btn>
+        <div style={{ display: 'flex', gap: 10, marginTop: 12 }}>
           <Btn
             variant="primary"
             onClick={() => valid && onSave({ name: name.trim(), age, sex: sex || undefined, type, eye }, ocrData)}
             disabled={!valid}
             full
             style={{
-              padding: '13px 0', borderRadius: 20,
-              background: `linear-gradient(135deg, ${C.accent}, ${C.accentGlow})`,
-              boxShadow: `0 8px 20px ${C.accentGlow}50`,
-              fontWeight: 800, letterSpacing: '0.5px'
+              padding: '16px 0', borderRadius: R.md,
+              background: C.indigo,
+              boxShadow: `0 8px 24px ${C.indigo}40`,
+              fontWeight: 700, letterSpacing: '0.04em'
             }}
           >
-            Добавить пациента
+            Create Patient Entry
           </Btn>
         </div>
       </div>
@@ -502,6 +338,7 @@ function NewPatientModal({ onClose, onSave }: {
 export function PatientsPage() {
   const { patients, loading, fetchPatients, savePatient, deletePatient } = usePatientStore();
   const { searchQuery, setSearchQuery, typeFilter, setTypeFilter, openPatient, openOCR } = useUIStore();
+  const { haptic } = useTelegram();
   const [showNew, setShowNew] = useState(false);
 
   useEffect(() => { fetchPatients(); }, []);
@@ -570,7 +407,9 @@ export function PatientsPage() {
 
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
+    <div 
+      style={{ display: 'flex', flexDirection: 'column', flex: 1, position: 'relative', zIndex: 10 }}
+    >
       {/* Фильтры */}
       <div style={{ padding: '12px 16px 8px', display: 'flex', flexDirection: 'column', gap: 10 }}>
         <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
@@ -584,12 +423,12 @@ export function PatientsPage() {
               boxShadow: `0 2px 12px ${C.accentGlow}`,
             }}
           >
-            <svg width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="#fff" strokeWidth="2.5">
-              <line x1="12" y1="5" x2="12" y2="19" /><line x1="5" y1="12" x2="19" y2="12" />
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
+              <line x1="12" y1="5" x2="12" y2="19"></line>
+              <line x1="5" y1="12" x2="19" y2="12"></line>
             </svg>
           </button>
         </div>
-
         <div style={{ display: 'flex', gap: 8, overflowX: 'auto', paddingBottom: 2 }}>
           <Chip label="Все" active={typeFilter === 'all'} color={C.accent} onClick={() => setTypeFilter('all')} />
           <Chip label="Рефракция" active={typeFilter === 'refraction'} color={C.ref} onClick={() => setTypeFilter('refraction')} />
@@ -597,36 +436,51 @@ export function PatientsPage() {
         </div>
       </div>
 
-      {/* Список с абсолютным позиционированием */}
-      <div style={{ flex: 1, position: 'relative' }}>
-        <div style={{ 
-          position: 'absolute', inset: 0,
-          overflowY: 'auto', 
-          padding: '4px 16px 100px', 
-          display: 'block', 
-          WebkitOverflowScrolling: 'touch' 
-        }}>
-          {loading && patients.length === 0 && (
-            <div style={{ textAlign: 'center', padding: 40, color: C.muted, fontFamily: F.sans, fontSize: 14 }}>
-              Загрузка...
-            </div>
-          )}
-          {!loading && visible.length === 0 && (
-            <div style={{ textAlign: 'center', padding: 40, color: C.muted, fontFamily: F.sans, fontSize: 14 }}>
-              {searchQuery ? 'Ничего не найдено' : 'Нет пациентов'}
-            </div>
-          )}
-          {visible.map((p, i) => (
-            <div key={p.id || i} style={{ display: 'block', width: '100%', marginBottom: 10 }}>
-              <PatientCard
-                patient={p}
-                index={i}
-                onOpen={id => openPatient(id, 'bio')}
-                onDelete={deletePatient}
-              />
-            </div>
-          ))}
-        </div>
+      {/* Список (простая флекс-верстка вместо абсолюта) */}
+      <div id="patients-list" style={{ 
+        flex: 1, 
+        overflowY: 'auto', 
+        padding: '4px 16px 100px',
+        WebkitOverflowScrolling: 'touch',
+        position: 'relative',
+        zIndex: 100 // Чтобы точно быть сверху
+      }}>
+        {loading && patients.length === 0 && (
+          <div style={{ textAlign: 'center', padding: 40, color: C.muted, fontFamily: F.sans, fontSize: 14 }}>
+            Загрузка...
+          </div>
+        )}
+        {!loading && visible.length === 0 && (
+          <div style={{ textAlign: 'center', padding: 40, color: C.muted, fontFamily: F.sans, fontSize: 14 }}>
+            {searchQuery ? 'Ничего не найдено' : 'Нет пациентов'}
+          </div>
+        )}
+        {visible.map((p, i) => (
+          <button
+            key={p.id || i}
+            id={`patient-btn-${p.id}`}
+            onClick={(e) => {
+              e.stopPropagation();
+              haptic.light();
+              openPatient(String(p.id), 'bio');
+            }}
+            style={{
+              display: 'block', width: '100%', marginBottom: 10,
+              background: 'none', border: 'none', padding: 0,
+              textAlign: 'left', cursor: 'pointer',
+              WebkitTapHighlightColor: 'transparent',
+              position: 'relative',
+              zIndex: 101
+            }}
+          >
+            <PatientCard
+              patient={p}
+              index={i}
+              onOpen={(id) => openPatient(id, 'bio')}
+              onDelete={deletePatient}
+            />
+          </button>
+        ))}
       </div>
 
       {showNew && (

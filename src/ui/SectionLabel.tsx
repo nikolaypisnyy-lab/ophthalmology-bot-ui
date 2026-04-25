@@ -18,40 +18,41 @@ export function SectionLabel({ children, color, style, mini, mb, active, onClick
       style={{
         display: 'flex',
         alignItems: 'center',
-        gap: 10,
+        justifyContent: 'space-between',
         cursor: onClick ? 'pointer' : 'default',
-        marginBottom: mb !== undefined ? mb : (mini ? 4 : 10),
-        background: active ? `${color ?? C.accent}15` : 'transparent',
-        padding: active ? '4px 8px' : '0',
-        marginLeft: active ? -8 : 0,
-        borderRadius: 6,
-        transition: 'all 0.2s',
+        marginBottom: mb !== undefined ? mb : (mini ? 8 : 12),
+        gap: 10,
         ...style,
       }}
     >
-      <span
-        style={{
-          fontFamily: F.sans,
-          fontSize: mini ? 9 : 11,
-          fontWeight: mini ? 700 : 800,
-          color: color ?? C.muted,
-          letterSpacing: '.1em',
+      <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+        <span style={{
+          fontFamily: F.mono,
+          fontSize: mini ? 9 : 10,
+          fontWeight: 700,
+          color: color ?? C.muted2,
+          letterSpacing: '0.14em',
           textTransform: 'uppercase',
           whiteSpace: 'nowrap',
-          flexShrink: 0,
-        }}
-      >
-        {children}
-      </span>
-      <div
-        style={{
-          flex: 1,
-          height: 1,
-          background: color 
-            ? `linear-gradient(90deg, ${color}60 0%, ${color}20 50%, transparent 100%)` 
-            : `linear-gradient(90deg, rgba(255,255,255,.12) 0%, transparent 100%)`,
-        }}
-      />
+          opacity: 0.9
+        }}>
+          {children}
+        </span>
+        {active && (
+          <div style={{
+            width: 4, height: 4, borderRadius: '50%',
+            background: color ?? C.indigo,
+            boxShadow: `0 0 8px ${color ?? C.indigo}`
+          }} />
+        )}
+      </div>
+      
+      <div style={{
+        flex: 1,
+        height: 1,
+        background: `linear-gradient(90deg, ${C.border} 0%, transparent 100%)`,
+        marginLeft: 12
+      }} />
     </div>
   );
 }

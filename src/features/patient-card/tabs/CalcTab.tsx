@@ -1,674 +1,497 @@
-import React, { useState } from 'react';
-import { C, F, eyeColors } from '../../../constants/design';
 import { useSessionStore } from '../../../store/useSessionStore';
 import { useUIStore } from '../../../store/useUIStore';
-import { IOL_DB, searchIOL, findIOL } from '../../../constants/iol-db';
-import { validateBiometry } from '../../../calculators/iolSrkt';
-import { calcHaigis, haigisConstFromA } from '../../../calculators/haigis';
-import { toricIndication } from '../../../calculators/validators';
-import { calculateIOL } from '../../../api/calculate';
-import { calculateAutonomousToric } from '../../../calculators/toricEngine';
-import { DField } from '../../../ui/DField';
-import { WheelField } from '../../../ui/WheelField';
-import { Btn } from '../../../ui/Btn';
-import { SectionLabel, Divider } from '../../../ui/SectionLabel';
-import { EyeToggle } from '../../../ui/EyeToggle';
-import { ToricSchematic } from '../../../ui/ToricSchematic';
-import { newBiometryData } from '../../../types/iol';
-import type { IOLFormulaResult } from '../../../types/iol';
-
-// Результаты по формулам на один глаз: { 'Barrett Universal II': {...}, 'Kane Formula': {...}, ... }
-type FormulaMap = Record<string, IOLFormulaResult>;
-type EyeFormulaMap = { od: FormulaMap; os: FormulaMap };
-
-// ── Колонка одной формулы ────────────────────────────────────────────────────
-
-function FormulaColumn({
-  formula,
-  result,
-  eye,
-  selectedFormula,
-  selectedPower,
-  toricCyl,
-  toricAx,
-  onSelectPower,
-  onSelectToric,
-  sia,
-  siaAx,
-}: {
-  formula: string;
-  result: IOLFormulaResult;
-  eye: 'od' | 'os';
-  selectedFormula?: string;
-  selectedPower?: number;
-  onSelectPower: (power: number, formula: string, ref: number) => void;
-  onSelectToric: (cyl: number, ax: number, residual: string) => void;
-  toricCyl?: string;
-  toricAx?: string;
-  sia?: string;
-  siaAx?: string;
-}) {
-  const ec = eyeColors(eye);
-  const isBest = selectedFormula === formula;
-  const isToricCol = !!result._toricMode;
-  const shortName = formula.replace(' Universal II', '').replace(' Formula', '');
-
-  if (isToricCol) {
-    const toricTable = result.toric_table ?? [];
-    const bestCyl = result.best_cyl;
-    const nonToricRow = toricTable.find(r => r.cyl_power === 0) ?? toricTable[0];
-    const implAxis = nonToricRow ? Math.round(nonToricRow.axis) : null;
-    const selCyl = toricCyl !== undefined && toricCyl !== '' ? parseFloat(toricCyl) : bestCyl;
-
-    return (
-      <div style={{
-        flex: '1 1 0', minWidth: 0,
-        background: C.surface2,
-        border: `1.5px solid ${C.amber}`,
-        borderRadius: 12, overflow: 'hidden',
-      }}>
-        {/* Header */}
-        <div style={{ padding: '7px 7px 5px', borderBottom: `1px solid rgba(245,158,11,.3)`, background: 'rgba(245,158,11,.06)' }}>
-          <div style={{ fontFamily: F.sans, fontSize: 8, fontWeight: 700, color: C.amber, letterSpacing: '.06em', textTransform: 'uppercase', marginBottom: 2 }}>
-            RefMaster Toric · ИОЛ (v2.1.4-STABLE)
-          </div>
-          <div style={{ fontFamily: F.mono, fontSize: 16, fontWeight: 700, color: C.text, lineHeight: 1 }}>
-            {selCyl != null ? `${selCyl > 0 ? '+' : ''}${selCyl.toFixed(2)}` : '—'}
-            <span style={{ fontSize: 9, color: C.muted, marginLeft: 2 }}>D</span>
-            {implAxis != null && <span style={{ fontSize: 14, color: C.yellow, marginLeft: 6 }}>@{implAxis}°</span>}
-          </div>
-          {formula === 'RefMaster Toric' && (
-             <div style={{ marginTop: 2 }}>
-               <div style={{ fontFamily: F.sans, fontSize: 8, color: C.green, fontWeight: 700 }}>
-                  POSTERIOR AST: ON
-               </div>
-               <div style={{ fontFamily: F.sans, fontSize: 8, color: C.accent, fontWeight: 700, marginTop: 1 }}>
-                  SIA: {sia}D @ {siaAx}°
-               </div>
-             </div>
-          )}
-          <div style={{ fontFamily: F.sans, fontSize: 7, color: C.amber, marginTop: 2, fontWeight: 600 }}>
-            Остаток @ Ось
-          </div>
-        </div>
-        {/* Toric table */}
-        <div style={{ maxHeight: 200, overflowY: 'auto' }}>
-          {toricTable.map((row, idx) => {
-            const isBestRow = bestCyl != null && Math.abs(row.cyl_power - bestCyl) < 0.01;
-            const sel = selCyl != null && Math.abs(row.cyl_power - selCyl) < 0.01;
-            const resColor = row.residual_cyl <= 0.25 ? C.green : row.residual_cyl <= 0.5 ? C.yellow : C.muted2;
-            const resAx = row.residual_axis || ((Math.round(row.axis) + 90) % 180 || 180);
-            return (
-              <div
-                key={idx}
-                onClick={() => {
-                  const ax = implAxis ?? Math.round(row.axis);
-                  onSelectToric(row.cyl_power, ax, `-${row.residual_cyl.toFixed(2)} @ ${resAx}°`);
-                }}
-                style={{
-                  display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-                  padding: '5px 7px', cursor: 'pointer',
-                  background: sel ? 'rgba(245,158,11,.17)' : isBestRow ? 'rgba(255,255,255,.04)' : 'transparent',
-                  borderTop: `1px solid rgba(255,255,255,.04)`,
-                }}
-              >
-                <span style={{ fontFamily: F.mono, fontSize: 11, fontWeight: isBestRow || sel ? 700 : 400, color: sel ? C.amber : isBestRow ? C.text : C.muted }}>
-                  {row.cyl_power > 0 ? '+' : ''}{row.cyl_power.toFixed(2)}D
-                </span>
-                <span style={{ fontFamily: F.mono, fontSize: 10, fontWeight: 600, color: resColor, whiteSpace: 'nowrap' }}>
-                  -{row.residual_cyl.toFixed(2)}@{resAx}°
-                </span>
-              </div>
-            );
-          })}
-        </div>
-      </div>
-    );
-  }
-
-  // Spherical formula column
-  const displayedPwr = isBest && selectedPower != null ? selectedPower : result.p_emmetropia;
-  return (
-    <div style={{
-      flex: '1 1 0', minWidth: 0,
-      background: isBest ? ec.bg : C.surface2,
-      border: `1.5px solid ${isBest ? ec.color : C.border}`,
-      borderRadius: 12, overflow: 'hidden',
-    }}>
-      {/* Header */}
-      <div style={{ padding: '7px 7px 5px', borderBottom: `1px solid ${isBest ? ec.color + '50' : C.border}` }}>
-        <div style={{ fontFamily: F.sans, fontSize: 8, fontWeight: 700, color: isBest ? ec.color : C.muted, letterSpacing: '.06em', textTransform: 'uppercase', marginBottom: 2, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-          {shortName}
-        </div>
-        <div style={{ fontFamily: F.mono, fontSize: 16, fontWeight: 700, color: C.text, lineHeight: 1 }}>
-          {displayedPwr > 0 ? '+' : ''}{displayedPwr.toFixed(1)}
-          <span style={{ fontSize: 9, color: C.muted, marginLeft: 2 }}>D</span>
-        </div>
-        {isBest && <div style={{ fontFamily: F.sans, fontSize: 7, fontWeight: 800, color: ec.color, letterSpacing: '.08em', marginTop: 2 }}>ВЫБРАНА</div>}
-      </div>
-      {/* Power table */}
-      <div style={{ maxHeight: 200, overflowY: 'auto' }}>
-        {result.table.map(row => {
-          const sel = isBest && selectedPower != null && Math.abs(row.power - selectedPower) < 0.01;
-          const isEmm = Math.abs(row.ref) <= 0.12;
-          const refColor = Math.abs(row.ref) <= 0.25 ? C.green : Math.abs(row.ref) <= 0.5 ? C.yellow : C.muted2;
-          return (
-            <div
-              key={row.power}
-              onClick={() => onSelectPower(row.power, formula, row.ref)}
-              style={{
-                display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-                padding: '5px 7px', cursor: 'pointer',
-                background: sel ? ec.color + '28' : isEmm ? 'rgba(255,255,255,.04)' : 'transparent',
-                borderTop: `1px solid rgba(255,255,255,.04)`,
-              }}
-            >
-              <span style={{ fontFamily: F.mono, fontSize: 11, fontWeight: isEmm || sel ? 700 : 400, color: sel ? ec.color : isEmm ? C.text : C.muted, whiteSpace: 'nowrap' }}>
-                {row.power > 0 ? '+' : ''}{row.power.toFixed(1)}
-              </span>
-              <span style={{ fontFamily: F.mono, fontSize: 10, fontWeight: 600, color: refColor, whiteSpace: 'nowrap' }}>
-                {row.ref > 0 ? '+' : ''}{row.ref.toFixed(2)}
-              </span>
-            </div>
-          );
-        })}
-      </div>
-    </div>
-  );
-}
-
-// ── CalcTab ───────────────────────────────────────────────────────────────────
+import { useTelegram } from '../../../hooks/useTelegram';
+import { C, F, eyeColors } from '../../../constants/design';
+import { SectionLabel, AxisDial, EyeToggle } from '../../../ui';
+import { calculateToricJS } from '../../../calculators/astigmatism';
+import { useEffect, useRef } from 'react';
 
 export function CalcTab() {
-  const { draft, setDraft, setBioField, setIOLResult, setIOLLoading, iolResult, iolLoading, iolProgress, formulaResults, setFormulaResults } = useSessionStore();
-  const { activeEye, setActiveEye } = useUIStore();
+  const {
+    draft, iolResult, formulaResults,
+    iolError: calcError, iolLoading: isCalculating, toricResults, setToricResults,
+    toggleSurgicalEye
+  } = useSessionStore();
+  const { 
+    activeEye, setActiveEye, 
+    editingField, setEditingField, tempValue, setTempValue 
+  } = useUIStore();
+  const { haptic } = useTelegram();
+  const inputRef = useRef<HTMLInputElement>(null);
 
-  const [lensSearch, setLensSearch] = useState('');
-  const [lensOpen, setLensOpen] = useState(false);
+  useEffect(() => {
+    if (editingField && inputRef.current) {
+      inputRef.current.focus();
+      inputRef.current.select();
+    }
+  }, [editingField]);
+
+  useEffect(() => {
+    if (draft?.toricMode) {
+      const bio = (draft[`bio_${activeEye}` as 'bio_od' | 'bio_os'] as any) || {};
+      const eyeData = (draft[activeEye] as any) || {};
+      
+      const k1 = parseFloat(eyeData.k1 || '0');
+      const k2 = parseFloat(eyeData.k2 || '0');
+      if (k1 > 0 && k2 > 0) {
+        const res = calculateToricJS(
+          k1, k2, parseFloat(eyeData.k_ax || '0'),
+          parseFloat(draft.sia || '0.1'),
+          parseFloat((draft as any).incAx || '90'),
+          parseFloat(bio.al || '23.5')
+        );
+        setToricResults({ ...toricResults, [activeEye]: res });
+      }
+    }
+  }, [draft?.toricMode, draft?.sia, (draft as any)?.incAx, activeEye, draft?.od?.k1, draft?.os?.k1, draft?.od?.k2, draft?.os?.k2]);
 
   if (!draft) return null;
 
-  const lensName = (draft as any)._lensName ?? '';
-  const aConst   = (draft as any).aConst ?? '';
-  const aConstK  = (draft as any).aConstKane ?? aConst;
-  const targetRefr = draft.targetRefr ?? '0';
-  const toricMode = !!draft.toricMode;
-  const sia = draft.sia ?? '0.1';
-  const siaAx = draft.siaAx ?? '90';
-  const onlineMode = (draft as any).onlineMode ?? true;
-
-  const filteredLenses = searchIOL(lensSearch);
-
-  const pickLens = (name: string, a: number, aKane: number) => {
-    setDraft({
-      _lensName: name,
-      aConst: a > 0 ? String(a) : aKane > 0 ? String(aKane) : aConst,
-      aConstKane: aKane > 0 ? String(aKane) : aConst,
-    } as any);
-    setLensOpen(false);
-    setLensSearch('');
+  const handleStartEdit = (field: string, val: any) => {
+    setTempValue(String(val || ''));
+    setEditingField(field);
   };
 
-  const runCalc = async () => {
-    const aConstN = parseFloat(aConst) || 119.3;
-    const aConstKN = parseFloat(aConstK) || aConstN;
-    const target = parseFloat(targetRefr) || 0;
-
-    const localResults: EyeFormulaMap = { od: {}, os: {} };
-
-    // Haigis — локальный расчёт, показываем сразу до ответа сервера
-    const selectedLens = findIOL(lensName);
-    const hConst = selectedLens?.haigis ?? haigisConstFromA(aConstN);
-    (['od', 'os'] as const).forEach(ek => {
-      const bio = draft[`bio_${ek}`] ?? newBiometryData();
-      const al = parseFloat(bio.al);
-      const k1 = parseFloat(bio.k1);
-      const k2 = parseFloat(bio.k2);
-      const acd = parseFloat(bio.acd);
-        if (al && k1 && k2 && acd) {
-          const hr = calcHaigis(al, acd, k1, k2, target, hConst);
-          if (hr) localResults[ek]['Haigis'] = { p_emmetropia: hr.p_emmetropia, table: hr.table };
-          
-          if (toricMode) {
-             const tRes = calculateAutonomousToric(
-                k1, k2, parseFloat(bio.k1_ax) || 0,
-                parseFloat(sia) || 0,
-                parseFloat(siaAx) || 90,
-                al
-             );
-             localResults[ek]['RefMaster Toric'] = {
-                p_emmetropia: 0, 
-                table: [], 
-                _toricMode: true,
-                best_cyl: tRes.table.find((t: any) => t.model === tRes.bestModel)?.cylIol,
-                toric_table: tRes.table.map((t: any) => ({
-                   cyl_power: t.cylIol,
-                   residual_cyl: t.residual,
-                   axis: tRes.adjAxis,
-                   residual_axis: t.resAxis,
-                   model: t.model
-                }))
-             };
-          }
-        }
-      });
-
-    setFormulaResults(localResults);
-    
-    // Если онлайн режим выключен — останавливаемся на локальных результатах
-    if (!onlineMode) {
-      setIOLLoading(false, 100);
-      return;
-    }
-
-    setIOLLoading(true, 0);
-
-    const start = Date.now();
-    const interval = setInterval(() => {
-      const pct = Math.min(88, Math.round(88 * (1 - Math.exp(-(Date.now() - start) / 15000))));
-      setIOLLoading(true, pct);
-    }, 300);
-
-    try {
-      const reqData: any = {
-        use_barrett: true,
-        use_kane: true,
-        use_kane_toric: false,
-        name: draft.name ?? 'Patient',
-        age: draft.age ?? '',
-        sex: draft.sex ?? '',
-        const_a_barrett: aConstN,
-        const_a_kane: aConstKN,
-        kane_sia: isNaN(parseFloat(sia)) ? 0.1 : parseFloat(sia),
-        kane_incision: isNaN(parseInt(siaAx)) ? 90 : parseInt(siaAx),
-      };
-
-      (['od', 'os'] as const).forEach(ek => {
-        const bio = draft[`bio_${ek}`] ?? newBiometryData();
-        const al = parseFloat(bio.al);
-        const k1 = parseFloat(bio.k1);
-        const k2 = parseFloat(bio.k2);
-        if (al && k1 && k2) {
-          reqData[ek] = { al, k1, k2, acd: parseFloat(bio.acd) || 0, k1_ax: parseFloat(bio.k1_ax) || 0, target };
-        }
-      });
-
-      const res = await calculateIOL(reqData);
-
-      if (res.results) {
-        // Создаем копию текущих локальных данных для каждого глаза
-        const merged: EyeFormulaMap = { 
-          od: { ...(localResults.od || {}) }, 
-          os: { ...(localResults.os || {}) } 
-        };
-
-        (['od', 'os'] as const).forEach(ek => {
-          const barrEye = res.results?.barrett?.[ek];
-          const kaneEye = res.results?.kane?.[ek];
-          const haigisEye = res.results?.haigis?.[ek];
-          const autoToric = res.results?.autonomous_toric?.[ek];
-
-          if (barrEye?.table) {
-            merged[ek]['Barrett Universal II'] = barrEye;
-          }
-          if (kaneEye?.table) {
-            merged[ek]['Kane Formula'] = kaneEye;
-          }
-          if (haigisEye?.table) {
-            merged[ek]['Haigis'] = haigisEye;
-          }
-          if (autoToric?.toric_table) {
-            merged[ek]['RefMaster Toric'] = autoToric;
-          }
-        });
-
-        setFormulaResults(merged);
-
-        // Устанавливаем лучший результат в iolResult
-        const buildEyeResult = (ek: 'od' | 'os') => {
-          const frm = merged[ek];
-          const bio = draft[`bio_${ek}`] ?? newBiometryData();
-          const al = parseFloat(bio.al);
-          const isLongEye = al > 25.0;
-
-          // Приоритет: Kane для длинного глаза, иначе Barrett
-          let sphereSource = frm['Barrett Universal II'] ?? frm['Kane Formula'];
-          if (isLongEye && frm['Kane Formula']) {
-            sphereSource = frm['Kane Formula'];
-          } else if (isLongEye && frm['Kane Toric']) {
-            sphereSource = frm['Kane Toric'];
-          }
-          
-          if (!sphereSource) return undefined;
-          
-          // Определяем название формулы для отображения
-          let bestName = 'Barrett Universal II';
-          if (isLongEye && (frm['Kane Formula'] || frm['Kane Toric'])) {
-            bestName = toricMode ? 'Kane Toric' : 'Kane Formula';
-          } else if (toricMode && frm['Kane Toric']) {
-            bestName = 'Kane Toric + Barrett';
-          } else if (!frm['Barrett Universal II'] && frm['Kane Formula']) {
-            bestName = 'Kane Formula';
-          }
-
-          // Торик
-          const kaneEye = res.results?.kane?.[ek];
-          let toricAx: number | undefined;
-          let toricPower: number | undefined;
-          let toricResidual: string | undefined;
-          if (toricMode && kaneEye?.best_cyl != null) {
-            toricPower = kaneEye.best_cyl;
-            const nonToricRow = (kaneEye.toric_table ?? []).find(r => r.cyl_power === 0) ?? kaneEye.toric_table?.[0];
-            toricAx = nonToricRow ? Math.round(nonToricRow.axis) : undefined;
-            const bestRow = (kaneEye.toric_table ?? []).find(r => Math.abs(r.cyl_power - kaneEye.best_cyl!) < 0.01);
-            if (bestRow) {
-              const resAx = (Math.round(bestRow.axis) + 90) % 180 || 180;
-              toricResidual = `-${bestRow.residual_cyl.toFixed(2)} @ ${resAx}°`;
-            }
-          }
-
-          return {
-            p_emmetropia: sphereSource.p_emmetropia,
-            table: sphereSource.table,
-            formula: bestName,
-            formulas: frm,
-            toricPower,
-            toricAx,
-            toricResidual,
-          };
-        };
-
-        const odResult = buildEyeResult('od');
-        const osResult = buildEyeResult('os');
-        setIOLResult({
-          od: odResult,
-          os: osResult,
-          lens: lensName,
-          aConst: aConstN,
-          targetRefr: target,
-          timestamp: new Date().toISOString(),
-          source: 'api',
-        });
-        if (!odResult && osResult) setActiveEye('os');
-        else if (odResult && !osResult) setActiveEye('od');
+  const handleFinishEdit = () => {
+    if (editingField) {
+      if (editingField.startsWith('bio_')) {
+        setBioField(activeEye, editingField.replace('bio_', ''), tempValue);
+      } else {
+        setEyeField(activeEye, editingField, tempValue);
       }
-    } catch (err: any) {
-      console.error("[CALC ERROR]", err);
-      alert(`Ошибка расчёта: ${err.message || String(err)}`);
-    } finally {
-      clearInterval(interval);
-      setIOLLoading(false, 100);
     }
+    setEditingField(null);
   };
 
-  // Выбор мощности пользователем
-  const handleSelectPower = (eye: 'od' | 'os', power: number, formula: string, ref: number) => {
-    setIOLResult({
-      ...(iolResult ?? { lens: lensName, aConst: parseFloat(aConst) || 119.3, targetRefr: parseFloat(targetRefr) || 0, timestamp: new Date().toISOString(), source: 'local' }),
-      [eye]: {
-        ...(iolResult?.[eye] ?? {}),
-        selectedPower: power,
-        selectedFormula: formula,
-        expectedRefr: ref,
-        p_emmetropia: power,
-        formula,
-      },
-    });
-  };
+  const disabledEyes: ('od' | 'os')[] = [];
+  if (draft.eye === 'OD') disabledEyes.push('os');
+  if (draft.eye === 'OS') disabledEyes.push('od');
 
-  const handleSelectToric = (eye: 'od' | 'os', cyl: number, ax: number, residual: string) => {
-    setDraft({ toricCyl: String(cyl), toricAx: String(ax), toricResidual: residual });
-    setIOLResult({
-      ...(iolResult ?? { lens: lensName, aConst: parseFloat(aConst) || 119.3, targetRefr: parseFloat(targetRefr) || 0, timestamp: new Date().toISOString(), source: 'local' }),
-      [eye]: {
-        ...(iolResult?.[eye] ?? {}),
-        toricPower: cyl,
-        toricAx: ax,
-        toricResidual: residual,
-      },
-    });
-  };
-
-  const bioKey = `bio_${activeEye}` as 'bio_od' | 'bio_os';
-  const bio = draft[bioKey] ?? newBiometryData();
+  const bio = (draft[`bio_${activeEye}` as 'bio_od' | 'bio_os'] as any) || {};
+  const eyeData = (draft[activeEye] as any) || {};
   const ec = eyeColors(activeEye);
-  const eyeResult = iolResult?.[activeEye];
-  const eyeFormulas = formulaResults[activeEye] ?? {};
-  const hasFormulas = Object.keys(eyeFormulas).length > 0;
 
-  const bioValidation = validateBiometry(bio);
-  const toricHint = toricIndication(bio.k1, bio.k2);
+  const BioField = ({ label, field, val, unit }: { label: string, field: string, val: any, unit: string }) => {
+    const isEditing = editingField === field;
+    return (
+      <div 
+        onClick={() => handleStartEdit(field, val)}
+        style={{ background: C.surface, borderRadius: 12, padding: '8px 10px', border: `1px solid ${isEditing ? ec.color : C.border}`, cursor: 'text' }}
+      >
+        <div style={{ fontSize: 6, fontWeight: 900, color: C.muted3, textTransform: 'uppercase' }}>{label}</div>
+        <div style={{ display: 'flex', alignItems: 'baseline', gap: 2 }}>
+          {isEditing ? (
+            <input
+              ref={inputRef}
+              value={tempValue}
+              onChange={e => setTempValue(e.target.value)}
+              onBlur={handleFinishEdit}
+              onKeyDown={e => e.key === 'Enter' && handleFinishEdit()}
+              style={{ background: 'none', border: 'none', width: '100%', fontSize: 13, fontWeight: 800, color: ec.color, fontFamily: F.mono, outline: 'none', padding: 0 }}
+            />
+          ) : (
+            <>
+              <div style={{ fontSize: 13, fontWeight: 800, color: C.text, fontFamily: F.mono }}>{val}</div>
+              <div style={{ fontSize: 6, color: C.muted3 }}>{unit}</div>
+            </>
+          )}
+        </div>
+      </div>
+    );
+  };
+
+  const activeFormula = draft.activeFormula || 'Barrett';
+  const eyeResults = formulaResults[activeEye] || {};
+  const results = eyeResults[activeFormula] || eyeResults[activeFormula.toLowerCase()] || [];
+
+  const selectedPowerNum = (iolResult as any)?.[activeEye]?.selectedPower || 0;
+  const targetVal = parseFloat((draft as any).targetRefr || '0');
+  const suggestedResult = results.length > 0 ? results.reduce((prev: any, curr: any) => 
+    Math.abs((curr.refraction ?? curr.ref ?? 0) - targetVal) < Math.abs((prev.refraction ?? prev.ref ?? 0) - targetVal) ? curr : prev
+  ) : null;
+
+  const selectedResult = results.find((r: any) => Math.abs(r.power - selectedPowerNum) < 0.01) || (selectedPowerNum === 0 ? suggestedResult : null);
+  const displayPower = selectedResult?.power;
+
+  const handleLongPressEye = (eye: 'od' | 'os') => {
+    toggleSurgicalEye(eye);
+    const nextEye = (useSessionStore.getState().draft?.eye || 'OU').toUpperCase();
+    if (nextEye === 'OD' && activeEye === 'os') setActiveEye('od');
+    if (nextEye === 'OS' && activeEye === 'od') setActiveEye('os');
+  };
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+      <style>{`
+        @keyframes lensOrbit { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+      `}</style>
 
-      {/* Переключатель глаз (всегда сверху) */}
-      <div style={{ display: 'flex', justifyContent: 'center' }}>
-        <EyeToggle value={activeEye} onChange={setActiveEye} />
+      <div style={{ display: 'flex', justifyContent: 'center', marginBottom: 4 }}>
+        <EyeToggle 
+          value={activeEye} 
+          onChange={setActiveEye} 
+          disabledEyes={disabledEyes}
+          onLongPress={handleLongPressEye}
+        />
       </div>
 
-      {/* Выбор линзы */}
-      <div>
-        <SectionLabel>ИОЛ</SectionLabel>
-        <button
-          onClick={() => setLensOpen(v => !v)}
-          style={{
-            width: '100%', textAlign: 'left',
-            background: C.surface2, border: `1px solid ${C.border2}`,
-            borderRadius: 12, padding: '10px 14px',
-            fontFamily: F.sans, fontSize: 13,
-            color: lensName ? C.text : C.muted,
-            cursor: 'pointer',
-            display: 'flex', justifyContent: 'space-between', alignItems: 'center',
-          }}
-        >
-          <span>{lensName || 'Выбрать линзу...'}</span>
-          <span style={{ color: C.muted, fontSize: 10 }}>{lensOpen ? '▲' : '▼'}</span>
-        </button>
 
-        {lensOpen && (
-          <div style={{ background: C.surface2, border: `1px solid ${C.border}`, borderRadius: 12, marginTop: 4, overflow: 'hidden' }}>
-            <input
-              value={lensSearch}
-              onChange={e => setLensSearch(e.target.value)}
-              placeholder="Поиск ИОЛ..."
-              autoFocus
-              style={{
-                width: '100%', padding: '10px 14px',
-                background: 'transparent', border: 'none',
-                borderBottom: `1px solid ${C.border}`,
-                fontFamily: F.sans, fontSize: 13, color: C.text,
-                outline: 'none', boxSizing: 'border-box',
-              }}
-            />
-            <div style={{ maxHeight: 200, overflowY: 'auto' }}>
-              {filteredLenses.slice(0, 30).map(l => (
-                <button
-                  key={l.name}
-                  onClick={() => pickLens(l.name, l.a, l.a_kane)}
-                  style={{
-                    width: '100%', textAlign: 'left',
-                    padding: '9px 14px', border: 'none',
-                    background: l.name === lensName ? C.accentLt : 'transparent',
-                    color: l.name === lensName ? C.accent : C.text,
-                    fontFamily: F.sans, fontSize: 13, cursor: 'pointer', display: 'block',
-                  }}
-                >
-                  {l.name}
-                </button>
-              ))}
-            </div>
-          </div>
-        )}
-      </div>
+      {calcError && (
+        <div style={{
+          padding: '8px 14px', background: `${C.red}12`, border: `1px solid ${C.red}30`,
+          borderRadius: 10, color: C.red, fontSize: 9, fontWeight: 900,
+          textAlign: 'center', letterSpacing: '0.06em',
+        }}>
+          {calcError}
+        </div>
+      )}
 
-      {/* A-константы + целевая рефракция */}
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 6 }}>
-        <DField label="A-Barrett" value={aConst} onChange={v => setDraft({ aConst: v } as any)} type="number" step=".01" />
-        <DField label="A-Kane" value={aConstK} onChange={v => setDraft({ aConstKane: v } as any)} type="number" step=".01" />
-        <WheelField label="Цель D" value={String(targetRefr)} onChange={v => setDraft({ targetRefr: v })} min={-4} max={2} step={0.25} />
-      </div>
+      {/* MAIN DASHBOARD */}
+      <div style={{
+        background: C.card, borderRadius: 24, padding: '20px 16px', border: `1px solid ${C.border}`,
+        boxShadow: '0 20px 60px rgba(0,0,0,0.2)', position: 'relative', overflow: 'hidden',
+      }}>
+        <div style={{ position: 'absolute', top: 0, left: 0, right: 0, height: 3, background: ec.color, opacity: 0.7 }} />
 
-      {/* Торический расчёт + SIA */}
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-          <span style={{ fontFamily: F.sans, fontSize: 12, fontWeight: 600, color: C.muted2 }}>Торический расчёт</span>
-          <button
-            onClick={() => setDraft({ toricMode: !toricMode })}
-            style={{
-              width: 44, height: 24, borderRadius: 12, border: 'none',
-              background: toricMode ? C.amber : C.surface3,
-              cursor: 'pointer', position: 'relative', transition: 'background .2s', flexShrink: 0,
-            }}
-          >
-            <span style={{
-              position: 'absolute', top: 3, left: toricMode ? 22 : 3,
-              width: 18, height: 18, borderRadius: '50%',
-              background: '#fff', transition: 'left .2s',
-            }} />
-          </button>
+        {/* Formula Selector */}
+        <div style={{ display: 'flex', gap: 6, marginBottom: 16 }}>
+          {['Haigis', 'Barrett', 'Kane'].map(f => {
+            const isSel = activeFormula.toLowerCase() === f.toLowerCase();
+            return (
+              <button
+                key={f}
+                onClick={() => { haptic.selection(); useSessionStore.getState().setDraft({ activeFormula: f }); }}
+                style={{
+                  flex: 1, padding: '8px 0', borderRadius: 12, border: `1px solid ${isSel ? C.indigo : C.border}`,
+                  background: isSel ? `${C.indigo}15` : C.surface, color: isSel ? C.indigo : C.muted2,
+                  fontSize: 10, fontWeight: 900, fontFamily: F.sans, cursor: 'pointer', transition: 'all 0.2s'
+                }}
+              >
+                {f}
+              </button>
+            );
+          })}
         </div>
 
-        {toricMode && (
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
+          <SectionLabel color={ec.color} style={{ margin: 0, fontSize: 9, letterSpacing: '0.15em', fontWeight: 900 }}>
+            {activeFormula.toUpperCase()} PREDICTION
+          </SectionLabel>
           <div style={{
-            display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 6,
-            background: 'rgba(245,158,11,.08)', border: `1px solid rgba(245,158,11,.35)`,
-            borderRadius: 12, padding: '10px',
+            fontSize: 7, fontWeight: 900, color: results.length > 0 ? C.green : C.muted3,
+            background: C.surface, padding: '3px 8px', borderRadius: 20, border: `1px solid ${C.border}`,
           }}>
-            <DField label="SIA D" value={sia} onChange={v => setDraft({ sia: v })} type="number" step=".05" accentColor={C.amber} />
-            <DField label="Ось разреза °" value={siaAx} onChange={v => setDraft({ siaAx: v })} type="number" accentColor={C.amber} />
+            {results.length > 0 ? `${results.length} VARIANTS` : 'NO DATA'}
           </div>
-        )}
-      </div>
+        </div>
 
-      {/* Online Calculators Toggle */}
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '10px 12px', background: C.surface2, border: `1px solid ${C.border}`, borderRadius: 12 }}>
-         <span style={{ fontFamily: F.sans, fontSize: 12, fontWeight: 600, color: onlineMode ? C.accent : C.muted }}>Online Calculators (Barrett)</span>
-         <button
-            onClick={() => setDraft({ onlineMode: !onlineMode } as any)}
-            style={{
-              width: 44, height: 24, borderRadius: 12, border: 'none',
-              background: onlineMode ? C.accent : C.surface3,
-              cursor: 'pointer', position: 'relative', transition: 'background .2s', flexShrink: 0,
-            }}
-          >
-            <span style={{
-              position: 'absolute', top: 3, left: onlineMode ? 22 : 3,
-              width: 18, height: 18, borderRadius: '50%',
-              background: '#fff', transition: 'left .2s',
+        {/* 3-column: biometry | orbital IOL | keratometry */}
+        <div style={{ display: 'flex', gap: 16, alignItems: 'center', marginBottom: 24 }}>
+          <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 8 }}>
+            <BioField label="AL" field="bio_al" val={bio.al || '—'} unit="mm" />
+            <BioField label="ACD" field="bio_acd" val={bio.acd || '—'} unit="mm" />
+            <BioField label="LT" field="bio_lt" val={bio.lt || '—'} unit="mm" />
+          </div>
+
+          {/* Orbital IOL lens */}
+          <div style={{ position: 'relative', width: 170, height: 170, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+            <div style={{
+              position: 'absolute', width: '100%', height: '100%', borderRadius: '50%',
+              border: `1px solid ${ec.border}40`, background: `radial-gradient(circle, ${ec.bg} 0%, transparent 70%)`,
             }} />
-          </button>
+            <div style={{
+              position: 'absolute', width: '90%', height: '90%', borderRadius: '50%',
+              border: `1px dashed ${ec.border}60`, opacity: 0.3, animation: 'lensOrbit 30s infinite linear',
+            }} />
+            <div style={{
+              width: 120, height: 120, borderRadius: '50%', background: C.surface,
+              border: `2px solid ${draft.toricMode ? C.indigo : ec.color}`, boxShadow: `0 0 30px ${draft.toricMode ? C.indigo : ec.color}30`,
+              display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
+              zIndex: 2, position: 'relative',
+            }}>
+              <div style={{ fontSize: 8, fontWeight: 900, color: draft.toricMode ? C.indigo : ec.color, textTransform: 'uppercase', marginBottom: 2 }}>
+                {draft.toricMode ? 'TORIC IOL' : 'IOL POWER'}
+              </div>
+              <div style={{ fontSize: 30, fontWeight: 900, color: C.text, fontFamily: F.mono, letterSpacing: '-0.02em', display: 'flex', alignItems: 'baseline', gap: 4 }}>
+                {displayPower ? displayPower.toFixed(2) : '—'}
+                {draft.toricMode && toricResults?.[activeEye] && (
+                  <span style={{ fontSize: 16, color: C.indigo, fontWeight: 900 }}>{toricResults[activeEye].best_model}</span>
+                )}
+              </div>
+              <div style={{ position: 'absolute', bottom: -30, width: '160%', textAlign: 'center' }}>
+                <div style={{ fontSize: 10, fontWeight: 900, color: C.text, letterSpacing: '0.04em', textTransform: 'uppercase' }}>
+                  {(iolResult as any)?.lens || 'NO LENS SELECTED'}
+                </div>
+                {draft.toricMode && toricResults?.[activeEye] && (
+                  <div style={{ fontSize: 8, fontWeight: 900, color: C.indigo, marginTop: 4 }}>
+                    AXIS: {toricResults[activeEye].total_steep_axis}°
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+
+          <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 8 }}>
+            <BioField label="K1" field="k1" val={eyeData.k1 || '—'} unit="D" />
+            <BioField label="K2" field="k2" val={eyeData.k2 || '—'} unit="D" />
+            <BioField label="Axis" field="k_ax" val={eyeData.k_ax ? `${Math.round(parseFloat(eyeData.k_ax))}°` : '—'} unit="" />
+          </div>
+        </div>
+
+        {/* Predicted Refraction / Target */}
+        <div style={{ marginTop: 36, display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+          <div style={{ background: `${C.green}10`, borderRadius: 16, padding: '12px', border: `1px solid ${C.green}30`, textAlign: 'center' }}>
+            <div style={{ fontSize: 7, fontWeight: 900, color: C.green, textTransform: 'uppercase', marginBottom: 4 }}>
+              {draft.toricMode ? 'Predicted Refr' : 'Predicted SE'}
+            </div>
+            <div style={{ fontSize: draft.toricMode ? 14 : 18, fontWeight: 900, color: C.text, fontFamily: F.mono }}>
+              {(() => {
+                if (!selectedResult) return '—';
+                const se = selectedResult.refraction ?? selectedResult.ref ?? 0;
+                
+                if (draft.toricMode && toricResults?.[activeEye]) {
+                  const best = toricResults[activeEye].table.find((t: any) => t.model === toricResults[activeEye].best_model);
+                  if (best) {
+                    const cylRes = best.residual;
+                    const sphRes = se + (cylRes / 2);
+                    const sphStr = (sphRes > 0 ? '+' : '') + sphRes.toFixed(2);
+                    const cylStr = `-${(Math.round(cylRes * 20) / 20).toFixed(2)}`;
+                    return (
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+                        <div>{sphStr} {cylStr}</div>
+                        <div style={{ fontSize: 9, opacity: 0.7 }}>ax {best.res_axis}°</div>
+                      </div>
+                    );
+                  }
+                }
+                
+                return (se > 0 ? '+' : '') + se.toFixed(2);
+              })()}
+            </div>
+          </div>
+          <div style={{ background: `${C.amber}10`, borderRadius: 16, padding: '12px', border: `1px solid ${C.amber}30`, textAlign: 'center' }}>
+            <div style={{ fontSize: 7, fontWeight: 900, color: C.amber, textTransform: 'uppercase', marginBottom: 4 }}>Target</div>
+            <div style={{ fontSize: 18, fontWeight: 900, color: C.text, fontFamily: F.mono }}>
+              {(parseFloat((draft as any).targetRefr || '0') > 0 ? '+' : '') + ((draft as any).targetRefr || '0.00')}
+            </div>
+          </div>
+        </div>
       </div>
 
-      {/* Кнопка расчёта */}
-      <Btn variant="primary" onClick={runCalc} disabled={iolLoading} full>
-        {iolLoading ? `Расчёт... ${iolProgress}%` : 'Рассчитать ИОЛ'}
-      </Btn>
+      {/* PREDICTION LIST */}
+      <div>
+        <SectionLabel color={C.muted2} style={{ marginBottom: 10, fontSize: 10, letterSpacing: '0.12em', fontWeight: 900 }}>
+          {activeFormula.toUpperCase()} · PREDICTION TABLE
+        </SectionLabel>
+        <div style={{ background: C.card, borderRadius: 20, border: `1px solid ${C.border}`, overflow: 'hidden' }}>
+          <div style={{
+            display: 'grid', gridTemplateColumns: '1fr 1.2fr 1fr', padding: '10px 16px',
+            background: C.surface, borderBottom: `1px solid ${C.border}`,
+          }}>
+            <div style={{ fontSize: 8, fontWeight: 900, color: C.muted3 }}>IOL D</div>
+            <div style={{ fontSize: 8, fontWeight: 900, color: C.muted3, textAlign: 'center' }}>PRED REF</div>
+            <div style={{ fontSize: 8, fontWeight: 900, color: C.muted3, textAlign: 'right' }}>Δ TARGET</div>
+          </div>
 
-      {iolLoading && (
-        <div style={{ height: 3, background: C.surface2, borderRadius: 2, overflow: 'hidden' }}>
-          <div style={{ height: '100%', width: `${iolProgress}%`, background: C.accent, borderRadius: 2, transition: 'width .3s ease' }} />
-        </div>
-      )}
+          {results.length > 0 ? (
+            <div style={{ maxHeight: 260, overflowY: 'auto', scrollbarWidth: 'none' }}>
+              {results.map((r: any, i: number) => {
+                const targetVal = parseFloat((draft as any).targetRefr || '0');
+                const rRef = r.refraction ?? r.ref ?? 0;
+                
+                // Авто-выбор: если еще ничего не выбрано, подсвечиваем ближайший к таргету
+                const isSuggested = !selectedPowerNum && results.reduce((prev: any, curr: any) => 
+                  Math.abs(curr.refraction - targetVal) < Math.abs(prev.refraction - targetVal) ? curr : prev
+                ).power === r.power;
 
-      {/* Предупреждения */}
-      {bioValidation.warnings.length > 0 && (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-          {bioValidation.warnings
-            .filter(w => !toricMode || !w.includes('рекомендуется торическая ИОЛ'))
-            .map((w, i) => (
-            <div key={i} style={{ background: C.yellowLt, border: `1px solid ${C.yellow}40`, borderRadius: 10, padding: '7px 12px', fontFamily: F.sans, fontSize: 11, color: C.yellow }}>
-              ⚠ {w}
+                const isSelected = Math.abs(r.power - selectedPowerNum) < 0.01 || isSuggested;
+                const diff = rRef - targetVal;
+                const diffColor = Math.abs(diff) < 0.25 ? C.green : Math.abs(diff) < 0.5 ? C.amber : C.muted3;
+
+                return (
+                  <div
+                    key={i}
+                    onClick={() => {
+                      haptic.light();
+                      const eyeRes = (iolResult as any)?.[activeEye] || {};
+                      useSessionStore.getState().setIOLResult({
+                        ...(iolResult || {}),
+                        [activeEye]: {
+                          ...eyeRes,
+                          selectedPower: r.power,
+                          expectedRefr: rRef
+                        }
+                      } as any);
+                    }}
+                    style={{
+                      display: 'grid', gridTemplateColumns: '1fr 1.2fr 1fr',
+                      padding: '13px 16px', alignItems: 'center', cursor: 'pointer',
+                      borderBottom: i === results.length - 1 ? 'none' : `1px solid ${C.border}40`,
+                      background: isSelected ? `${ec.color}18` : 'transparent',
+                      transition: 'background 0.15s',
+                      borderLeft: isSuggested && !selectedPowerNum ? `4px solid ${ec.color}` : 'none',
+                    }}
+                  >
+                    <div style={{ fontSize: 15, fontWeight: 900, color: isSelected ? ec.color : C.text, fontFamily: F.mono }}>
+                      {r.power.toFixed(2)}
+                    </div>
+                    <div style={{ textAlign: 'center', fontSize: draft.toricMode ? 11 : 14, fontWeight: 800, color: isSelected ? C.text : C.muted2, fontFamily: F.mono }}>
+                      {(() => {
+                        if (draft.toricMode && toricResults?.[activeEye]) {
+                          const best = toricResults[activeEye].table.find((t: any) => t.model === toricResults[activeEye].best_model);
+                          if (best) {
+                            const cylRes = best.residual;
+                            const sphRes = rRef + (cylRes / 2);
+                            return `${(sphRes > 0 ? '+' : '') + sphRes.toFixed(2)} -${(Math.round(cylRes * 20) / 20).toFixed(2)}`;
+                          }
+                        }
+                        return (rRef > 0 ? '+' : '') + rRef.toFixed(2);
+                      })()}
+                    </div>
+                    <div style={{ textAlign: 'right', fontSize: 12, fontWeight: 700, color: diffColor, fontFamily: F.mono }}>
+                      {(diff > 0 ? '+' : '') + diff.toFixed(2)}
+                    </div>
+                  </div>
+                );
+              })}
             </div>
-          ))}
-        </div>
-      )}
-
-      {/* Подсказка торика */}
-      {toricHint.indicated && !toricMode && !iolLoading && !hasFormulas && (
-        <div style={{ background: 'rgba(245,158,11,.12)', border: '1px solid rgba(245,158,11,.35)', borderRadius: 10, padding: '8px 12px', fontFamily: F.sans, fontSize: 11, color: C.amber }}>
-          {toricHint.recommended
-            ? `★ Показана торическая ИОЛ — астигматизм ${toricHint.delta.toFixed(2)} D`
-            : `○ Рекомендуется торическая ИОЛ — астигматизм ${toricHint.delta.toFixed(2)} D`
-          }
-        </div>
-      )}
-
-      <Divider my={0} />
-
-      {/* Результаты */}
-      {hasFormulas && (
-        <>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-            <div style={{ width: 4, height: 16, background: ec.color, borderRadius: 2 }} />
-            <span style={{ fontFamily: F.sans, fontSize: 13, fontWeight: 700, color: C.text, letterSpacing: '.02em' }}>
-              {activeEye.toUpperCase()} — {activeEye === 'od' ? 'Правый глаз' : 'Левый глаз'}
-            </span>
-          </div>
-
-          <div style={{ display: 'flex', gap: 8, overflowX: 'auto', paddingBottom: 4 }}>
-            {['Haigis', 'RefMaster Toric', 'Barrett Universal II', 'Kane Formula'].map(name => {
-              // НОВАЯ МАТРИЦА ОТОБРАЖЕНИЯ:
-              if (onlineMode) {
-                 // ОНЛАЙН РЕЖИМ (Барретт и Кейн всегда)
-                 if (name === 'Haigis') return null;
-                 // Торику показываем только если ВКЛ toricMode
-                 if (name === 'RefMaster Toric' && !toricMode) return null;
-              } else {
-                 // ОФФЛАЙН РЕЖИМ (Хайгис всегда)
-                 if (name === 'Barrett Universal II' || name === 'Kane Formula') return null;
-                 // Торику показываем только если ВКЛ toricMode
-                 if (name === 'RefMaster Toric' && !toricMode) return null;
-              }
-
-              const res = formulaResults[activeEye][name];
-              if (!res) return null;
-              return (
-                <FormulaColumn
-                  key={name}
-                  formula={name}
-                  result={res}
-                  eye={activeEye}
-                  selectedFormula={eyeResult?.selectedFormula ?? eyeResult?.formula}
-                  selectedPower={eyeResult?.selectedPower ?? eyeResult?.p_emmetropia}
-                  toricCyl={draft.toricCyl}
-                  toricAx={draft.toricAx}
-                  sia={draft.sia}
-                  siaAx={draft.siaAx}
-                  onSelectPower={(p, f, r) => handleSelectPower(activeEye, p, f, r)}
-                  onSelectToric={(c, a, res) => handleSelectToric(activeEye, c, a, res)}
-                />
-              );
-            })}
-          </div>
-
-          {/* Торическая схема */}
-          {eyeResult?.toricAx != null && (
-            <div style={{ display: 'flex', gap: 12, background: C.surface2, border: `1px solid ${C.border}`, borderRadius: 12, padding: 12 }}>
-              <ToricSchematic
-                eye={activeEye}
-                toricAx={eyeResult.toricAx}
-                incisionAx={parseInt(siaAx) || null}
-                size={140}
-              />
-              <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 8, justifyContent: 'center' }}>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
-                  <span style={{ fontFamily: F.sans, fontSize: 10, color: C.muted, fontWeight: 600, textTransform: 'uppercase' }}>Рекомендация Toric</span>
-                  {eyeResult.toricPower != null && (
-                    <div style={{ fontFamily: F.mono, fontSize: 15, fontWeight: 700, color: C.yellow }}>
-                      {eyeResult.toricPower.toFixed(2)} D @ {eyeResult.toricAx}°
-                    </div>
-                  )}
-                  {draft.toricResidual && (
-                    <div style={{ fontFamily: F.mono, fontSize: 12, color: C.green, fontWeight: 600 }}>
-                      {draft.toricResidual}
-                    </div>
-                  )}
-                </div>
+          ) : (
+            <div style={{ padding: '32px 20px', textAlign: 'center' }}>
+              <div style={{ fontSize: 11, fontWeight: 700, color: C.muted3, letterSpacing: '0.06em', marginBottom: 8 }}>
+                NO DATA YET
+              </div>
+              <div style={{ fontSize: 9, color: C.muted3, opacity: 0.7 }}>
+                Select a formula above to calculate
               </div>
             </div>
           )}
-        </>
+        </div>
+      </div>
+
+      {/* TORIC SECTION */}
+      {draft.toricMode && (
+        <div style={{ background: C.card, borderRadius: 24, padding: '20px 16px', border: `1px solid ${C.border}`, boxShadow: '0 10px 40px rgba(0,0,0,0.15)' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 18 }}>
+            <SectionLabel color={C.indigo} style={{ margin: 0, fontSize: 10, letterSpacing: '0.12em', fontWeight: 900 }}>
+              TORIC RECOMMENDATION
+            </SectionLabel>
+            {toricResults?.[activeEye] && (
+              <div style={{ fontSize: 7, fontWeight: 900, color: C.indigo, background: `${C.indigo}15`, padding: '3px 8px', borderRadius: 20 }}>
+                ALCON SN6AT
+              </div>
+            )}
+          </div>
+
+          {toricResults?.[activeEye] ? (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
+              <div style={{ display: 'flex', gap: 16, alignItems: 'stretch' }}>
+                <div style={{
+                  position: 'relative', width: 130, height: 130, borderRadius: '50%',
+                  background: C.surface, border: `1px solid ${C.border}`,
+                  display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0
+                }}>
+                  <AxisDial
+                    axis={toricResults[activeEye].total_steep_axis}
+                    kAxis={parseInt(eyeData.k_ax || '0')}
+                    size={118} color={C.indigo} tickWidth={2.5}
+                  />
+                  <div style={{ position: 'absolute', bottom: -20, display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+                    <div style={{ fontSize: 13, fontWeight: 900, color: C.indigo, fontFamily: F.mono }}>{toricResults[activeEye].total_steep_axis}°</div>
+                    <div style={{ fontSize: 6, fontWeight: 800, color: C.muted3, textTransform: 'uppercase' }}>Impl. Axis</div>
+                  </div>
+                </div>
+
+                <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 12 }}>
+                  <div style={{ 
+                    background: `linear-gradient(135deg, ${C.indigo}20, ${C.indigo}05)`, 
+                    borderRadius: 18, padding: '14px', border: `1px solid ${C.indigo}30`, textAlign: 'center',
+                    boxShadow: `0 4px 15px ${C.indigo}15`
+                  }}>
+                    <div style={{ fontSize: 7, fontWeight: 900, color: C.indigo, textTransform: 'uppercase', marginBottom: 6 }}>Best Model</div>
+                    <div style={{ fontSize: 28, fontWeight: 900, color: C.text, fontFamily: F.mono, letterSpacing: '0.05em' }}>
+                      {toricResults[activeEye].best_model}
+                    </div>
+                  </div>
+
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
+                    <div style={{ background: C.surface, borderRadius: 14, padding: '10px 8px', border: `1px solid ${C.border}`, textAlign: 'center' }}>
+                      <div style={{ fontSize: 6, fontWeight: 900, color: C.muted3, textTransform: 'uppercase', marginBottom: 2 }}>Residual</div>
+                      <div style={{ fontSize: 13, fontWeight: 900, color: C.green, fontFamily: F.mono }}>
+                        -{ (Math.round((toricResults[activeEye].table.find((t: any) => t.model === toricResults[activeEye].best_model)?.residual || 0) * 20) / 20).toFixed(2) }D
+                      </div>
+                    </div>
+                    <div style={{ background: C.surface, borderRadius: 14, padding: '10px 8px', border: `1px solid ${C.border}`, textAlign: 'center' }}>
+                      <div style={{ fontSize: 6, fontWeight: 900, color: C.muted3, textTransform: 'uppercase', marginBottom: 2 }}>IOL Cyl</div>
+                      <div style={{ fontSize: 13, fontWeight: 900, color: C.text, fontFamily: F.mono }}>
+                        {toricResults[activeEye].table.find((t: any) => t.model === toricResults[activeEye].best_model)?.cyl_iol.toFixed(2)}D
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* TORIC TABLE */}
+              <div style={{ background: C.surface, borderRadius: 18, border: `1px solid ${C.border}`, overflow: 'hidden' }}>
+                <div style={{ display: 'grid', gridTemplateColumns: '0.8fr 1fr 1fr 1.2fr', padding: '8px 12px', borderBottom: `1px solid ${C.border}60` }}>
+                  {['MODEL', 'IOL CYL', 'RESID.', 'RES. AX'].map(h => (
+                    <div key={h} style={{ fontSize: 6.5, fontWeight: 900, color: C.muted3, textAlign: h === 'RES. AX' ? 'right' : 'center' }}>{h}</div>
+                  ))}
+                </div>
+                {toricResults[activeEye].table.map((row: any, idx: number) => {
+                  const isSelected = row.model === toricResults[activeEye].best_model;
+                  const resColor = row.residual < 0.5 ? C.green : row.residual < 0.75 ? C.amber : C.muted3;
+                  return (
+                    <div key={idx} style={{ 
+                      display: 'grid', gridTemplateColumns: '0.8fr 1fr 1fr 1.2fr', padding: '10px 12px',
+                      background: isSelected ? `${C.indigo}12` : 'transparent',
+                      borderBottom: idx === toricResults[activeEye].table.length - 1 ? 'none' : `1px solid ${C.border}30`,
+                      alignItems: 'center'
+                    }}>
+                      <div style={{ fontSize: 11, fontWeight: 900, color: isSelected ? C.indigo : C.text, fontFamily: F.mono }}>{row.model}</div>
+                      <div style={{ fontSize: 11, fontWeight: 800, color: C.text, fontFamily: F.mono, textAlign: 'center' }}>{row.cyl_iol.toFixed(2)}</div>
+                      <div style={{ fontSize: 11, fontWeight: 800, color: resColor, fontFamily: F.mono, textAlign: 'center' }}>
+                        -{ (Math.round(row.residual * 20) / 20).toFixed(2) }
+                      </div>
+                      <div style={{ fontSize: 10, fontWeight: 700, color: C.muted2, fontFamily: F.mono, textAlign: 'right' }}>
+                        {row.res_axis ? `${row.res_axis}°` : '—'} 
+                        {row.is_wtr && <span style={{ color: C.green, marginLeft: 3 }}>WTR</span>}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          ) : (
+            <div style={{ padding: '32px 20px', textAlign: 'center', background: C.surface, borderRadius: 20, border: `1px dashed ${C.border}` }}>
+              <div style={{ fontSize: 10, color: C.muted3, fontWeight: 700, letterSpacing: '0.04em' }}>CALCULATE TO SEE TORIC RECOMMENDATIONS</div>
+            </div>
+          )}
+          
+          <div style={{ marginTop: 24, padding: '14px', background: C.surface, borderRadius: 16, border: `1px solid ${C.border}` }}>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                  <span style={{ fontSize: 7, fontWeight: 900, color: C.muted3 }}>CORNEAL CYL</span>
+                  <span style={{ fontSize: 7, fontWeight: 900, color: C.text }}>{Math.abs((parseFloat(eyeData.k1 || '0') - parseFloat(eyeData.k2 || '0'))).toFixed(2)}D</span>
+                </div>
+                <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                  <span style={{ fontSize: 7, fontWeight: 900, color: C.muted3 }}>PCA (A-K)</span>
+                  <span style={{ fontSize: 7, fontWeight: 900, color: C.indigo }}>INCLUDED</span>
+                </div>
+              </div>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                  <span style={{ fontSize: 7, fontWeight: 900, color: C.muted3 }}>SIA</span>
+                  <span style={{ fontSize: 7, fontWeight: 900, color: C.indigo }}>{draft.sia || '0.1'}D @ {(draft as any).incAx || '90'}°</span>
+                </div>
+                <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                  <span style={{ fontSize: 7, fontWeight: 900, color: C.muted3 }}>NOMOGRAM</span>
+                  <span style={{ fontSize: 7, fontWeight: 900, color: C.green }}>WTR OPTIMIZED</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );

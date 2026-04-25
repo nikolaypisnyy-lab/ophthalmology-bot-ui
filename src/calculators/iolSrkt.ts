@@ -161,7 +161,6 @@ export function validateBiometry(bio: BiometryData): {
     const Km = (k1 + k2) / 2;
     if (Km < 38) warnings.push(`Km ${Km.toFixed(1)} D — плоская роговица, проверьте кератоконус`);
     if (Km > 50) warnings.push(`Km ${Km.toFixed(1)} D — крутая роговица, исключите кератоконус`);
-    if (Math.abs(k1 - k2) >= 1.5) warnings.push(`Астигматизм ${Math.abs(k1 - k2).toFixed(2)} D — рекомендуется торическая ИОЛ`);
   }
 
   if (!isNaN(acd)) {

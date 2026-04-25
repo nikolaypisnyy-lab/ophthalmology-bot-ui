@@ -1,136 +1,236 @@
 import React from 'react';
-import { C, F } from '../constants/design';
+import { F } from '../constants/design';
 
 interface Props {
   eye: 'od' | 'os';
-  /** Ось разреза хирурга (0–180°) */
   incisionAx?: number | null;
-  /** Ось торической ИОЛ (0–180°) */
   toricAx?: number | null;
+  steepAx?: number | null;
   size?: number;
 }
 
-/**
- * SVG-схема глаза в стиле OphthalmoCRM (Premium).
- * Фикс: уменьшен радиус лимба, чтобы все метки (90, 270) влезли в границы SVG.
- */
-export function ToricSchematic({ eye, incisionAx, toricAx, size = 200 }: Props) {
-  const cx = size / 2;
-  const cy = size / 2;
-  const r = size * 0.35; // Уменьшено до 0.35, чтобы влезли внешние лейблы
-  const iolR = size * 0.19;
+export function ToricSchematic({ eye, incisionAx, toricAx, steepAx, size = 240 }: Props) {
+  const cx   = size / 2;
+  const cy   = size / 2;
+  const limR = size * 0.36;
+  const oR   = size * 0.195;
 
   const toRad = (deg: number) => (deg * Math.PI) / 180;
-  const polarX = (deg: number, radius: number) => cx + radius * Math.cos(toRad(deg));
-  const polarY = (deg: number, radius: number) => cy - radius * Math.sin(toRad(deg));
+  const px = (deg: number, r: number) => cx + r * Math.cos(toRad(deg));
+  const py = (deg: number, r: number) => cy - r * Math.sin(toRad(deg));
 
-  // Шкала по образцу 45-градусная
-  const ticks = [0, 45, 90, 135, 180, 225, 270, 315];
-  
-  const leftLabel = eye === 'od' ? 'N' : 'T';
-  const rightLabel = eye === 'od' ? 'T' : 'N';
+  const temporal = eye === 'od' ? 'Temporal' : 'Nasal';
+  const nasal    = eye === 'od' ? 'Nasal'    : 'Temporal';
+  const uid = eye;
+
+  // ── Гаптика Alcon-style: одна кривая Безье из двух сегментов ──
+  // Выходит из оптики на 135°/225° (лево) или 45°/315° (право),
+  // широко огибает с двумя контрольными точками, возвращается обратно.
+  const hapticPath = (side: 1 | -1): string => {
+    // Точки выхода из оптики (симметрично вокруг 180° для лево, вокруг 0° для право)
+    const exitAng  = side === -1 ? 135 : 45;
+    const entryAng = side === -1 ? 225 : 315;
+
+    const ex = cx + oR * Math.cos(toRad(exitAng));
+    const ey = cy - oR * Math.sin(toRad(exitAng));
+    const nx = cx + oR * Math.cos(toRad(entryAng));
+    const ny = cy - oR * Math.sin(toRad(entryAng));
+
+    // Контрольные точки — тянут кривую широко в сторону
+    const pull = side * oR * 1.72;   // насколько далеко уходит гаптика
+    const vert = oR * 1.02;          // вертикальный разброс контрольных точек
+
+    const c1x = cx + pull;  const c1y = cy - vert;   // верхний контроль
+    const c2x = cx + pull;  const c2y = cy + vert;   // нижний контроль
+
+    // Один кубический безье — чистый C-loop
+    return `M ${ex} ${ey} C ${c1x} ${c1y}, ${c2x} ${c2y}, ${nx} ${ny}`;
+  };
+
+  const iolRot = toricAx != null ? -toricAx : 0;
+
+  // ── Наконечник стрелки ──
+  const arrowLen = limR * 0.80;
+  const arrowTip = (deg: number, s: number) => {
+    const tip = { x: px(deg, arrowLen), y: py(deg, arrowLen) };
+    const rad  = toRad(deg);
+    const w    = s * 0.036;
+    const l    = s * 0.062;
+    const bx   = tip.x - l * Math.cos(rad);
+    const by   = tip.y + l * Math.sin(rad);
+    const wx   = w * Math.sin(rad);
+    const wy   = w * Math.cos(rad);
+    return `${tip.x},${tip.y} ${bx + wx},${by + wy} ${bx - wx},${by - wy}`;
+  };
 
   return (
-    <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`} style={{ display: 'block', overflow: 'visible' }}>
+    <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`}
+      style={{ display: 'block', overflow: 'visible' }}>
       <defs>
-        <radialGradient id="eyeBg" cx="50%" cy="50%" r="50%">
-          <stop offset="0%" stopColor="#2a3f3f" />
-          <stop offset="85%" stopColor="#1a2525" />
-          <stop offset="100%" stopColor="#0a0a14" />
+        <radialGradient id={`bg_${uid}`} cx="50%" cy="50%" r="50%">
+          <stop offset="0%"   stopColor="#1a2535" />
+          <stop offset="100%" stopColor="#0a1018" />
         </radialGradient>
-        <filter id="glow">
-          <feGaussianBlur stdDeviation="2" result="blur"/>
-          <feMerge>
-            <feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/>
-          </feMerge>
+        <radialGradient id={`op_${uid}`} cx="38%" cy="32%" r="65%">
+          <stop offset="0%"   stopColor="#f0f6ff" stopOpacity="0.96" />
+          <stop offset="100%" stopColor="#c7dcf8" stopOpacity="0.86" />
+        </radialGradient>
+        <filter id={`gl_${uid}`}>
+          <feGaussianBlur stdDeviation="2" result="b"/>
+          <feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge>
         </filter>
       </defs>
 
-      {/* Фон и Лимб */}
-      <circle cx={cx} cy={cy} r={r + 10} fill="url(#eyeBg)" />
-      <circle cx={cx} cy={cy} r={r} fill="none" stroke="rgba(255,255,255,0.15)" strokeWidth={2} />
+      {/* ── ФОН ── */}
+      <circle cx={cx} cy={cy} r={limR + 6} fill={`url(#bg_${uid})`} />
 
-      {/* Градусная шкала (сдвинута ближе к центру) */}
-      {ticks.map(d => (
-        <g key={d}>
+      {/* Концентрические кольца радужки */}
+      {[0.92, 0.76].map((f, i) => (
+        <circle key={i} cx={cx} cy={cy} r={limR * f}
+          fill="none" stroke="rgba(255,255,255,0.04)" strokeWidth={1} />
+      ))}
+
+      {/* ── ШКАЛА 8 меток ── */}
+      {[0, 45, 90, 135, 180, 225, 270, 315].map(deg => (
+        <g key={deg}>
           <line
-            x1={polarX(d, r)} y1={polarY(d, r)}
-            x2={polarX(d, r - 6)} y2={polarY(d, r - 6)}
-            stroke="#fff" strokeWidth={1.5} opacity={0.6}
+            x1={px(deg, limR - size * 0.052)} y1={py(deg, limR - size * 0.052)}
+            x2={px(deg, limR)}                 y2={py(deg, limR)}
+            stroke="rgba(255,255,255,0.55)" strokeWidth={1.8}
           />
           <text
-            x={polarX(d, r + 15)} y={polarY(d, r + 15)}
+            x={px(deg, limR + size * 0.072)} y={py(deg, limR + size * 0.072)}
             textAnchor="middle" dominantBaseline="central"
-            fill="rgba(255,255,255,0.7)" fontSize={11} fontFamily={F.mono} fontWeight={700}
-          >
-            {d}
-          </text>
+            fill="rgba(255,255,255,0.6)" fontSize={size * 0.046}
+            fontFamily={F.mono} fontWeight={700}
+          >{deg}°</text>
         </g>
       ))}
 
-      {/* Навигация ОМ/ОН (сдвинута к краям) */}
-      <text x={8} y={cy} textAnchor="start" dominantBaseline="central" fill="#fff" fontSize={16} fontWeight={900} fontFamily={F.sans} opacity={0.6}>{leftLabel}</text>
-      <text x={size - 8} y={cy} textAnchor="end" dominantBaseline="central" fill="#fff" fontSize={16} fontWeight={900} fontFamily={F.sans} opacity={0.6}>{rightLabel}</text>
+      {/* Temporal / Nasal */}
+      <text x={px(180, limR + size * 0.155)} y={py(180, limR + size * 0.155)}
+        textAnchor="middle" dominantBaseline="central"
+        fill="rgba(255,255,255,0.5)" fontSize={size * 0.043}
+        fontFamily={F.sans} fontWeight={700}>{temporal}</text>
+      <text x={px(0, limR + size * 0.155)} y={py(0, limR + size * 0.155)}
+        textAnchor="middle" dominantBaseline="central"
+        fill="rgba(255,255,255,0.5)" fontSize={size * 0.043}
+        fontFamily={F.sans} fontWeight={700}>{nasal}</text>
 
-      {/* Торическая ИОЛ */}
+      {/* ── ЛИМБ ── */}
+      <circle cx={cx} cy={cy} r={limR}
+        fill="none" stroke="rgba(255,255,255,0.32)" strokeWidth={2} />
+
+      {/* ── КРУТОЙ МЕРИДИАН (синяя линия) ── */}
+      {steepAx != null && [steepAx, steepAx + 180].map(d => (
+        <line key={d}
+          x1={px(d, limR * 0.70)} y1={py(d, limR * 0.70)}
+          x2={px(d, limR * 0.92)} y2={py(d, limR * 0.92)}
+          stroke="#60a5fa" strokeWidth={2.5} strokeLinecap="round"
+        />
+      ))}
+
+      {/* ── РАЗРЕЗ ХИРУРГА ── */}
+      {incisionAx != null && (() => {
+        const s = 12;
+        const ro = limR + 2, ri = limR - size * 0.06;
+        return (
+          <path
+            d={`M ${px(incisionAx-s,ro)} ${py(incisionAx-s,ro)}
+                A ${ro} ${ro} 0 0 0 ${px(incisionAx+s,ro)} ${py(incisionAx+s,ro)}
+                L ${px(incisionAx+s,ri)} ${py(incisionAx+s,ri)}
+                A ${ri} ${ri} 0 0 1 ${px(incisionAx-s,ri)} ${py(incisionAx-s,ri)} Z`}
+            fill="rgba(245,158,11,0.22)" stroke="#f59e0b" strokeWidth={1.5}
+          />
+        );
+      })()}
+
+      {/* ── ТОРИЧЕСКАЯ ИОЛ ── */}
       {toricAx != null && (
-        <g transform={`rotate(${-toricAx}, ${cx}, ${cy})`}>
-          {/* Массивная гаптика */}
-          <path
-            d={`M ${cx - iolR + 1} ${cy - 8} Q ${cx - iolR - 18} ${cy - 22}, ${cx - iolR - 25} ${cy + 15}`}
-            fill="none" stroke="rgba(255,255,255,0.8)" strokeWidth={5} strokeLinecap="round"
+        <g transform={`rotate(${iolRot}, ${cx}, ${cy})`}>
+
+          {/* Гаптики — Alcon C-loop (кубический безье) */}
+          <path d={hapticPath(-1)}
+            fill="none"
+            stroke="rgba(180,210,255,0.75)"
+            strokeWidth={size * 0.048}
+            strokeLinecap="round"
           />
-          <path
-            d={`M ${cx + iolR - 1} ${cy + 8} Q ${cx + iolR + 18} ${cy + 22}, ${cx + iolR + 25} ${cy - 15}`}
-            fill="none" stroke="rgba(255,255,255,0.8)" strokeWidth={5} strokeLinecap="round"
+          <path d={hapticPath(1)}
+            fill="none"
+            stroke="rgba(180,210,255,0.75)"
+            strokeWidth={size * 0.048}
+            strokeLinecap="round"
           />
-          
-          {/* Тело линзы */}
-          <circle cx={cx} cy={cy} r={iolR} fill="#fff" stroke="rgba(0,0,0,0.1)" strokeWidth={1} />
-          
-          {/* Координатные точки вдоль оси */}
-          {[6, 13, 20].map(offset => (
-            <React.Fragment key={offset}>
-              <circle cx={cx - iolR + offset} cy={cy} r={2.5} fill="#fbbf24" stroke="rgba(0,0,0,0.3)" strokeWidth={0.5} />
-              <circle cx={cx + iolR - offset} cy={cy} r={2.5} fill="#fbbf24" stroke="rgba(0,0,0,0.3)" strokeWidth={0.5} />
-            </React.Fragment>
+
+          {/* Оптика поверх гаптик */}
+          <circle cx={cx} cy={cy} r={oR}
+            fill={`url(#op_${uid})`}
+            stroke="rgba(100,160,255,0.55)" strokeWidth={size * 0.012} />
+
+          {/* Зональное кольцо */}
+          <circle cx={cx} cy={cy} r={oR * 0.68}
+            fill="none" stroke="rgba(100,160,255,0.14)" strokeWidth={0.8} />
+
+          {/* 3 метки на правом полюсе — вдоль оси (горизонтально в локальном пространстве) */}
+          {[-1, 0, 1].map(i => (
+            <circle key={`R${i}`}
+              cx={cx + oR - size * 0.01 + i * size * 0.027}
+              cy={cy}
+              r={size * 0.015}
+              fill="#1a1a2e"
+              stroke="rgba(255,255,255,0.5)" strokeWidth={0.8}
+            />
           ))}
-        </g>
-      )}
+          {/* 3 метки на левом полюсе */}
+          {[-1, 0, 1].map(i => (
+            <circle key={`L${i}`}
+              cx={cx - oR + size * 0.01 - i * size * 0.027}
+              cy={cy}
+              r={size * 0.015}
+              fill="#1a1a2e"
+              stroke="rgba(255,255,255,0.5)" strokeWidth={0.8}
+            />
+          ))}
 
-      {/* Разрез */}
-      {incisionAx != null && (
-        <g>
-          <path
-            d={`M ${polarX(incisionAx-12, r)} ${polarY(incisionAx-12, r)} A ${r} ${r} 0 0 ${incisionAx < 180 ? 0 : 1} ${polarX(incisionAx+12, r)} ${polarY(incisionAx+12, r)} L ${polarX(incisionAx+9, r-16)} ${polarY(incisionAx+9, r-16)} A ${r-16} ${r-16} 0 0 ${incisionAx < 180 ? 1 : 0} ${polarX(incisionAx-9, r-16)} Z`}
-            fill="rgba(245,158,11,0.25)" stroke="#f59e0b" strokeWidth={2.5}
+          {/* Блик */}
+          <ellipse cx={cx - oR * 0.26} cy={cy - oR * 0.28}
+            rx={oR * 0.2} ry={oR * 0.09}
+            fill="rgba(255,255,255,0.28)"
+            transform={`rotate(-30, ${cx - oR * 0.26}, ${cy - oR * 0.28})`}
           />
         </g>
       )}
 
-      {/* Красная ось (максимальный контраст) */}
+      {/* ── СТРЕЛКА ОСИ ИМПЛАНТАЦИИ ── */}
       {toricAx != null && (
-        <g filter="url(#glow)">
+        <g filter={`url(#gl_${uid})`}>
           <line
-            x1={polarX(toricAx, r)} y1={polarY(toricAx, r)}
-            x2={polarX(toricAx + 180, r)} y2={polarY(toricAx + 180, r)}
-            stroke="#fff" strokeWidth={5} strokeLinecap="round"
+            x1={px(toricAx, arrowLen)}       y1={py(toricAx, arrowLen)}
+            x2={px(toricAx + 180, arrowLen)} y2={py(toricAx + 180, arrowLen)}
+            stroke="#f59e0b" strokeWidth={2}
           />
-          <line
-            x1={polarX(toricAx, r)} y1={polarY(toricAx, r)}
-            x2={polarX(toricAx + 180, r)} y2={polarY(toricAx + 180, r)}
-            stroke="#ef4444" strokeWidth={3} strokeLinecap="round"
-          />
-          {/* Шильдик с углом */}
-          <rect x={cx - 24} y={cy - 12} width={48} height={24} rx={12} fill="#ef4444" stroke="#fff" strokeWidth={1.5} />
-          <text
-            x={cx} y={cy}
+          <polygon points={arrowTip(toricAx,       size)} fill="#f59e0b" />
+          <polygon points={arrowTip(toricAx + 180, size)} fill="#f59e0b" />
+
+          {/* Угол в центре оптики */}
+          <text x={cx} y={cy}
             textAnchor="middle" dominantBaseline="central"
-            fill="#fff" fontSize={14} fontFamily={F.mono} fontWeight={900}
-          >
-            {toricAx}°
-          </text>
+            fill="#0f1824" fontSize={size * 0.088}
+            fontFamily={F.sans} fontWeight={900}
+          >{Math.round(toricAx)}°</text>
         </g>
+      )}
+
+      {/* Placeholder */}
+      {toricAx == null && (
+        <>
+          <circle cx={cx} cy={cy} r={oR}
+            fill="rgba(255,255,255,0.03)"
+            stroke="rgba(255,255,255,0.08)" strokeWidth={1.5} strokeDasharray="5 4" />
+          <text x={cx} y={cy} textAnchor="middle" dominantBaseline="central"
+            fill="rgba(255,255,255,0.18)" fontSize={size * 0.05} fontFamily={F.sans}>CALC</text>
+        </>
       )}
     </svg>
   );

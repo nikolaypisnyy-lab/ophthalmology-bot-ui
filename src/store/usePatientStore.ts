@@ -14,6 +14,7 @@ import {
   saveMeasurements,
   mapEyeData,
   mapBiometryData,
+  mapFormulaResults,
 } from '../api/measurements';
 import { newEyeData } from '../types/refraction';
 import { newBiometryData } from '../types/iol';
@@ -159,6 +160,12 @@ export const usePatientStore = create<PatientStore>((set, get) => ({
           surgicalOrder: ex?.surgicalOrder ?? p.surgicalOrder,
           flapDiam:  ex?.flapDiam  ?? p.flapDiam,
           capOrFlap: ex?.capOrFlap ?? p.capOrFlap,
+          isCustomViewOD: ex?.isCustomViewOD ?? p.isCustomViewOD,
+          isCustomViewOS: ex?.isCustomViewOS ?? p.isCustomViewOS,
+          astigStrategyOD: ex?.astigStrategyOD ?? fd?.od?.astigStrategy ?? p.astigStrategyOD,
+          astigStrategyOS: ex?.astigStrategyOS ?? fd?.os?.astigStrategy ?? p.astigStrategyOS,
+          iolResult: ex?.iolResult ?? fd?.iolResult ?? p.iolResult,
+          toricResults: (ex as any)?.toricResults ?? (fd as any)?.toricResults ?? (p as any)?.toricResults,
         };
       });
 
@@ -200,6 +207,8 @@ export const usePatientStore = create<PatientStore>((set, get) => ({
         _visitId: visitId,
         od: p.od ?? cached?.od,
         os: p.os ?? cached?.os,
+        isCustomViewOD: p.isCustomViewOD ?? cached?.isCustomViewOD,
+        isCustomViewOS: p.isCustomViewOS ?? cached?.isCustomViewOS,
       } as Patient & { _visitId?: string };
 
       // Загружаем измерения если есть visitId
@@ -208,9 +217,24 @@ export const usePatientStore = create<PatientStore>((set, get) => ({
         const m = mRes.data;
         if (m) {
           if (loaded.type === 'cataract') {
-            // Биометрия
             loaded.bio_od = { ...newBiometryData(), ...mapBiometryData(m, 'od') };
             loaded.bio_os = { ...newBiometryData(), ...mapBiometryData(m, 'os') };
+
+            // Загружаем результаты расчётов
+            const fr = mapFormulaResults(m);
+            (loaded as any).formulaResults = { od: fr.od, os: fr.os };
+            if (fr.active) loaded.activeFormula = fr.active;
+
+            // Загружаем выбранную линзу
+            if (m.iol_calc?.selected_iol) {
+              const si = m.iol_calc.selected_iol.od || m.iol_calc.selected_iol.os;
+              if (si) {
+                loaded.iolResult = {
+                  lens: si.model || '',
+                  power: (si.power > 0 ? '+' : '') + si.power.toFixed(2)
+                };
+              }
+            }
           } else {
             // Рефракция — МЕРДЖИМ данные из анкеты и данные из измерений
             loaded.od = { ...newEyeData(), ...loaded.od, ...mapEyeData(m, 'od') };
@@ -304,6 +328,10 @@ export const usePatientStore = create<PatientStore>((set, get) => ({
           postCylOS: (loaded as any).postCylOS ?? p.postCylOS,
           postAxOS:  (loaded as any).postAxOS  ?? p.postAxOS,
           postVaOS:  (loaded as any).postVaOS  ?? p.postVaOS,
+          flapDiam:  (loaded as any).flapDiam  ?? p.flapDiam,
+          capOrFlap: (loaded as any).capOrFlap ?? p.capOrFlap,
+          isCustomViewOD: (loaded as any).isCustomViewOD ?? p.isCustomViewOD,
+          isCustomViewOS: (loaded as any).isCustomViewOS ?? p.isCustomViewOS,
         } : p);
         lsSavePatients(plist);
         return { fullData: fd, patients: plist };
@@ -349,6 +377,10 @@ export const usePatientStore = create<PatientStore>((set, get) => ({
       isEnhancement: patient.isEnhancement,
       flapDiam: (patient as any).flapDiam,
       capOrFlap: (patient as any).capOrFlap,
+      isCustomViewOD: patient.isCustomViewOD,
+      isCustomViewOS: patient.isCustomViewOS,
+      astigStrategyOD: patient.od?.astigStrategy,
+      astigStrategyOS: patient.os?.astigStrategy,
     };
 
     const plist = lsGetPatients();

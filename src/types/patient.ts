@@ -32,6 +32,11 @@ export interface PatientSummary {
   flapDiam?: string;       // диаметр флэпа
   capOrFlap?: string;      // толщина флэпа
   isPRK?: boolean;
+  isCustomView?: boolean;
+  isCustomViewOD?: boolean;
+  isCustomViewOS?: boolean;
+  iolResult?: import('./iol').IOLResult;
+  toricResults?: Record<'od' | 'os', any>;
 }
 
 export interface Patient extends PatientSummary {
@@ -75,6 +80,14 @@ export interface Patient extends PatientSummary {
   noNomogram?: boolean;    // не применять номограммы (только манифест)
   doRound?: boolean;       // округлять до 0.25
   isPRK?: boolean;
+  isCustomView?: boolean;
+  isCustomViewOD?: boolean;
+  isCustomViewOS?: boolean;
+
+  // Калькулятор ИОЛ
+  activeFormula?: 'Haigis' | 'Barrett' | 'Kane';
+  formulaResults?: { od: Record<string, any>; os: Record<string, any> };
+  incAx?: string;          // ось разреза (для торика)
 
   // Торик
   toricMode?: boolean;  // включён торический расчёт ИОЛ

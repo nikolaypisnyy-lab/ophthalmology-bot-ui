@@ -40,11 +40,17 @@ export interface EyeData {
   c_sph: string;
   c_cyl: string;
   c_ax: string;
+  
+  // Wide pupil (extra fields for some machines)
+  w_sph?: string;
+  w_cyl?: string;
+  w_ax?: string;
 
   // Кератометрия
   k1: string;
   k2: string;
   k_ax: string;
+  k1_cyl?: string;
 
   // Pentacam
   p_ant_c: string;  // передняя поверхность — цилиндр

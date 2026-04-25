@@ -16,17 +16,27 @@ export interface BiometryData {
   lt: string;    // Lens Thickness, мм
   wtw: string;   // White-to-White, мм
   cct: string;   // CCT, мкм (опц.)
+  
+  // Premium IOL / Pentacam
+  kappa?: string; // Angle Kappa, °
+  alpha?: string; // Angle Alpha, °
+  tk1?: string;   // Total Keratometry K1
+  tk2?: string;   // Total Keratometry K2
+  tk_ax?: string; // Total Keratometry Axis
 }
 
 /** Дефолтная биометрия */
 export function newBiometryData(): BiometryData {
-  return { al: '', k1: '', k2: '', k1_ax: '', acd: '', lt: '', wtw: '', cct: '' };
+  return { 
+    al: '', k1: '', k2: '', k1_ax: '', acd: '', lt: '', wtw: '', cct: '',
+    kappa: '', alpha: '', tk1: '', tk2: '', tk_ax: ''
+  };
 }
 
 /** Одна строка таблицы сферических результатов */
 export interface IOLTableRow {
   power: number;
-  ref: number;
+  refraction: number;
 }
 
 /** Одна строка торической таблицы */

@@ -65,6 +65,12 @@ interface UIStore {
   settingsOpen: boolean;
   openSettings: () => void;
   closeSettings: () => void;
+
+  // ── Инлайн редактирование полей ──────────────────────────────────────────────
+  editingField: string | null;
+  setEditingField: (f: string | null) => void;
+  tempValue: string;
+  setTempValue: (v: string) => void;
 }
 
 export const useUIStore = create<UIStore>((set) => ({
@@ -130,4 +136,10 @@ export const useUIStore = create<UIStore>((set) => ({
   settingsOpen: false,
   openSettings: () => set({ settingsOpen: true }),
   closeSettings: () => set({ settingsOpen: false }),
+
+  // Инлайн редактирование
+  editingField: null,
+  setEditingField: (f) => set({ editingField: f }),
+  tempValue: '',
+  setTempValue: (v) => set({ tempValue: v }),
 }));

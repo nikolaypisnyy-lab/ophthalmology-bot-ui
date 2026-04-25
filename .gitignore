@@ -31,3 +31,16 @@ master.db
 medeye.service
 medeye-bot.service
 deploy_medeye.sh
+
+# Python Virtual Environments
+venv/
+.venv/
+venv_bot/
+
+# Large artifacts
+*.tar.gz
+.gemini/
+Backups/
+root/
+root 2/
+refmaster_current/

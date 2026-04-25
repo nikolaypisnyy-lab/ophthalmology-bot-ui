@@ -2,7 +2,7 @@ import sqlite3
 
 def run_fix():
     try:
-        conn = sqlite3.connect('/root/medeye_bot/master.db')
+        conn = sqlite3.connect('/root/medeye/api/master.db')
         cur = conn.cursor()
         
         # 1. Прописываем клинику Оборудования (если ее там нет)

@@ -32,8 +32,7 @@ export function Calendar({ selectedDate, onSelect }: CalendarProps) {
     setCurrentMonth(new Date(year, month + 1, 1));
   };
 
-  const handleDayClick = (day: number, e: React.MouseEvent) => {
-    e.stopPropagation();
+  const handleDayClick = (day: number) => {
     // YYYY-MM-DD local format without UTC shift issues
     const m = String(month + 1).padStart(2, '0');
     const d = String(day).padStart(2, '0');
@@ -57,7 +56,8 @@ export function Calendar({ selectedDate, onSelect }: CalendarProps) {
     days.push(
       <button
         key={day}
-        onClick={(e) => handleDayClick(day, e)}
+        onClick={(e) => { e.stopPropagation(); handleDayClick(day); }}
+        onTouchEnd={(e) => { e.stopPropagation(); handleDayClick(day); }}
         style={{
           height: 36,
           borderRadius: 18,
@@ -65,10 +65,12 @@ export function Calendar({ selectedDate, onSelect }: CalendarProps) {
           fontFamily: F.mono, fontSize: 13, fontWeight: isSelected ? 800 : 500,
           background: isSelected ? C.accent : 'transparent',
           border: isToday && !isSelected ? `1px solid ${C.accent}40` : 'none',
-          color: isSelected ? C.bg : (isToday ? C.accent : C.text),
+          color: isSelected ? C.bg : (isToday ? C.accent : (new Date(year, month, day).getDay() === 0 ? '#ff4d4d' : C.text)),
           cursor: 'pointer',
           transition: 'all 0.2s',
-          padding: 0
+          padding: 0,
+          position: 'relative',
+          zIndex: 1001
         }}
       >
         {day}
@@ -107,8 +109,8 @@ export function Calendar({ selectedDate, onSelect }: CalendarProps) {
 
       {/* Дни недели */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: 4, marginBottom: -8 }}>
-        {dayNames.map(day => (
-          <div key={day} style={{ textAlign: 'center', fontFamily: F.sans, fontSize: 10, fontWeight: 700, color: C.muted }}>
+        {dayNames.map((day, di) => (
+          <div key={day} style={{ textAlign: 'center', fontFamily: F.sans, fontSize: 10, fontWeight: 700, color: di === 6 ? '#ff4d4d' : C.muted }}>
             {day}
           </div>
         ))}

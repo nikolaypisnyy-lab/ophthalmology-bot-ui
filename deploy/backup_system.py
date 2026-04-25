@@ -5,8 +5,8 @@ import sqlite3
 from pathlib import Path
 
 # Конфигурация
-DATA_DIR = Path("/root/app/data")
-BACKUP_DIR = Path("/root/app/backups")
+DATA_DIR = Path("/root/medeye/data")
+BACKUP_DIR = Path("/root/medeye/backups")
 KEEP_COUNT = 2
 
 def create_backup():
@@ -42,12 +42,12 @@ def create_backup():
     cleanup_old_backups(backup_path)
 
 def create_code_snapshot():
-    # На сервере код лежит в /root/medeye_bot
-    if not Path("/root/medeye_bot").exists():
+    # На сервере код лежит в /root/medeye/api
+    if not Path("/root/medeye/api").exists():
         print("Not on server, skipping code snapshot.")
         return
         
-    SNAPSHOT_DIR = Path("/root/app/backups/manual_code_snapshots")
+    SNAPSHOT_DIR = Path("/root/medeye/backups/manual_code_snapshots")
     SNAPSHOT_DIR.mkdir(parents=True, exist_ok=True)
     
     timestamp = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
@@ -56,7 +56,7 @@ def create_code_snapshot():
     import subprocess
     cmd = [
         "tar", "-czf", str(archive_name),
-        "-C", "/root", "medeye_bot",
+        "-C", "/root", "medeye/api",
         "--exclude=__pycache__", "--exclude=venv", "--exclude=*.db", "--exclude=*.log"
     ]
     res = subprocess.run(cmd, capture_output=True, text=True)

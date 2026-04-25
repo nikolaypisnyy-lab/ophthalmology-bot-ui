@@ -185,7 +185,7 @@ export function OCRModal() {
     if (activeTab === 'result') {
       // Постоп (всегда автореф)
       for (const eye of ['od', 'os'] as const) {
-        const s = fields[eye] ?? fields;
+        const s = (fields as any)[eye] ?? fields;
         if (!s || Object.keys(s).length === 0) continue;
         const sph = s.sph ?? s.n_sph ?? s.man_sph;
         const cyl = s.cyl ?? s.n_cyl ?? s.man_cyl;
@@ -204,7 +204,7 @@ export function OCRModal() {
     } else {
       // Применяем данные по глазам
       for (const eye of ['od', 'os'] as const) {
-        const raw = fields[eye];
+        const raw = (fields as any)[eye];
         if (!raw || typeof raw !== 'object' || Object.keys(raw).length === 0) continue;
 
         if (draft.type === 'cataract') {
@@ -251,8 +251,8 @@ export function OCRModal() {
   return (
     <div
       style={{
-        position: 'fixed', inset: 0, zIndex: 300,
-        background: 'rgba(0,0,0,.8)',
+        position: 'fixed', inset: 0, zIndex: 3000,
+        background: '#000000',
         display: 'flex', flexDirection: 'column', justifyContent: 'flex-end',
       }}
       onClick={handleClose}

@@ -37,6 +37,8 @@ export interface PatientDetailResponse {
     op_eye?: string;
     op_date?: string;
     patient_type?: string;
+    isCustomViewOD?: boolean;
+    isCustomViewOS?: boolean;
     od?: any;
     os?: any;
   };
@@ -62,6 +64,8 @@ export interface CreatePatientRequest {
   isEnhancement?: boolean;
   flapDiam?: string;
   capOrFlap?: string;
+  isCustomViewOD?: boolean;
+  isCustomViewOS?: boolean;
   od?: any;
   os?: any;
 }
@@ -93,6 +97,8 @@ export interface UpdatePatientRequest {
   surgical_order?: number;
   flapDiam?: string;
   capOrFlap?: string;
+  isCustomViewOD?: boolean;
+  isCustomViewOS?: boolean;
   od?: any;
   os?: any;
 }
@@ -135,6 +141,8 @@ export async function savePatientMeta(patient: Partial<Patient>): Promise<SaveRe
       isEnhancement: patient.isEnhancement,
       flapDiam: (patient as any).flapDiam,
       capOrFlap: (patient as any).capOrFlap,
+      isCustomViewOD: patient.isCustomViewOD,
+      isCustomViewOS: patient.isCustomViewOS,
       od: patient.od,
       os: patient.os,
     });
@@ -161,6 +169,8 @@ export async function savePatientMeta(patient: Partial<Patient>): Promise<SaveRe
       isEnhancement: patient.isEnhancement,
       flapDiam: (patient as any).flapDiam,
       capOrFlap: (patient as any).capOrFlap,
+      isCustomViewOD: patient.isCustomViewOD,
+      isCustomViewOS: patient.isCustomViewOS,
       od: patient.od,
       os: patient.os,
     });

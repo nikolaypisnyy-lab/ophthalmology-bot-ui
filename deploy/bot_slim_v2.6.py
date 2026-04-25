@@ -87,11 +87,9 @@ def main_menu_markup(uid: int):
     context = get_ctx(uid)
     cid = context["cid"]
     
-    import time
-    buster = int(time.time())
     url = WEBAPP_URL
     if cid:
-        url = f"{WEBAPP_URL}?clinic={cid}&v={buster}" if "?" not in WEBAPP_URL else f"{WEBAPP_URL}&clinic={cid}&v={buster}"
+        url = f"{WEBAPP_URL}?clinic={cid}" if "?" not in WEBAPP_URL else f"{WEBAPP_URL}&clinic={cid}"
         
     kb.row(types.KeyboardButton("🚀 Открыть RefMaster", web_app=types.WebAppInfo(url)))
     
@@ -104,25 +102,16 @@ def main_menu_markup(uid: int):
         if u and (u["role"] == "admin" or uid in ADMIN_IDS):
             kb.row("👥 Управление доступом")
             kb.row("⚙️ Управление клиниками", "📦 Бэкап базы")
-            kb.row("🚀 Full Backup (Code+DB)")
     
     kb.row("ℹ️ Инфо")
     return kb
-
-def get_menu_text(uid: int):
-    ctx = get_ctx(uid)
-    cname = ctx.get("name") or "Не выбрана"
-    cid = ctx.get("cid") or "---"
-    return f"🏥 Текущая клиника: <b>{cname}</b>\n🆔 ID: <code>{cid}</code>\n\nВыберите действие:"
 
 # ================= HANDLERS =================
 @bot.message_handler(commands=['start'])
 def start_cmd(message):
     uid = message.from_user.id
-    load_clinic(uid)
-    
-    # Пытаемся получить информацию о пользователе
     u = master_db.get_user_clinic(uid)
+    
     if not u:
         text = (
             "👋 Добро пожаловать в <b>RefMaster</b>.\n\n"
@@ -134,7 +123,8 @@ def start_cmd(message):
         bot.send_message(uid, text, reply_markup=kb)
         return
 
-    bot.send_message(uid, get_menu_text(uid), reply_markup=main_menu_markup(uid))
+    bot.send_message(uid, f"👋 Приветствуем, {u['name']}!\nКлиника: <b>{u['clinic_name']}</b>", 
+                     reply_markup=main_menu_markup(uid))
 
 @bot.callback_query_handler(func=lambda c: c.data.startswith("req_access:"))
 def handle_access_request(c):
@@ -183,6 +173,99 @@ def handle_admin_grant(c):
     
     bot.send_message(target_uid, f"🎉 Вам выдан доступ в клинику <b>{cid}</b>!\nРоль: <b>{role}</b>\n\nТеперь вы можете открыть WebApp.", 
                      reply_markup=main_menu_markup(target_uid))
+
+@bot.message_handler(commands=['superadmin'])
+def admin_secret_menu(message):
+    if message.from_user.id not in ADMIN_IDS: return
+    kb = types.InlineKeyboardMarkup()
+    kb.row(
+        types.InlineKeyboardButton("🌋 ЯДЕРНЫЙ БЭКАП", callback_data="admin_nuclear_backup"),
+    )
+    kb.row(
+        types.InlineKeyboardButton("🛡️ Бэкап прав", callback_data="admin_backup_access"),
+        types.InlineKeyboardButton("♻️ Восстановить прав", callback_data="admin_restore_init")
+    )
+    kb.add(types.InlineKeyboardButton("📦 Полный бэкап системный", callback_data="admin_full_backup_run"))
+    bot.send_message(message.chat.id, "🔓 <b>SUPER ADMIN PANEL</b>", reply_markup=kb)
+
+@bot.callback_query_handler(func=lambda call: call.data == 'admin_restore_init')
+def handle_restore_init(call):
+    if call.from_user.id not in ADMIN_IDS: return
+    bot.answer_callback_query(call.id)
+    msg = bot.send_message(call.message.chat.id, "📤 <b>РЕЖИМ ВОССТАНОВЛЕНИЯ ПРАВ</b>\n\nПожалуйста, отправьте файл <code>master.db</code> в этот чат.")
+    bot.register_next_step_handler(msg, handle_restore_final)
+
+def handle_restore_final(message):
+    if message.from_user.id not in ADMIN_IDS: return
+    if not message.document or message.document.file_name != "master.db":
+        bot.send_message(message.chat.id, "❌ Ошибка! Нужно прислать файл с названием <code>master.db</code>")
+        return
+    
+    bot.send_message(message.chat.id, "⏳ Обработка базы... (делаю бэкап текущей)")
+    try:
+        file_info = bot.get_file(message.document.file_id)
+        downloaded_file = bot.download_file(file_info.file_path)
+        
+        # Бэкапим текущую и заменяем
+        target_path = "/root/medeye/data/master.db"
+        if not os.path.exists(target_path):
+             target_path = "master.db" #Fallback
+             
+        if os.path.exists(target_path):
+            os.rename(target_path, target_path + ".pre_restore")
+        
+        with open(target_path, 'wb') as new_file:
+            new_file.write(downloaded_file)
+        
+        bot.send_message(message.chat.id, "✅ <b>БАЗА ПРАВ ВОССТАНОВЛЕНА!</b>\nПользователи и клиники теперь соответствуют вашему файлу.\n\nРекомендую перезапустить бота для очистки кэша.")
+        # Очищаем контекст всех пользователей, чтобы они подтянули новые данные
+        USER_CONTEXT.clear()
+    except Exception as e:
+        bot.send_message(message.chat.id, f"❌ Ошибка восстановления: {str(e)}")
+
+@bot.callback_query_handler(func=lambda call: call.data == 'admin_full_backup_run')
+def handle_full_backup_run(call):
+    if call.from_user.id not in ADMIN_IDS: return
+    bot.answer_callback_query(call.id, "⏳ Запуск системного бэкапа...")
+    full_backup_cmd(call.message)
+
+@bot.callback_query_handler(func=lambda call: call.data == 'admin_nuclear_backup')
+def handle_nuclear_backup(call):
+    if call.from_user.id not in ADMIN_IDS: return
+    bot.answer_callback_query(call.id, "🌋 Готовлю ядерный бэкап...")
+    # Здесь логика формирования секретной ссылки на скачивание всех баз
+    import uuid
+    import subprocess
+    now = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
+    secret_id = str(uuid.uuid4())[:8]
+    public_filename = f'medeye_nuclear_{now}_{secret_id}.tar.gz'
+    
+    bot.edit_message_text(f"🚀 <b>Ядерный процесс запущен...</b>\nФайл: <code>{public_filename}</code>", call.message.chat.id, call.message.message_id)
+    
+    try:
+        # Создаем архив всех .db файлов
+        subprocess.run(f"tar -czf /root/medeye/api/static/{public_filename} /root/medeye/data/*.db", shell=True)
+        url = f"{WEBAPP_URL}static/{public_filename}"
+        bot.send_message(call.message.chat.id, f"🌋 <b>ЯДЕРНЫЙ БЭКАП ГОТОВ!</b>\n\nСрок жизни ссылки: 15 минут.\n\n🔗 <a href='{url}'>СКАЧАТЬ ВСЕ БАЗЫ</a>")
+    except Exception as e:
+        bot.send_message(call.message.chat.id, f"❌ Ошибка взрыва: {str(e)}")
+
+@bot.callback_query_handler(func=lambda call: call.data == 'admin_backup_access')
+def handle_backup_access(call):
+    if call.from_user.id not in ADMIN_IDS: return
+    bot.answer_callback_query(call.id, "🔐 Формирую бэкап прав доступа...")
+    
+    # Пути к основной базе пользователей
+    paths = ["master.db", "/root/medeye/data/master.db", "/root/medeye/api/master.db"]
+    found = False
+    for p in paths:
+        if os.path.exists(p):
+            with open(p, "rb") as f:
+                bot.send_document(call.message.chat.id, f, caption="🛡️ Бэкап прав доступа (master.db)")
+                found = True
+                break
+    if not found:
+        bot.send_message(call.message.chat.id, "❌ Файл master.db не найден на сервере.")
 
 @bot.message_handler(func=lambda m: m.text == "⚙️ Управление клиниками")
 def admin_clinics(message):
@@ -370,7 +453,7 @@ def handle_set_active_clinic(c):
     
     bot.answer_callback_query(c.id, f"Выбрана клиника: {name}")
     bot.edit_message_text(f"✅ Теперь вы работаете в клинике: <b>{name}</b>", c.message.chat.id, c.message.message_id)
-    bot.send_message(uid, get_menu_text(uid), reply_markup=main_menu_markup(uid))
+    bot.send_message(uid, f"Меню обновлено для <b>{name}</b>", reply_markup=main_menu_markup(uid))
 
 @bot.message_handler(func=lambda m: m.text == "📦 Бэкап базы")
 def admin_backup(message):
@@ -386,8 +469,8 @@ def admin_backup(message):
 
     # Ищем файл базы
     db_file = cl["db_file"]
-    # На сервере базы лежат в /root/app/data/
-    paths = [db_file, f"/root/app/data/{db_file}", f"./{db_file}"]
+    # На сервере базы лежат в /root/medeye/data/
+    paths = [db_file, f"/root/medeye/data/{db_file}", f"./{db_file}"]
     
     found = False
     for p in paths:
@@ -441,7 +524,6 @@ def move_patient_cmd(message):
     except Exception as e:
         bot.send_message(uid, f"❌ <b>Системная ошибка:</b>\n{str(e)}")
 
-@bot.message_handler(func=lambda m: m.text == "🚀 Full Backup (Code+DB)")
 @bot.message_handler(commands=['full_backup'])
 def full_backup_cmd(message):
     uid = message.from_user.id
@@ -451,9 +533,9 @@ def full_backup_cmd(message):
     try:
         import subprocess
         # Запускаем скрипт бэкапа
-        res = subprocess.run(["python3", "/root/medeye_bot/backup_system.py", "create"], capture_output=True, text=True)
+        res = subprocess.run(["python3", "/root/medeye/api/backup_system.py", "create"], capture_output=True, text=True)
         if res.returncode == 0:
-            bot.send_message(uid, "✅ Полный бэкап успешно создан на сервере в папке /root/app/backups/")
+            bot.send_message(uid, "✅ Полный бэкап успешно создан на сервере в папке /root/medeye/backups/")
         else:
             bot.send_message(uid, f"❌ Ошибка бэкапа:\n{res.stderr}")
     except Exception as e:

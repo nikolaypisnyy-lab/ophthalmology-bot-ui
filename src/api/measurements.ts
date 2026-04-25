@@ -120,7 +120,7 @@ export function mapEyeData(m: RawMeasurements, side: 'od' | 'os'): Partial<EyeDa
     eye.n_ax   = sf(nar.axis);
     eye.kavg   = sf(nar.kavg);
     eye.kercyl = sf(nar.kercyl);
-    eye.kerax  = sf(nar.kerax);
+    eye.kerax  = sf(nar.kerax ?? nar.axis);
   }
 
   // Циклоплегия
@@ -137,8 +137,8 @@ export function mapEyeData(m: RawMeasurements, side: 'od' | 'os'): Partial<EyeDa
     eye.k1     = sf(ker.k1);
     eye.k2     = sf(ker.k2);
     eye.kavg   = sf(ker.kavg ?? ((parseFloat(String(ker.k1)) + parseFloat(String(ker.k2))) / 2).toFixed(2));
-    eye.kercyl = sf(ker.kercyl);
-    eye.kerax  = sf(ker.axis);
+    eye.kercyl = sf(ker.kercyl ?? (eye.kercyl || ''));
+    eye.kerax  = sf((ker as any).axis ?? (ker as any).kerax ?? eye.kerax);
   }
 
   // Pentacam
@@ -173,6 +173,19 @@ export function mapBiometryData(m: RawMeasurements, side: 'od' | 'os'): Partial<
   return bio;
 }
 
+/** Извлечь результаты формул ИОЛ */
+export function mapFormulaResults(m: RawMeasurements): { od: Record<string, any>, os: Record<string, any>, active?: string } {
+  const res = { od: {} as any, os: {} as any, active: m.iol_calc as any ? (m.iol_calc as any).active_formula : undefined };
+  const c = m.iol_calc;
+  if (!c) return res;
+
+  if (c.barrett) { res.od.Barrett = (c.barrett as any).od; res.os.Barrett = (c.barrett as any).os; }
+  if (c.kane) { res.od.Kane = (c.kane as any).od; res.os.Kane = (c.kane as any).os; }
+  if ((c as any).haigis) { res.od.Haigis = (c as any).haigis.od; res.os.Haigis = (c as any).haigis.os; }
+  
+  return res;
+}
+
 // ── Сохранение измерений ──────────────────────────────────────────────────────
 
 export async function saveMeasurements(
@@ -196,6 +209,7 @@ export async function saveMeasurements(
     d.axial_length = {} as any;
     d.keratometry  = {} as any;
     d.acd          = {} as any;
+    d.lt           = {} as any;
     d.wtw          = {} as any;
 
     (['od', 'os'] as const).forEach(side => {
@@ -211,6 +225,7 @@ export async function saveMeasurements(
         };
       }
       if (bio.acd) d.acd![side] = { value: pF(bio.acd) ?? undefined };
+      if (bio.lt)  d.lt![side]  = { value: pF(bio.lt) ?? undefined };
       if (bio.wtw) d.wtw![side] = { value: pF(bio.wtw) ?? undefined };
     });
 
@@ -219,8 +234,17 @@ export async function saveMeasurements(
       d.periods = patient.periods as any;
 
     // ── Результат ИОЛ расчёта ──────────────────────────────────────────────────
-    if (patient.iolResult) {
-      d.iol_calc = {};
+    if (patient.formulaResults || patient.iolResult) {
+      d.iol_calc = {
+        barrett: patient.formulaResults?.od?.Barrett ? { od: patient.formulaResults.od.Barrett, os: patient.formulaResults.os.Barrett } : undefined,
+        kane: patient.formulaResults?.od?.Kane ? { od: patient.formulaResults.od.Kane, os: patient.formulaResults.os.Kane } : undefined,
+        haigis: patient.formulaResults?.od?.Haigis ? { od: patient.formulaResults.od.Haigis, os: patient.formulaResults.os.Haigis } : undefined,
+        active_formula: patient.activeFormula,
+        selected_iol: patient.iolResult ? {
+          od: { model: patient.iolResult.lens, power: pF(patient.iolResult.power) ?? 0, target: patient.targetRefr || '0.00' },
+          os: { model: patient.iolResult.lens, power: pF(patient.iolResult.power) ?? 0, target: patient.targetRefr || '0.00' },
+        } : undefined
+      } as any;
     }
 
   } else {
@@ -279,9 +303,9 @@ export async function saveMeasurements(
         };
 
         d.keratometry![side] = {
-          k1:   pF(eye.k1)   ?? undefined,
-          k2:   pF(eye.k2)   ?? undefined,
-          axis: pI(eye.k_ax) ?? undefined,
+          k1:   pF(eye.k1)     ?? undefined,
+          k2:   pF(eye.k2)     ?? undefined,
+          axis: pI(eye.k_ax ?? eye.kerax) ?? undefined,
         };
 
         d.pentacam![side] = {

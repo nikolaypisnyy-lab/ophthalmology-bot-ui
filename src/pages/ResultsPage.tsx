@@ -1,5 +1,5 @@
 import { useMemo, useState, useEffect } from 'react';
-import { C, F, typeColors } from '../constants/design';
+import { C, F, R, typeColors, eyeColors } from '../constants/design';
 import { usePatientStore } from '../store/usePatientStore';
 import { useUIStore } from '../store/useUIStore';
 import { Chip } from '../ui/Chip';
@@ -25,59 +25,39 @@ const StatCard = ({ label, value, color, sub }: { label: string; value: string |
 
 // ── Карточка результата ───────────────────────────────────────────────────────
 
-function EyeResultRow({ label, sph, cyl, ax, target, color, flapDiam, capOrFlap }: {
-  label: string; sph?: any; cyl?: any; ax?: any; target: number; color: string; flapDiam?: string; capOrFlap?: string;
-}) {
-  if (sph === undefined || sph === null) return null;
-  const numSph = parseFloat(String(sph || 0));
-  const numCyl = parseFloat(String(cyl || 0));
-  const numAx = (ax !== undefined && ax !== null && ax !== '') ? parseFloat(String(ax)) : null;
-  
-  const se = numSph + numCyl / 2;
-  const hit = Math.abs(se - target) <= 0.5;
-  const fmt = (v: number) => (v >= 0 ? '+' : '') + v.toFixed(2);
+function VisionShift({ eye, pre, post, color, type, isWF }: { eye: string; pre: any; post: any; color: string; type: 'cataract' | 'refraction', isWF?: boolean }) {
+  const vaPre = parseFloat(pre.va || '0') || 0;
+  const vaPost = parseFloat(post.va || '0') || 0;
+  const isGain = vaPost > vaPre;
+  const isRef = type === 'refraction';
+
+  const fmt = (v: any) => {
+    const n = parseFloat(String(v));
+    if (isNaN(n)) return '0.00';
+    return (n > 0 ? '+' : '') + n.toFixed(2);
+  };
+
   return (
-    <div style={{
-      background: C.surface2, border: `1px solid ${C.border}`,
-      borderRadius: 12, padding: '6px 10px',
-      display: 'flex', flexDirection: 'column', gap: 4, flex: 1, minWidth: 0
-    }}>
-      {/* Верхний ярус: Глаз и SE */}
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-        <span style={{ fontFamily: F.sans, fontSize: 10, fontWeight: 900, color }}>{label}</span>
-        <div style={{ color: C.muted, fontSize: 8, fontWeight: 800, fontFamily: F.sans }}>
-            SE: <span style={{ color: hit ? C.green : C.text }}>{fmt(se)}</span>
+    <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 2, minWidth: 0 }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+        <span style={{ fontFamily: F.mono, fontSize: 9, fontWeight: 900, color }}>{eye}</span>
+        <div style={{ flex: 1, height: 1, background: `${color}30` }} />
+        {isRef && isWF && <span style={{ fontSize: 6, fontWeight: 900, color: '#fff', background: color, padding: '0 2px', borderRadius: 2 }}>WF</span>}
+        {isRef && <span style={{ fontSize: 6, fontWeight: 900, color: C.muted2, textTransform: 'uppercase' }}>{post.tech === 'fs' ? 'Femto' : 'Mech'}</span>}
+      </div>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+          <span style={{ fontFamily: F.mono, fontSize: 10, color: C.muted3, textDecoration: 'line-through', opacity: 0.7 }}>{pre.va || '—'}</span>
+          <span style={{ fontSize: 8, color: C.muted3 }}>→</span>
+          <div style={{ display: 'flex', alignItems: 'baseline', gap: 1 }}>
+            <span style={{ fontFamily: F.mono, fontSize: 18, fontWeight: 900, color: vaPost >= 1.0 ? C.green : C.text }}>{post.va || '—'}</span>
+            {isGain && <span style={{ fontSize: 8, color: C.green, fontWeight: 900 }}>↑</span>}
+          </div>
+        </div>
+        <div style={{ display: 'flex', gap: 6, opacity: 0.6 }}>
+          <span style={{ fontFamily: F.mono, fontSize: 7, color: C.muted2 }}>{fmt(post.sph)} {fmt(post.cyl)} x{post.ax || '0'}°</span>
         </div>
       </div>
-
-      {/* Средний ярус: Основная рефракция (шрифт чуть меньше чтобы влезло) */}
-      <div style={{ fontFamily: F.mono, fontSize: 12, fontWeight: 800, color: C.text, letterSpacing: '-0.02em', whiteSpace: 'nowrap' }}>
-        {fmt(numSph)}{numCyl !== 0 ? ` / ${fmt(numCyl)}` : ''}{numAx !== null ? ` ×${numAx}°` : ''}
-      </div>
-
-      {/* Нижний ярус: Параметры флэпа / Метод */}
-      {(flapDiam || capOrFlap) && (
-        <div style={{ display: 'flex', gap: 6, borderTop: `1px solid ${C.border}`, paddingTop: 2 }}>
-          {capOrFlap === 'ФРК' ? (
-            <span style={{ fontFamily: F.sans, fontSize: 9, color: C.accent, fontWeight: 900, letterSpacing: '0.05em' }}>
-              МЕТОД: ФРК
-            </span>
-          ) : (
-            <>
-              {capOrFlap && (
-                <span style={{ fontFamily: F.mono, fontSize: 9, color: C.muted, fontWeight: 600 }}>
-                  <span style={{ fontSize: 7, opacity: 0.7, fontWeight: 800 }}>FLAP:</span> {capOrFlap}
-                </span>
-              )}
-              {flapDiam && (
-                <span style={{ fontFamily: F.mono, fontSize: 9, color: C.muted, fontWeight: 600 }}>
-                  <span style={{ fontSize: 7, opacity: 0.7, fontWeight: 800 }}>Ø</span> {flapDiam}
-                </span>
-              )}
-            </>
-          )}
-        </div>
-      )}
     </div>
   );
 }
@@ -85,67 +65,97 @@ function EyeResultRow({ label, sph, cyl, ax, target, color, flapDiam, capOrFlap 
 function ResultCard({ patient, onOpen }: { patient: PatientSummary; onOpen: () => void }) {
   const tc = typeColors(patient.type);
   const p = patient as any;
+  const sex = (p.sex || p.gender || patient.sex || '').toUpperCase();
+  const isFemale = sex.startsWith('Ж') || sex.startsWith('F');
 
-  const fmtDate = (d?: string) => {
-    if (!d) return '—';
-    const [y, m, day] = d.split('-');
-    const M = ['янв','фев','мар','апр','май','июн','июл','авг','сен','окт','ноя','дек'];
-    return `${+day} ${M[+m - 1]} ${y}`;
+  const periods = p.periods || {};
+  const latestKey = Object.keys(periods).pop();
+  const latest = latestKey ? periods[latestKey] : null;
+
+  const getRes = (eye: 'od' | 'os') => {
+    const eyeData = p[eye] || {};
+    const strategy = eye === 'od' ? p.astigStrategyOD : p.astigStrategyOS;
+    return {
+      sph: latest?.[eye]?.sph ?? p[`postSph${eye.toUpperCase()}`] ?? '0.00',
+      cyl: latest?.[eye]?.cyl ?? p[`postCyl${eye.toUpperCase()}`] ?? '0.00',
+      ax: latest?.[eye]?.ax ?? p[`postAx${eye.toUpperCase()}`] ?? '0',
+      va: latest?.[eye]?.va ?? p[`postVa${eye.toUpperCase()}`] ?? '—',
+      isWF: String(strategy).toLowerCase() === 'wavefront' || 
+            String(eyeData.astigStrategy).toLowerCase() === 'wavefront' || 
+            String(p.astigStrategy).toLowerCase() === 'wavefront' || 
+            !!p.isWavefront,
+      tech: p.flapTech || 'fs'
+    };
   };
 
-  const target = patient.type === 'cataract' ? parseFloat(String(patient.targetRefr ?? '0')) : 0;
-
-  // Показываем глаза по наличию данных
-  const showOD = p.postSphOD !== undefined;
-  const showOS = p.postSphOS !== undefined;
-  // Fallback: если нет per-eye данных, показываем общий postSph
-  const showFallback = !showOD && !showOS && patient.postSph !== undefined;
+  const resOD = getRes('od');
+  const resOS = getRes('os');
+  const preOD = { va: p.od?.va || p.preVaOD || '—' };
+  const preOS = { va: p.os?.va || p.preVaOS || '—' };
 
   return (
     <div
       onClick={onOpen}
       style={{
-        background: C.surface, border: `1px solid ${C.border}`,
-        borderRadius: 14, padding: '12px 14px',
-        cursor: 'pointer', display: 'block', // Change to block
-        marginBottom: 10, // Use margin instead of gap
-        minHeight: 100, // Explicit height
-        width: '100%',
-        position: 'relative',
-        flexShrink: 0
+        background: C.card, border: `1px solid ${C.border}`,
+        borderRadius: 16, padding: '10px 14px 10px 18px',
+        cursor: 'pointer', display: 'flex', flexDirection: 'column', gap: 6,
+        width: '100%', position: 'relative', overflow: 'hidden',
+        boxShadow: '0 4px 20px rgba(0,0,0,0.1)'
       }}
     >
-      {/* Header */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-        <div style={{ flex: 1, minWidth: 0 }}>
-          <div style={{ fontFamily: F.sans, fontSize: 14, fontWeight: 600, color: C.text, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-            {patient.name}
-          </div>
-          <div style={{ fontFamily: F.sans, fontSize: 11, color: C.muted, marginTop: 1 }}>
-            {fmtDate(patient.date)}
-          </div>
+      <div style={{ position: 'absolute', left: 0, top: 0, bottom: 0, width: 4, background: isFemale ? '#f472b6' : C.od }} />
+
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+        <span style={{ fontFamily: F.sans, fontSize: 12, fontWeight: 800, color: C.primary }}>{patient.name}</span>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+          <span style={{ fontFamily: F.mono, fontSize: 7, color: C.tertiary, opacity: 0.6 }}>{latestKey || 'RESULT'}</span>
+          <span style={{ fontSize: 7, fontWeight: 900, color: tc.color, background: `${tc.color}15`, padding: '2px 6px', borderRadius: 4 }}>{patient.type === 'cataract' ? 'IOL' : 'LASIK'}</span>
         </div>
-        <span style={{ background: tc.bg, color: tc.color, fontFamily: F.sans, fontSize: 10, fontWeight: 600, padding: '2px 8px', borderRadius: 20, flexShrink: 0 }}>
-          {patient.type === 'cataract' ? 'Катаракта' : 'Рефракция'}
-        </span>
       </div>
 
-      {/* Результаты по глазам */}
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-        <div style={{ display: 'flex', gap: 8 }}>
-          {showOD && (
-            <EyeResultRow label="OD" sph={p.postSphOD} cyl={p.postCylOD} ax={p.postAxOD} target={target} color={C.od} flapDiam={p.flapDiam} capOrFlap={p.capOrFlap} />
-          )}
-          {showOS && (
-            <EyeResultRow label="OS" sph={p.postSphOS} cyl={p.postCylOS} ax={p.postAxOS} target={target} color={C.os} flapDiam={p.flapDiam} capOrFlap={p.capOrFlap} />
-          )}
-        </div>
-        
-        {showFallback && (
-          <EyeResultRow label={patient.eye ?? ''} sph={patient.postSph} cyl={patient.postCyl} ax={p.postAxOD || p.postAxOS} target={target} color={C.accent} flapDiam={p.flapDiam} capOrFlap={p.capOrFlap} />
-        )}
-
+      <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+        <VisionShift eye="OD" pre={preOD} post={resOD} color={C.od} type={patient.type} isWF={resOD.isWF} />
+        <div style={{ width: 1, height: 20, background: C.border, opacity: 0.2 }} />
+        <VisionShift eye="OS" pre={preOS} post={resOS} color={C.os} type={patient.type} isWF={resOS.isWF} />
       </div>
+
+      {patient.type === 'cataract' && p.iolResult && (
+        <div style={{ 
+          marginTop: 6, padding: '6px 10px', background: `${C.surface}80`, borderRadius: 10, 
+          border: `1px solid ${C.border}40`, display: 'flex', alignItems: 'center', gap: 8,
+          boxShadow: 'inset 0 1px 3px rgba(0,0,0,0.05)'
+        }}>
+          <div style={{ width: 16, height: 16, borderRadius: 4, background: `${C.cat}20`, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+            <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke={C.cat} strokeWidth="2.5">
+              <path d="M12 2v20M2 12h20" />
+            </svg>
+          </div>
+          <span style={{ fontSize: 9, fontWeight: 800, color: C.text, opacity: 0.9, flex: 1, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+            {p.iolResult.lens || 'IOL'}
+          </span>
+          <div style={{ display: 'flex', gap: 10 }}>
+            {(patient.eye === 'OD' || patient.eye === 'OU') && p.iolResult.od?.selectedPower !== undefined && (
+              <div style={{ display: 'flex', alignItems: 'center', gap: 3 }}>
+                <span style={{ fontSize: 6, fontWeight: 900, color: C.od }}>OD</span>
+                <span style={{ fontSize: 10, fontWeight: 900, color: C.text, fontFamily: F.mono }}>
+                  {typeof p.iolResult.od.selectedPower === 'number' ? p.iolResult.od.selectedPower.toFixed(2) : parseFloat(String(p.iolResult.od.selectedPower)).toFixed(2)}
+                  {p.toricResults?.od?.best_model && <span style={{ color: C.indigo, marginLeft: 2, fontSize: 8 }}>{p.toricResults.od.best_model}</span>}
+                </span>
+              </div>
+            )}
+            {(patient.eye === 'OS' || patient.eye === 'OU') && p.iolResult.os?.selectedPower !== undefined && (
+              <div style={{ display: 'flex', alignItems: 'center', gap: 3 }}>
+                <span style={{ fontSize: 6, fontWeight: 900, color: C.os }}>OS</span>
+                <span style={{ fontSize: 10, fontWeight: 900, color: C.text, fontFamily: F.mono }}>
+                  {typeof p.iolResult.os.selectedPower === 'number' ? p.iolResult.os.selectedPower.toFixed(2) : parseFloat(String(p.iolResult.os.selectedPower)).toFixed(2)}
+                  {p.toricResults?.os?.best_model && <span style={{ color: C.indigo, marginLeft: 2, fontSize: 8 }}>{p.toricResults.os.best_model}</span>}
+                </span>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
     </div>
   );
 }
@@ -165,7 +175,7 @@ export function ResultsPage() {
     try {
       const data = await apiGet<any>('/nomogram');
       if (data && data.count > 0) setNomo(data);
-    } catch(e) {}
+    } catch (e) { }
   };
 
   useEffect(() => {
@@ -187,7 +197,7 @@ export function ResultsPage() {
     const filtered = filter === 'all' ? done : done.filter(p => p.type === filter);
     const catDone = filtered.filter(p => p.type === 'cataract' && (p as any).postSphOD !== undefined);
     const refDone = filtered.filter(p => p.type === 'refraction' && (p as any).postSphOD !== undefined);
-    
+
     const getSE = (p: any) => {
       const s = parseFloat(String(p.postSphOD || 0));
       const c = parseFloat(String(p.postCylOD || 0));
@@ -228,9 +238,9 @@ export function ResultsPage() {
     return (
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: field === 'cyl' ? 4 : 0 }}>
         <div style={{ fontFamily: F.sans, fontSize: 11, color: C.text, fontWeight: 500 }}>
-          {label}: <span style={{ 
-            color: parseFloat(String(avgErr)) > 0 ? '#f87171' : C.green, 
-            fontWeight: 700 
+          {label}: <span style={{
+            color: parseFloat(String(avgErr)) > 0 ? '#f87171' : C.green,
+            fontWeight: 700
           }}>
             {parseFloat(String(avgErr)) > 0 ? '+' : ''}{avgErr}D
           </span>
@@ -265,10 +275,10 @@ export function ResultsPage() {
   return (
     <div style={{ display: 'flex', flexDirection: 'column', height: '100%', overflow: 'hidden', position: 'relative' }}>
       {/* Шапка со статистикой и фильтрами */}
-      <div style={{ 
-        padding: '10px 14px 10px', 
-        display: 'flex', 
-        flexDirection: 'column', 
+      <div style={{
+        padding: '10px 14px 10px',
+        display: 'flex',
+        flexDirection: 'column',
         gap: 10,
         background: C.bg,
         borderBottom: `1px solid ${C.border}`,
@@ -295,7 +305,7 @@ export function ResultsPage() {
               </div>
               <span style={{ fontFamily: F.sans, fontSize: 8, color: C.muted, fontWeight: 600 }}>{nomo.count} ГЛАЗ ПРОАНАЛИЗИРОВАНО</span>
             </div>
-            
+
             {renderNomoRow('Сфера (SE)', 'sph')}
             {renderNomoRow('Цилиндр', 'cyl')}
           </div>
@@ -312,12 +322,12 @@ export function ResultsPage() {
 
       {/* Список с абсолютным позиционированием */}
       <div style={{ flex: 1, position: 'relative', minHeight: 100 }}>
-        <div style={{ 
+        <div style={{
           position: 'absolute', inset: 0,
           overflowY: 'scroll', // Explicit scroll
-          padding: '12px 16px 120px', 
+          padding: '12px 16px 120px',
           display: 'block', // Fail-safe block display
-          WebkitOverflowScrolling: 'touch' 
+          WebkitOverflowScrolling: 'touch'
         }}>
           {visible.length === 0 && (
             <div style={{ textAlign: 'center', padding: 40, color: C.muted, fontFamily: F.sans, fontSize: 14 }}>

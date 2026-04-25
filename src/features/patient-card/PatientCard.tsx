@@ -25,28 +25,43 @@ export function PatientCard() {
   const touchStartX = useRef(0);
 
   if (!draft) return null;
+  
 
-  // Свайп между OD/OS
+
+  // Свайп логика
   const handleTouchStart = (e: React.TouchEvent) => {
     touchStartX.current = e.touches[0].clientX;
   };
-  const handleTouchEnd = (e: React.TouchEvent) => {
-    const delta = e.changedTouches[0].clientX - touchStartX.current;
-    if (Math.abs(delta) < 80) return;
-    
-    // Виброотклик
-    haptic.medium();
 
+  const handleTouchEnd = (e: React.TouchEvent) => {
+    const endX = e.changedTouches[0].clientX;
+    const delta = endX - touchStartX.current;
+    const absDelta = Math.abs(delta);
+
+    if (absDelta < 60) return;
+
+    // 1. Edge Swipe to Close (Свайп от левого края вправо)
+    if (touchStartX.current < 30 && delta > 80) {
+      haptic.notification('warning'); // Более ощутимый отклик на закрытие
+      closePatient();
+      return;
+    }
+
+    // 2. Switching Eyes (Свайп в середине экрана)
+    // Влево (delta < 0) -> OS
+    // Вправо (delta > 0) -> OD
+    haptic.light();
     const next = delta > 0 ? 'od' : 'os';
-    if (activeTab === 'bio')    setActiveEye(next);
-    if (activeTab === 'plan')   setPlanEye(next);
+    
+    if (activeTab === 'bio') setActiveEye(next);
+    if (activeTab === 'plan') setPlanEye(next);
     if (activeTab === 'result') setResultEye(next);
   };
 
-  // Динамический фон по активному глазу
+  // Solid Ocular Background (Non-transparent)
   const bgGradient = activeEye === 'od'
-    ? 'linear-gradient(160deg,#0e1e35 0%,#0a0d16 40%)'
-    : 'linear-gradient(160deg,#0d2820 0%,#0a0d16 40%)';
+    ? `linear-gradient(160deg, #0a0d1a 0%, ${C.bg} 100%)`
+    : `linear-gradient(160deg, #091a14 0%, ${C.bg} 100%)`;
 
   const handleSave = async () => {
     if (isSaving || !draft) return;
@@ -62,6 +77,12 @@ export function PatientCard() {
       } = useSessionStore.getState();
 
       const updated = { ...draft } as any;
+      if (!updated.od) updated.od = {};
+      if (!updated.os) updated.os = {};
+      
+      // Забираем стратегии из черновика, который редактировался в PlanTab
+      updated.od.astigStrategy = draft.od?.astigStrategy;
+      updated.os.astigStrategy = draft.os?.astigStrategy;
 
       if (formulaResults) {
         updated.formulaResults = formulaResults;
@@ -131,8 +152,10 @@ export function PatientCard() {
 
   return (
     <div
+      onTouchStart={handleTouchStart}
+      onTouchEnd={handleTouchEnd}
       style={{
-        position: 'absolute', inset: 0, zIndex: 100,
+        position: 'absolute', inset: 0, zIndex: 1000,
         background: bgGradient,
         transition: 'background .4s ease',
         display: 'flex', flexDirection: 'column',
@@ -142,8 +165,6 @@ export function PatientCard() {
 
       <div
         ref={bodyRef}
-        onTouchStart={handleTouchStart}
-        onTouchEnd={handleTouchEnd}
         style={{ flex: 1, overflowY: 'auto', padding: '14px 16px 32px' }}
       >
         {activeTab === 'bio'    && <BioTab />}
@@ -152,7 +173,6 @@ export function PatientCard() {
         {activeTab === 'result' && <ResultTab onSave={handleSave} isSaving={isSaving} />}
         {activeTab === 'enhancement' && <EnhancementTab />}
       </div>
-
     </div>
   );
 }

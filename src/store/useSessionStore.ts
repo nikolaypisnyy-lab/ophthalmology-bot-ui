@@ -1,7 +1,6 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import type { Patient } from '../types/patient';
-// ... (keep types)
 import type { TabKey } from '../types/patient';
 import type { RefractionPlan } from '../types/refraction';
 import type { IOLResult } from '../types/iol';
@@ -9,7 +8,6 @@ import type { PeriodKey } from '../types/results';
 import type { PeriodEyeData } from '../types/results';
 import { sumCylinders } from '../calculators/astigmatism';
 
-// (rest of interface stays same)
 interface SessionStore {
   draft: Patient | null;
   refPlan: { od?: RefractionPlan; os?: RefractionPlan } | null;
@@ -18,27 +16,36 @@ interface SessionStore {
   iolResult: IOLResult | null;
   formulaResults: { od: Record<string, any>; os: Record<string, any> };
   iolLoading: boolean;
+  iolError: string | null;
   iolProgress: number;
+  toricResults: { od: any; os: any };
+  isRounding: boolean;
+  toggleRounding: () => void;
 
   openDraft: (patient: Patient, initialTab?: TabKey) => void;
   closeDraft: () => void;
   setDraft: (patch: Partial<Patient>) => void;
+  toggleSurgicalEye: (eye: 'od' | 'os') => void;
   setEyeField: (eye: 'od' | 'os', field: string, value: string) => void;
   setBioField: (eye: 'od' | 'os', field: string, value: string) => void;
   setRefPlan: (plan: { od?: RefractionPlan; os?: RefractionPlan } | null) => void;
   setEnhancementPlan: (plan: { od?: RefractionPlan; os?: RefractionPlan } | null) => void;
   setPlanTweaked: (v: boolean) => void;
-  setPlanField: (eye: 'od' | 'os', field: 'sph' | 'cyl' | 'ax', value: number) => void;
+  setPlanField: (eye: 'od' | 'os', field: 'sph' | 'cyl' | 'ax' | 'oz' | 'flap' | 'abl', value: number) => void;
+  autoSetPlan: (eye: 'od' | 'os', patch: Partial<RefractionPlan>) => void;
   setEnhancementField: (eye: 'od' | 'os', field: 'sph' | 'cyl' | 'ax', value: number) => void;
   setIOLResult: (result: IOLResult | null) => void;
   setFormulaResults: (results: { od: Record<string, any>; os: Record<string, any> }) => void;
   setIOLLoading: (loading: boolean, progress?: number) => void;
+  setIOLError: (error: string | null) => void;
+  setToricResults: (results: { od: any; os: any }) => void;
   setPeriodEyeField: (period: PeriodKey, eye: 'od' | 'os', field: keyof PeriodEyeData, value: string) => void;
+  setPeriodOUField: (period: PeriodKey, field: 'ou_va' | 'note', value: string) => void;
 }
 
 export const useSessionStore = create<SessionStore>()(
   persist(
-    (set, get) => ({
+    (set, _get) => ({
       draft: null,
       refPlan: null,
       enhancementPlan: null,
@@ -46,27 +53,50 @@ export const useSessionStore = create<SessionStore>()(
       iolResult: null,
       formulaResults: { od: {}, os: {} },
       iolLoading: false,
+      iolError: null,
       iolProgress: 0,
+      toricResults: { od: null, os: null },
+      isRounding: true,
+      toggleRounding: () => set(state => ({ isRounding: !state.isRounding })),
 
       openDraft: (patient, _initialTab) => {
         set({
-          draft: { ...patient },
+          draft: { ...patient, flapTech: patient.flapTech ?? 'fs' },
           refPlan: patient.savedPlan ? { od: patient.savedPlan.od as any, os: patient.savedPlan.os as any } : null,
           enhancementPlan: (patient as any).savedEnhancement ? { od: (patient as any).savedEnhancement.od as any, os: (patient as any).savedEnhancement.os as any } : null,
           planTweaked: (patient as any).planTweaked ?? false,
           iolResult: patient.iolResult ?? null,
           formulaResults: (patient as any).formulaResults ?? { od: {}, os: {} },
           iolLoading: false,
+          iolError: null,
           iolProgress: 0,
         });
       },
 
       closeDraft: () => {
-        set({ draft: null, refPlan: null, enhancementPlan: null, planTweaked: false, iolResult: null, formulaResults: { od: {}, os: {} } });
+        set({ draft: null, refPlan: null, enhancementPlan: null, planTweaked: false, iolResult: null, formulaResults: { od: {}, os: {} }, iolError: null });
       },
 
       setDraft: (patch) => {
         set(state => state.draft ? { draft: { ...state.draft, ...patch } } : state);
+      },
+
+      toggleSurgicalEye: (eye) => {
+        set(state => {
+          if (!state.draft) return state;
+          const current = (state.draft.eye || 'OU').toUpperCase();
+          let next = 'OU';
+          if (eye === 'od') {
+            if (current === 'OU') next = 'OS';
+            else if (current === 'OS') next = 'OU';
+            else return state;
+          } else {
+            if (current === 'OU') next = 'OD';
+            else if (current === 'OD') next = 'OU';
+            else return state;
+          }
+          return { draft: { ...state.draft, eye: next as any } };
+        });
       },
 
       setEyeField: (eye, field, value) => {
@@ -78,17 +108,6 @@ export const useSessionStore = create<SessionStore>()(
             const k1 = parseFloat(eyeData.k1 || '0');
             const k2 = parseFloat(eyeData.k2 || '0');
             if (k1 > 0 && k2 > 0) eyeData.kavg = ((k1 + k2) / 2).toFixed(2);
-          }
-          const pFields = ['p_ant_c', 'p_ant_a', 'p_post_c', 'p_post_a'];
-          if (pFields.includes(field)) {
-            const c1 = parseFloat(eyeData.p_ant_c || '0'), a1 = parseFloat(eyeData.p_ant_a || '0'), c2 = parseFloat(eyeData.p_post_c || '0'), a2 = parseFloat(eyeData.p_post_a || '0');
-            if (c1 !== 0 || c2 !== 0) {
-              // Задняя поверхность роговицы (c2) работает как компенсация (отрицательная линза),
-              // поэтому для корректного векторного сложения (Ant - Post) передаем её с минусом.
-              const res = sumCylinders(c1, a1, -c2, a2);
-              eyeData.p_tot_c = Math.abs(res.cyl).toFixed(2);
-              eyeData.p_tot_a = String(res.ax);
-            }
           }
           return { draft: { ...state.draft, [eye]: eyeData } };
         });
@@ -121,8 +140,20 @@ export const useSessionStore = create<SessionStore>()(
             draft: state.draft ? { 
               ...state.draft, 
               planTweaked: true,
-              savedPlan: { ...(state.draft.savedPlan ?? {}), [eye]: { ...eyePlan, [field]: value } } 
+              savedPlan: updated
             } as any : state.draft,
+          };
+        });
+      },
+
+      autoSetPlan: (eye, patch) => {
+        set(state => {
+          const plan = state.refPlan ?? {};
+          const eyePlan = plan[eye] ?? ({} as any);
+          const updated = { ...plan, [eye]: { ...eyePlan, ...patch } };
+          return {
+            refPlan: updated,
+            draft: state.draft ? { ...state.draft, savedPlan: updated } as any : state.draft,
           };
         });
       },
@@ -153,12 +184,14 @@ export const useSessionStore = create<SessionStore>()(
 
       setFormulaResults: (results) => {
         set(state => ({
-          formulaResults: results,
-          draft: state.draft ? { ...state.draft, formulaResults: results } as any : state.draft
+          formulaResults: { ...results }, // ГАРАНТИРУЕМ НОВУЮ ССЫЛКУ
+          draft: state.draft ? { ...state.draft, formulaResults: { ...results } } as any : state.draft
         }));
       },
 
-      setIOLLoading: (loading, progress = 0) => { set({ iolLoading: loading, iolProgress: progress }); },
+      setIOLLoading: (loading, progress = 0) => set({ iolLoading: loading, iolProgress: progress }),
+      setIOLError: (error) => set({ iolError: error }),
+      setToricResults: (results) => set({ toricResults: results }),
 
       setPeriodEyeField: (period, eye, field, value) => {
         set(state => {
@@ -167,6 +200,15 @@ export const useSessionStore = create<SessionStore>()(
           const periodData = (periods[period] ?? {}) as any;
           const eyeData = (periodData[eye] ?? {}) as any;
           return { draft: { ...state.draft, periods: { ...periods, [period]: { ...periodData, [eye]: { ...eyeData, [field]: value } } } } };
+        });
+      },
+
+      setPeriodOUField: (period, field, value) => {
+        set(state => {
+          if (!state.draft) return state;
+          const periods = (state.draft.periods ?? {}) as any;
+          const periodData = (periods[period] ?? {}) as any;
+          return { draft: { ...state.draft, periods: { ...periods, [period]: { ...periodData, [field]: value } } } };
         });
       },
     }),

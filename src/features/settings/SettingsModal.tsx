@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { C, F } from '../../constants/design';
 import { useUIStore } from '../../store/useUIStore';
 import { useClinicStore } from '../../store/useClinicStore';
-import { API_BASE, TELEGRAM_ID } from '../../api/client';
+import { API_BASE, TELEGRAM_ID, apiPost } from '../../api/client';
 import { LASERS } from '../../constants/lasers';
 
 export function SettingsModal() {
@@ -26,13 +26,8 @@ export function SettingsModal() {
       setLoading(true);
       setMsg({ text: 'Отправка базы в Telegram...', type: 'info' });
       
-      const response = await fetch(`${API_BASE}/database/export_telegram`, {
-        method: 'POST',
-        headers: { 'Telegram-ID': String(TELEGRAM_ID) }
-      });
-      
-      const data = await response.json();
-      if (!response.ok) throw new Error(data.detail || 'Ошибка отправки');
+      const response: any = await apiPost('/database/export_telegram', {});
+      if (response.status === 'error') throw new Error(response.detail || 'Ошибка отправки');
       
       setMsg({ text: 'База успешно отправлена вам в Telegram!', type: 'info' });
     } catch (e: any) {
@@ -48,7 +43,7 @@ export function SettingsModal() {
       setMsg({ text: 'Запрос на скачивание...', type: 'info' });
       
       // Прямое скачивание через window.open (надежнее для мобильных браузеров в WebApp)
-      const downloadUrl = `${API_BASE}/database/export?tid=${TELEGRAM_ID}`;
+      const downloadUrl = `${window.location.origin}${API_BASE}/database/export?tid=${TELEGRAM_ID}`;
       window.open(downloadUrl, '_blank');
       
       setMsg({ text: 'Попытка скачивания запущена!', type: 'info' });
@@ -74,9 +69,9 @@ export function SettingsModal() {
       const formData = new FormData();
       formData.append('file', file);
       
-      const response = await fetch(`${API_BASE}/database/import`, {
+      const response = await fetch(`${window.location.origin}${API_BASE}/database/import`, {
         method: 'POST',
-        headers: { 'Telegram-ID': String(TELEGRAM_ID) },
+        headers: { 'telegram-id': String(TELEGRAM_ID) },
         body: formData
       });
       

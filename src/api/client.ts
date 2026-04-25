@@ -7,8 +7,10 @@ const urlParams = new URLSearchParams(
 export const API_BASE: string = (() => {
   if (urlParams.get('api')) return urlParams.get('api')!;
   if (typeof window === 'undefined') return '/api';
-  // На localhost используем относительный путь — Vite proxy перенаправит на :8000
-  return '/api';
+  
+  // Гарантируем полный путь, чтобы избежать проблем с относительными URL в TMA
+  const origin = window.location.origin;
+  return origin.includes('localhost') ? '/api' : (origin + '/api');
 })();
 
 // Telegram WebApp ID (fallback — dev ID)

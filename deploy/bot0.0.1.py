@@ -87,11 +87,9 @@ def main_menu_markup(uid: int):
     context = get_ctx(uid)
     cid = context["cid"]
     
-    import time
-    buster = int(time.time())
     url = WEBAPP_URL
     if cid:
-        url = f"{WEBAPP_URL}?clinic={cid}&v={buster}" if "?" not in WEBAPP_URL else f"{WEBAPP_URL}&clinic={cid}&v={buster}"
+        url = f"{WEBAPP_URL}?clinic={cid}" if "?" not in WEBAPP_URL else f"{WEBAPP_URL}&clinic={cid}"
         
     kb.row(types.KeyboardButton("🚀 Открыть RefMaster", web_app=types.WebAppInfo(url)))
     
@@ -104,25 +102,16 @@ def main_menu_markup(uid: int):
         if u and (u["role"] == "admin" or uid in ADMIN_IDS):
             kb.row("👥 Управление доступом")
             kb.row("⚙️ Управление клиниками", "📦 Бэкап базы")
-            kb.row("🚀 Full Backup (Code+DB)")
     
     kb.row("ℹ️ Инфо")
     return kb
-
-def get_menu_text(uid: int):
-    ctx = get_ctx(uid)
-    cname = ctx.get("name") or "Не выбрана"
-    cid = ctx.get("cid") or "---"
-    return f"🏥 Текущая клиника: <b>{cname}</b>\n🆔 ID: <code>{cid}</code>\n\nВыберите действие:"
 
 # ================= HANDLERS =================
 @bot.message_handler(commands=['start'])
 def start_cmd(message):
     uid = message.from_user.id
-    load_clinic(uid)
-    
-    # Пытаемся получить информацию о пользователе
     u = master_db.get_user_clinic(uid)
+    
     if not u:
         text = (
             "👋 Добро пожаловать в <b>RefMaster</b>.\n\n"
@@ -134,7 +123,8 @@ def start_cmd(message):
         bot.send_message(uid, text, reply_markup=kb)
         return
 
-    bot.send_message(uid, get_menu_text(uid), reply_markup=main_menu_markup(uid))
+    bot.send_message(uid, f"👋 Приветствуем, {u['name']}!\nКлиника: <b>{u['clinic_name']}</b>", 
+                     reply_markup=main_menu_markup(uid))
 
 @bot.callback_query_handler(func=lambda c: c.data.startswith("req_access:"))
 def handle_access_request(c):
@@ -370,7 +360,7 @@ def handle_set_active_clinic(c):
     
     bot.answer_callback_query(c.id, f"Выбрана клиника: {name}")
     bot.edit_message_text(f"✅ Теперь вы работаете в клинике: <b>{name}</b>", c.message.chat.id, c.message.message_id)
-    bot.send_message(uid, get_menu_text(uid), reply_markup=main_menu_markup(uid))
+    bot.send_message(uid, f"Меню обновлено для <b>{name}</b>", reply_markup=main_menu_markup(uid))
 
 @bot.message_handler(func=lambda m: m.text == "📦 Бэкап базы")
 def admin_backup(message):
@@ -386,8 +376,8 @@ def admin_backup(message):
 
     # Ищем файл базы
     db_file = cl["db_file"]
-    # На сервере базы лежат в /root/app/data/
-    paths = [db_file, f"/root/app/data/{db_file}", f"./{db_file}"]
+    # На сервере базы лежат в /root/medeye/data/
+    paths = [db_file, f"/root/medeye/data/{db_file}", f"./{db_file}"]
     
     found = False
     for p in paths:
@@ -441,7 +431,6 @@ def move_patient_cmd(message):
     except Exception as e:
         bot.send_message(uid, f"❌ <b>Системная ошибка:</b>\n{str(e)}")
 
-@bot.message_handler(func=lambda m: m.text == "🚀 Full Backup (Code+DB)")
 @bot.message_handler(commands=['full_backup'])
 def full_backup_cmd(message):
     uid = message.from_user.id
@@ -451,9 +440,9 @@ def full_backup_cmd(message):
     try:
         import subprocess
         # Запускаем скрипт бэкапа
-        res = subprocess.run(["python3", "/root/medeye_bot/backup_system.py", "create"], capture_output=True, text=True)
+        res = subprocess.run(["python3", "/root/medeye/api/backup_system.py", "create"], capture_output=True, text=True)
         if res.returncode == 0:
-            bot.send_message(uid, "✅ Полный бэкап успешно создан на сервере в папке /root/app/backups/")
+            bot.send_message(uid, "✅ Полный бэкап успешно создан на сервере в папке /root/medeye/backups/")
         else:
             bot.send_message(uid, f"❌ Ошибка бэкапа:\n{res.stderr}")
     except Exception as e:

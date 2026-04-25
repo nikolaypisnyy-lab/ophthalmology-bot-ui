@@ -128,4 +128,4 @@ class MasterDB:
             commit=True
         )
 
-master_db = MasterDB("/root/medeye/data/master.db")
+master_db = MasterDB(DEFAULT_DB_PATH)

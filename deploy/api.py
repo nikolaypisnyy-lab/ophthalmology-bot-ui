@@ -62,7 +62,8 @@ def run_scraper_subprocess(func_name: str, req_data: dict, timeout: int = 150) -
                         return json.loads(line)
                     except Exception:
                         continue
-        return {"error": proc.stderr[-300:] if proc.stderr else "subprocess failed"}
+        err_msg = (proc.stderr or "")[-300:] or f"rc={proc.returncode} stdout={repr(proc.stdout[:100])}"
+        return {"error": err_msg}
     except subprocess.TimeoutExpired:
         return {"error": f"{func_name}: subprocess timeout ({timeout}s)"}
     except Exception as e:
@@ -87,7 +88,9 @@ master_db = MasterDB(str(DB_DIR / "master.db"))
 # Приложение
 # ──────────────────────────────────────────────────────────────────────────────
 app = FastAPI(title="MedEye TMA API", version="2.2.0")
-app.mount("/backups", StaticFiles(directory="/root/medeye/data/public_backups"), name="backups")
+backup_dir = "/root/medeye/data/public_backups"
+if os.path.exists(backup_dir):
+    app.mount("/backups", StaticFiles(directory=backup_dir), name="backups")
 
 app.add_middleware(
     CORSMiddleware,
@@ -121,6 +124,9 @@ class PatientCreate(BaseModel):
     isEnhancement: Optional[bool] = None
     flapDiam: Optional[str] = None
     capOrFlap: Optional[str] = None
+    isCustomView: Optional[bool] = None
+    isCustomViewOD: Optional[bool] = None
+    isCustomViewOS: Optional[bool] = None
     clinic_id: Optional[str] = None
 
 class PatientUpdate(BaseModel):
@@ -134,6 +140,9 @@ class PatientUpdate(BaseModel):
     isEnhancement: Optional[bool] = None
     flapDiam: Optional[str] = None
     capOrFlap: Optional[str] = None
+    isCustomView: Optional[bool] = None
+    isCustomViewOD: Optional[bool] = None
+    isCustomViewOS: Optional[bool] = None
 
 class OcrFile(BaseModel):
     name: str
@@ -230,6 +239,9 @@ def get_patients(telegram_id: str = Header(None), db: MedEyeDB = Depends(get_cli
                     # Берем напрямую из плана
                     if not p.get("flapDiam"):  p["flapDiam"] = plan.get("flapDiam")
                     if not p.get("capOrFlap"): p["capOrFlap"] = plan.get("capOrFlap")
+                    if p.get("isCustomView") is None: p["isCustomView"] = plan.get("isCustomView")
+                    if p.get("isCustomViewOD") is None: p["isCustomViewOD"] = plan.get("isCustomViewOD")
+                    if p.get("isCustomViewOS") is None: p["isCustomViewOS"] = plan.get("isCustomViewOS")
                 except: continue
                 if p.get("flapDiam") and p.get("capOrFlap"): break
 
@@ -270,6 +282,9 @@ def get_patient(patient_id: str, db: MedEyeDB = Depends(get_clinic_db)):
     if form and "primary" in form:
         pr = form["primary"]
         if not patient.get("age"): patient["age"] = pr.get("age")
+        if not patient.get("sex"): patient["sex"] = pr.get("sex")
+        if not patient.get("op_eye"): patient["op_eye"] = pr.get("op_eye")
+        if not patient.get("patient_type"): patient["patient_type"] = pr.get("patient_type")
         if not patient.get("flapDiam"): patient["flapDiam"] = pr.get("flapDiam")
     return {"status": "ok", "patient": patient, "visit": visit, "form": form}
 
@@ -278,7 +293,7 @@ def create_patient(data: PatientCreate, db: MedEyeDB = Depends(get_clinic_db)):
     pid = str(db.get_next_patient_id())
     db.set_next_patient_id(int(pid) + 1)
     created_at = datetime.datetime.now().isoformat(timespec="seconds")
-    db.save_patient(pid, None, data.name, data.phone, created_at, 0, data.flapDiam, data.capOrFlap)
+    db.save_patient(pid, None, data.name, data.phone, created_at, 0, data.flapDiam, data.capOrFlap, 1 if data.isCustomView else 0, 1 if data.isCustomViewOD else 0, 1 if data.isCustomViewOS else 0)
 
     prim = {"age": data.age, "sex": data.sex, "patient_type": data.patient_type, "op_eye": data.op_eye, "isEnhancement": data.isEnhancement, "flapDiam": data.flapDiam, "capOrFlap": data.capOrFlap}
     db.save_form(pid, op_date=data.op_date, primary=prim)
@@ -305,7 +320,10 @@ def update_patient(patient_id: str, data: PatientUpdate, db: MedEyeDB = Depends(
             data.phone if data.phone is not None else p.get("phone"),
             p.get("created_at"), p.get("archived", 0),
             data.flapDiam if data.flapDiam is not None else p.get("flapDiam"),
-            data.capOrFlap if data.capOrFlap is not None else p.get("capOrFlap")
+            data.capOrFlap if data.capOrFlap is not None else p.get("capOrFlap"),
+            int(data.isCustomView) if data.isCustomView is not None else p.get("isCustomView", 0),
+            int(data.isCustomViewOD) if data.isCustomViewOD is not None else p.get("isCustomViewOD", 0),
+            int(data.isCustomViewOS) if data.isCustomViewOS is not None else p.get("isCustomViewOS", 0)
         )
     return {"status": "ok", "message": "Данные пациента обновлены"}
 
@@ -333,11 +351,17 @@ def update_measurements(visit_id: str, payload: MeasurementUpdate, db: MedEyeDB 
     if p_id:
         fDiam = payload.data.get("flapDiam")
         cFlap = payload.data.get("capOrFlap")
-        if fDiam or cFlap:
+        isCV = payload.data.get("isCustomView")
+        isCVOD = payload.data.get("isCustomViewOD")
+        isCVOS = payload.data.get("isCustomViewOS")
+        if fDiam or cFlap or isCV is not None or isCVOD is not None or isCVOS is not None:
             p = db.get_patient(p_id)
             if p:
                 db.save_patient(p_id, p.get("chat_id"), p.get("name"), p.get("phone"), p.get("created_at"), p.get("archived", 0),
-                                fDiam or p.get("flapDiam"), cFlap or p.get("capOrFlap"))
+                                fDiam or p.get("flapDiam"), cFlap or p.get("capOrFlap"),
+                                int(isCV) if isCV is not None else p.get("isCustomView", 0),
+                                int(isCVOD) if isCVOD is not None else p.get("isCustomViewOD", 0),
+                                int(isCVOS) if isCVOS is not None else p.get("isCustomViewOS", 0))
     return {"status": "ok", "message": "Измерения обновлены"}
 
 @app.get("/api/nomogram")
@@ -381,38 +405,110 @@ def process_ocr(payload: OcrJsonRequest):
 @app.post("/api/calculate_iol")
 def calculate_iol(payload: IolCalcRequest):
     d = payload.data
-    pat_name = d.get("name") or "Patient"
-    a_b = float(d.get("const_a_barrett") or 119.3)
-    a_k = float(d.get("const_a_kane") or 119.3)
-    sia, inc = float(d.get("kane_sia") or 0.1), int(d.get("kane_incision") or 90)
-    req_b = {"patient_name": pat_name, "kane_sia": sia, "kane_incision": inc}
-    req_k = {"patient_name": pat_name, "use_kane_toric": d.get("use_kane_toric", False), "kane_sia": sia, "kane_incision": inc}
-    for side in ["od", "os"]:
-        e = d.get(side, {})
-        if float(e.get("al") or 0) > 0:
-            req_b[side] = {"al": float(e["al"]), "k1": float(e["k1"]), "k2": float(e["k2"]), "acd": float(e["acd"] or 0), "a_const": a_b, "target": float(e.get("target") or 0)}
-            req_k[side] = {"al": float(e["al"]), "k1": float(e["k1"]), "k2": float(e["k2"]), "acd": float(e["acd"] or 0), "a_const": a_k, "target": float(e.get("target") or 0)}
+    formula = d.get("formula", "Barrett").lower()
+    active_eye = d.get("active_eye", "od").lower()
     
-    results = {}
+    # Собираем данные для скраперов в ожидаемом ими формате
+    req_data = {
+        "patient_name": "Patient",
+        "kane_sia": float(d.get("sia") or 0.1),
+        "kane_incision": int(d.get("k_ax") or 90),
+    }
+    
+    # Маппим данные активного глаза
+    req_data[active_eye] = {
+        "al": float(d.get("al") or 0),
+        "k1": float(d.get("k1") or 0),
+        "k2": float(d.get("k2") or 0),
+        "acd": float(d.get("acd") or 0),
+        "lt": float(d.get("lt") or 0),
+        "wtw": float(d.get("wtw") or 0),
+        "a_const": float(d.get("a_const") or 119.3),
+        "target": float(d.get("target_refr") or 0)
+    }
+
+    results = []
     errors = []
 
-    def _run(fn, req, name):
-        r = run_scraper_subprocess(fn, req)
-        if "error" in r:
-            errors.append(f"{name}: {r['error']}")
+    try:
+        print(f"[CALC] Formula={formula} Eye={active_eye} Data={d}", flush=True)
+        
+        toric_data = None
+        if d.get("toricMode"):
+            try:
+                toric_data = calculate_autonomous_toric(
+                    k1=float(d.get("k1") or 0),
+                    k2=float(d.get("k2") or 0),
+                    k1_axis=float(d.get("k_ax") or 0),
+                    sia=float(d.get("sia") or 0.1),
+                    inc_axis=float(d.get("incAx") or 90),
+                    al=float(d.get("al") or 23.5)
+                )
+                print(f"[CALC] Toric calculated: {toric_data['best_model']}", flush=True)
+            except Exception as te:
+                print(f"[CALC] Toric engine error: {te}")
+
+        if "haigis" in formula:
+            from haigis import haigis_constants_from_a, calc_haigis
+
+            a_const = float(d.get("a_const") or 118.5)
+            h_consts = haigis_constants_from_a(a_const)
+
+            h_res = calc_haigis(
+                al=float(d.get("al") or 0),
+                acd=float(d.get("acd") or 0),
+                k1=float(d.get("k1") or 0),
+                k2=float(d.get("k2") or 0),
+                constants=h_consts,
+                target_rx=float(d.get("target_refr") or 0)
+            )
+
+            if isinstance(h_res, dict) and "error" in h_res:
+                errors.append(h_res["error"])
+            else:
+                table = getattr(h_res, 'table', [])
+                for idx, row in enumerate(table):
+                    results.append({
+                        "power": row.power,
+                        "refraction": row.refraction,
+                        "is_emmetropia": idx == 3
+                    })
         else:
-            results[name] = r.get("result", r)
+            if "kane" in formula:
+                r = run_scraper_subprocess("scrape_kane_formula_both", req_data)
+            else:
+                r = run_scraper_subprocess("scrape_barrett_universal2_both", req_data)
 
-    from concurrent.futures import ThreadPoolExecutor
-    tasks = []
-    if d.get("use_barrett"): tasks.append(("scrape_barrett_universal2_both", req_b, "barrett"))
-    if d.get("use_kane"):    tasks.append(("scrape_kane_formula_both",        req_k, "kane"))
+            if "error" in r:
+                errors.append(r["error"])
+            else:
+                # Скраперы возвращают {"result": {eye: {p_emmetropia, table: [{power, ref}]}}}
+                eye_data = r.get(active_eye) or r.get("result", {}).get(active_eye) or {}
+                table = eye_data.get("table", []) if isinstance(eye_data, dict) else []
+                p_em = eye_data.get("p_emmetropia") if isinstance(eye_data, dict) else None
+                for row in table:
+                    power = row.get("power", 0)
+                    refr = row.get("ref", row.get("refraction", 0))
+                    results.append({
+                        "power": power,
+                        "refraction": refr,
+                        "is_emmetropia": p_em is not None and abs(power - p_em) < 0.01
+                    })
+                if not results:
+                    errors.append("No results returned for active eye")
+    except Exception as e:
+        errors.append(str(e))
 
-    with ThreadPoolExecutor(max_workers=len(tasks) or 1) as pool:
-        list(pool.map(lambda t: _run(*t), tasks))
-
-    return {"status": "ok", "results": results, "errors": errors}
+    status = "ok" if results else "error"
+    detail = errors[0] if errors else None
+    
+    return {
+        "status": status, 
+        "data": results, 
+        "toric": toric_data,
+        "detail": detail
+    }
 
 if __name__ == "__main__":
     import uvicorn
-    uvicorn.run("api.py:app", host="0.0.0.0", port=8000, reload=False)
+    uvicorn.run("api:app", host="0.0.0.0", port=8000, reload=False)

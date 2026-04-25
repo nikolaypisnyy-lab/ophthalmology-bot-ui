@@ -53,7 +53,10 @@ class MedEyeDB:
                 archived INTEGER DEFAULT 0,
                 status TEXT DEFAULT 'planned',
                 flapDiam TEXT,
-                capOrFlap TEXT
+                capOrFlap TEXT,
+                isCustomView INTEGER DEFAULT 0,
+                isCustomViewOD INTEGER DEFAULT 0,
+                isCustomViewOS INTEGER DEFAULT 0
             )
         """, commit=True)
         # Миграция
@@ -62,6 +65,15 @@ class MedEyeDB:
         except: pass
         try:
             self.execute("ALTER TABLE patients ADD COLUMN capOrFlap TEXT", commit=True)
+        except: pass
+        try:
+            self.execute("ALTER TABLE patients ADD COLUMN isCustomView INTEGER DEFAULT 0", commit=True)
+        except: pass
+        try:
+            self.execute("ALTER TABLE patients ADD COLUMN isCustomViewOD INTEGER DEFAULT 0", commit=True)
+        except: pass
+        try:
+            self.execute("ALTER TABLE patients ADD COLUMN isCustomViewOS INTEGER DEFAULT 0", commit=True)
         except: pass
 
         self.execute("CREATE TABLE IF NOT EXISTS forms (patient_id TEXT PRIMARY KEY, op_date TEXT, op_time TEXT, primary_data TEXT)", commit=True)
@@ -121,10 +133,10 @@ class MedEyeDB:
         row = self.execute("SELECT * FROM patients WHERE chat_id = ?", (chat_id,)).fetchone()
         return dict(row) if row else None
 
-    def save_patient(self, pid, chat_id, name, phone, created_at, archived=0, flapDiam=None, capOrFlap=None):
+    def save_patient(self, pid, chat_id, name, phone, created_at, archived=0, flapDiam=None, capOrFlap=None, isCustomView=0, isCustomViewOD=0, isCustomViewOS=0):
         self.execute(
-            "INSERT OR REPLACE INTO patients (patient_id, chat_id, name, phone, created_at, archived, flapDiam, capOrFlap) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
-            (str(pid), chat_id, name, phone, created_at, archived, flapDiam, capOrFlap),
+            "INSERT OR REPLACE INTO patients (patient_id, chat_id, name, phone, created_at, archived, flapDiam, capOrFlap, isCustomView, isCustomViewOD, isCustomViewOS) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+            (str(pid), chat_id, name, phone, created_at, archived, flapDiam, capOrFlap, isCustomView, isCustomViewOD, isCustomViewOS),
             commit=True
         )
 

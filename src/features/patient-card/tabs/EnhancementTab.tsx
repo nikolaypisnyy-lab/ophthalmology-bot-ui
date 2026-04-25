@@ -1,370 +1,225 @@
-import { useEffect, useState, useRef } from 'react';
+import { useEffect, useState } from 'react';
 import { C, F, eyeColors } from '../../../constants/design';
-import { Calendar } from '../../../ui/Calendar';
-import { SectionLabel } from '../../../ui/SectionLabel';
 import { useSessionStore } from '../../../store/useSessionStore';
 import { useUIStore } from '../../../store/useUIStore';
-import { LASERS } from '../../../constants/lasers';
-import { computeRefPlan } from '../../../calculators/refraction';
-import { computeRefStats, rsbLevel, ptaLevel, kpostLevel, ablLevel } from '../../../calculators/refStats';
-import { DField } from '../../../ui/DField';
-import { WheelField } from '../../../ui/WheelField';
 import { EyeToggle } from '../../../ui/EyeToggle';
-import { Chip } from '../../../ui/Chip';
-import { newEyeData } from '../../../types/refraction';
+import { CorneaSafetyCard } from '../../ablation/CorneaSafetyCard';
+import { computeRefStats, rsbLevel } from '../../../calculators/refStats';
 
-const EXCIMER_LASERS = LASERS.filter(l => ['visx_s4ir', 'ex500', 'mel90'].includes(l.id));
+const EXCIMER_LIST = [
+  { id: 'ex500', shortLabel: 'EX500', color: '#3b82f6' },
+  { id: 'visx_s4ir', shortLabel: 'VISX', color: '#818cf8' },
+  { id: 'mel90', shortLabel: 'MEL90', color: '#10b981' },
+];
 
-function EnhancementResult({ eye, onReset }: { eye: 'od' | 'os'; onReset: () => void }) {
+function EnhancementResult({ eye, laser, onReset }: any) {
   const { draft, refPlan, enhancementPlan, setEnhancementField, setDraft } = useSessionStore();
   const ec = eyeColors(eye);
-  const plan = enhancementPlan?.[eye];
-  const primaryPlan = refPlan?.[eye] || draft?.savedPlan?.[eye];
+  const plan = (enhancementPlan as any)?.[eye];
+  const primaryPlan = (refPlan as any)?.[eye] || (draft as any)?.savedPlan?.[eye];
 
-  if (!plan) return (
-    <div style={{ textAlign: 'center', padding: 20, color: C.muted, fontFamily: F.sans, fontSize: 13 }}>
-      Введите остаточную рефракцию для расчёта
-    </div>
-  );
+  // Always show the plan interface
+  const safePlan = plan || { sph: 0, cyl: 0, ax: 0 };
 
-  const laser = draft?.laser ?? 'ex500';
-  const eyeData = draft?.[eye] ?? newEyeData();
-  const oz = draft?.oz ?? '6.5';
-  const capOrFlap = draft?.capOrFlap ?? '110';
-  const minTh = draft?.minTh ?? '15';
+  const updateEnhPower = (field: 'sph' | 'cyl' | 'ax', isPlus: boolean, step: number) => {
+    const cur = (safePlan as any)[field] || 0;
+    let next = cur;
 
-  let primaryStats = {
-    abl: 0,
-    rsb: parseFloat(String(eyeData.cct)) || 0,
-    pta: '0',
-    kpost: (parseFloat(String(eyeData.k1)) + parseFloat(String(eyeData.k2))) / 2 || parseFloat(String(eyeData.kavg)) || 0,
+    if (field === 'sph' || field === 'cyl') {
+      if (cur < 0) {
+        next = isPlus ? cur - step : cur + step;
+      } else if (cur > 0) {
+        next = isPlus ? cur + step : cur - step;
+      } else {
+        next = isPlus ? 0.25 : -0.25;
+      }
+      next = Math.round(next * 100) / 100;
+      if (field === 'cyl' && next > 0) next = 0;
+    } else if (field === 'ax') {
+      next = isPlus ? cur + step : cur - step;
+      if (next < 0) next = 180 + next;
+      if (next >= 180) next = next - 180;
+    }
+    
+    setEnhancementField(eye, field as any, next);
   };
 
-  if (primaryPlan) {
+  try {
+    const eyeData = (draft as any)?.[eye] || { cct: '540', k1: '43.0', k2: '44.0', kavg: '43.5' };
+    const oz = parseFloat(String((draft as any)?.oz || '6.5')) || 6.5;
+    const currentCCT = parseFloat(String(eyeData.cct || '540')) || 540;
+    const flapThickness = parseFloat(String((draft as any)?.capOrFlap || '110')) || 110;
+
+    // Baseline surgery stats - ensuring safety if primary plan is missing
+    const pSph = primaryPlan?.sph ?? 0;
+    const pCyl = primaryPlan?.cyl ?? 0;
     const pStats = computeRefStats(
-      primaryPlan.sph, primaryPlan.cyl, oz,
-      LASERS.find(l => l.id === draft?.laser)?.isLenticule ?? false,
-      eyeData.cct, capOrFlap, minTh,
-      eyeData.k1, eyeData.k2, eyeData.kavg,
-      draft?.laser as any,
-    );
-    primaryStats = {
-      abl: pStats.abl,
-      rsb: pStats.rsb ?? primaryStats.rsb,
-      pta: pStats.pta ?? '0',
-      kpost: parseFloat(pStats.kpost ?? String(primaryStats.kpost)),
-    };
-  }
+      pSph, pCyl, String(oz),
+      false, currentCCT, String(flapThickness), '15',
+      parseFloat(eyeData.k1) || 43, parseFloat(eyeData.k2) || 44, parseFloat(eyeData.kavg) || 43.5,
+      laser as any
+    ) || {};
 
-  const enhStats = computeRefStats(
-    plan.sph, plan.cyl, oz, false,
-    primaryStats.rsb, 0, 0,
-    primaryStats.kpost, primaryStats.kpost, primaryStats.kpost,
-    laser as any,
-  );
+    const primaryRSB = pStats.rsb ?? (currentCCT - flapThickness);
+    const primaryK = pStats.kpost ?? (parseFloat(eyeData.kavg) || 43.5);
 
-  const cumulativeStats = {
-    abl: enhStats.abl,
-    rsb: enhStats.rsb,
-    pta: (((parseFloat(capOrFlap) + primaryStats.abl + enhStats.abl) / (parseFloat(eyeData.cct) || 1)) * 100).toFixed(1),
-    kpost: enhStats.kpost,
-  };
+    // Enhancement stats
+    const enhStats = computeRefStats(
+      safePlan.sph || 0, safePlan.cyl || 0, String(oz), false,
+      primaryRSB, 0, 0,
+      primaryK, primaryK, primaryK,
+      laser as any
+    ) || {};
 
-  const fmt = (v: number | null, dec = 2) => {
-    if (v === null || isNaN(v)) return '—';
-    return (v >= 0 ? '+' : '') + v.toFixed(dec);
-  };
+    const cumulativeAbl = (parseFloat(String(pStats.abl || 0))) + (parseFloat(String(enhStats.abl || 0)));
+    const rsb = parseFloat(String(primaryRSB || 0)) - (parseFloat(String(enhStats.abl || 0)));
+    const pta = currentCCT > 0 ? ((flapThickness + cumulativeAbl) / currentCCT) * 100 : 0;
+    const fmtSE = (s: number, c: number) => (parseFloat(String(s || 0)) + parseFloat(String(c || 0))/2).toFixed(2);
 
-  return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
-
-      {/* План докоррекции */}
-      <div style={{
-        background: C.surface2, border: `1px solid ${C.border}`,
-        borderRadius: 20, display: 'flex', flexDirection: 'column', overflow: 'hidden',
-      }}>
-        <div style={{ padding: 16, display: 'flex', flexDirection: 'column', gap: 14 }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-            <div style={{ flex: 1 }}>
-              <SectionLabel color={ec.color} style={{ marginBottom: 0 }}>ПЛАН ДОКОРРЕКЦИИ</SectionLabel>
-            </div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-              <button
-                onClick={() => setDraft({ doRound: !draft?.doRound })}
-                style={{
-                  padding: '0 8px', height: 20, borderRadius: 20,
-                  background: draft?.doRound ? `${C.accent}20` : 'transparent',
-                  border: `1px solid ${draft?.doRound ? C.accent : 'transparent'}`,
-                  color: draft?.doRound ? C.accent : C.muted2,
-                  fontFamily: F.sans, fontSize: 9, fontWeight: 700,
-                  cursor: 'pointer', transition: 'all .2s'
-                }}
-              >
-                ОКРУГЛЯТЬ 0.25
-              </button>
-              <button
-                onClick={onReset}
-                style={{
-                  width: 24, height: 24, borderRadius: '50%',
-                  display: 'flex', alignItems: 'center', justifyContent: 'center',
-                  cursor: 'pointer', color: C.muted2, background: 'transparent',
-                  border: 'none', padding: 0
-                }}
-              >
-                <svg width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2.5">
-                  <path d="M23 4v6h-6M1 20v-6h6" />
-                  <path d="M3.51 9a9 9 0 0114.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0020.49 15" />
-                </svg>
-              </button>
-            </div>
+    return (
+      <>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+        <div style={{ background: C.card, borderRadius: 20, padding: '16px 12px', border: `1px solid ${C.border}`, boxShadow: '0 8px 32px rgba(0,0,0,0.2)' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
+            <span style={{ fontSize: 10, fontWeight: 700, color: C.tertiary, textTransform: 'uppercase', letterSpacing: '0.14em' }}>Enhancement Plan</span>
+            <button onClick={onReset} style={{ width: 24, height: 24, borderRadius: '50%', background: C.surface, border: `1px solid ${C.border}`, color: C.tertiary, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer' }}>
+               <svg width="12" height="12" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2.5"><path d="M23 4v6h-6M1 20v-6h6" /><path d="M3.51 9a9 9 0 0114.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0020.49 15" /></svg>
+            </button>
           </div>
 
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 10 }}>
-            <WheelField
-              label="SPH"
-              value={String(plan.sph.toFixed(2))}
-              onChange={v => setEnhancementField(eye, 'sph', parseFloat(v) || 0)}
-              min={-14} max={6} step={0.25}
-              accentColor={ec.color} accentText={true}
-            />
-            <WheelField
-              label="CYL"
-              value={String(plan.cyl.toFixed(2))}
-              onChange={v => setEnhancementField(eye, 'cyl', parseFloat(v) || 0)}
-              min={-6} max={0} step={0.25}
-              accentColor={ec.color} accentText={true}
-            />
-            <DField
-              label="AX"
-              value={String(plan.ax)}
-              onChange={v => setEnhancementField(eye, 'ax', parseFloat(v) || 0)}
-              type="number"
-              accentColor={ec.color} textColor={C.text}
-            />
-          </div>
-
-          {/* Индикаторы безопасности */}
-          <div style={{
-            background: C.surface3, border: `1px solid ${C.border}`,
-            borderRadius: 12, display: 'flex', flexDirection: 'column', overflow: 'hidden',
-          }}>
-                <div style={{ padding: 12, display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 4 }}>
-              {[
-                { label: 'ABL', value: cumulativeStats.abl, unit: 'мкм', level: ablLevel(cumulativeStats.abl) },
-                { label: 'RSB', value: cumulativeStats.rsb, unit: 'мкм', level: rsbLevel(cumulativeStats.rsb) },
-                { label: 'PTA', value: cumulativeStats.pta, unit: '%',   level: ptaLevel(cumulativeStats.pta) },
-                { label: 'KPOST', value: cumulativeStats.kpost, unit: 'D', level: kpostLevel(cumulativeStats.kpost) },
-              ].map(s => (
-                <div key={s.label} style={{ textAlign: 'center', display: 'flex', flexDirection: 'column', gap: 2 }}>
-                  <div style={{ fontFamily: F.sans, fontSize: 7, fontWeight: 800, color: C.muted, letterSpacing: '.05em' }}>{s.label}</div>
-                  <div style={{
-                    fontFamily: F.mono, fontSize: 13, fontWeight: 800,
-                    color: s.level === 'red' ? C.red : s.level === 'yellow' ? C.yellow : C.green,
-                  }}>
-                    {s.value} <span style={{ fontSize: 8, fontWeight: 400, color: C.muted }}>{s.unit}</span>
-                  </div>
-                </div>
+          <div style={{ display: 'flex', justifyContent: 'center', marginBottom: 12 }}>
+            <div style={{ display: 'flex', gap: 4, background: C.surface, padding: 2, borderRadius: 10 }}>
+              {(['manifest', 'corneal', 'vector', 'wavefront'] as const).map(s => (
+                <button key={s} onClick={() => setDraft({ enhAstigStrategy: s } as any)} style={{ padding: '5px 12px', borderRadius: 8, border: 'none', background: ((draft as any).enhAstigStrategy ?? 'manifest') === s ? C.cardHi : 'transparent', color: ((draft as any).enhAstigStrategy ?? 'manifest') === s ? C.primary : C.tertiary, fontSize: 8.5, fontWeight: 700, textTransform: 'uppercase', cursor: 'pointer' }}>{s}</button>
               ))}
             </div>
           </div>
 
-          {/* Сравнение с первичной операцией */}
-          {primaryPlan && (
-            <div style={{
-              background: C.surface3, border: `1px solid ${C.border}`,
-              borderRadius: 10, padding: '8px 12px',
-              display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 4,
-            }}>
-              <div style={{ fontFamily: F.sans, fontSize: 9, color: C.muted, fontWeight: 600 }}>Первичная абляция</div>
-              <div style={{ fontFamily: F.mono, fontSize: 10, color: C.muted2, textAlign: 'right' }}>{fmt(primaryStats.abl, 0)} мкм</div>
-              <div style={{ fontFamily: F.sans, fontSize: 9, color: C.muted, fontWeight: 600 }}>RSB после докоррекции</div>
-              <div style={{ fontFamily: F.mono, fontSize: 10, color: rsbLevel(cumulativeStats.rsb) === 'red' ? C.red : rsbLevel(cumulativeStats.rsb) === 'yellow' ? C.yellow : C.green, textAlign: 'right', fontWeight: 700 }}>{cumulativeStats.rsb} мкм</div>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 8, marginBottom: 16 }}>
+            {[
+              { label: 'SPH', val: safePlan.sph || 0, step: 0.25, field: 'sph', fmt: (v:any)=> (parseFloat(v||0)>0?'+':'')+parseFloat(v||0).toFixed(2), color: ec.color },
+              { label: 'CYL', val: safePlan.cyl || 0, step: 0.25, field: 'cyl', fmt: (v:any)=> parseFloat(v||0).toFixed(2), color: ec.color },
+              { label: 'AXIS', val: safePlan.ax || 0,  step: 5,    field: 'ax',  fmt: (v:any)=> (v||0)+'°', color: C.primary },
+            ].map((f:any) => (
+              <div key={f.label} style={{ background: C.surface, borderRadius: 12, padding: '8px 4px', border: `1px solid ${C.border}`, textAlign: 'center' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '0 6px 4px', borderBottom: `1px solid ${C.border}40`, marginBottom: 6 }}>
+                  <button onClick={() => updateEnhPower(f.field, false, f.step)} style={{ background: 'none', border: 'none', color: C.tertiary, fontSize: 16, width: 20, height: 20, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 0, cursor: 'pointer', outline: 'none' }}>−</button>
+                  <div style={{ fontSize: 8, color: C.tertiary, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em' }}>{f.label}</div>
+                  <button onClick={() => updateEnhPower(f.field, true, f.step)} style={{ background: 'none', border: 'none', color: C.tertiary, fontSize: 16, width: 20, height: 20, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 0, cursor: 'pointer', outline: 'none' }}>+</button>
+                </div>
+                <div style={{ fontSize: 18, fontWeight: 700, color: f.color, fontFamily: F.mono, lineHeight: 1 }}>{f.fmt(f.val)}</div>
+              </div>
+            ))}
+          </div>
+
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '8px 12px', background: `${C.indigo}10`, borderRadius: 12, border: `1px solid ${C.indigo}20`, marginBottom: 16 }}>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
+              <div style={{ fontSize: 8, color: C.indigo, fontWeight: '700', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Est. Ablation</div>
+              <div style={{ fontSize: 11, fontWeight: 800, color: C.primary, fontFamily: F.mono }}>{enhStats.abl || 0} μm</div>
             </div>
-          )}
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 1, textAlign: 'center' }}>
+              <div style={{ fontSize: 8, color: C.indigo, fontWeight: '700', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Cumulative</div>
+              <div style={{ fontSize: 11, fontWeight: 800, color: C.primary, fontFamily: F.mono }}>{cumulativeAbl} μm</div>
+            </div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 6, background: C.card, padding: '4px 8px', borderRadius: 8, border: `1px solid ${(rsb || 0) < 300 ? C.red : C.green}40` }}>
+                <div style={{ width: 5, height: 5, borderRadius: '50%', background: (rsb || 0) < 300 ? C.red : C.green }} />
+                <span style={{ fontSize: 9, fontWeight: 800, color: (rsb || 0) < 300 ? C.red : C.green, letterSpacing: '0.04em' }}>{(rsb || 0) < 300 ? 'RECHECK' : 'SAFE'}</span>
+            </div>
+          </div>
+
+          <div style={{ padding: '12px', background: C.surface, borderRadius: 14, border: `1px solid ${C.border}`, display: 'flex', flexDirection: 'column', gap: 10 }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <span style={{ fontSize: 9, fontWeight: 700, color: C.tertiary, textTransform: 'uppercase', letterSpacing: '0.08em' }}>Safety Profile (Enhancement)</span>
+              <div style={{ background: (rsb || 0) < 300 ? C.red : C.green, width: 6, height: 6, borderRadius: '50%' }} />
+            </div>
+            
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 8 }}>
+              <div style={{ textAlign: 'center' }}>
+                <div style={{ fontSize: 8, fontWeight: 700, color: C.tertiary, textTransform: 'uppercase', marginBottom: 4 }}>Ablation</div>
+                <div style={{ fontSize: 16, fontWeight: 700, color: C.primary, fontFamily: F.mono }}>{enhStats.abl || 0}<span style={{ fontSize: 8, marginLeft: 2, color: C.tertiary }}>μm</span></div>
+              </div>
+              <div style={{ textAlign: 'center' }}>
+                <div style={{ fontSize: 8, fontWeight: 700, color: C.tertiary, textTransform: 'uppercase', marginBottom: 4 }}>Resid. Stroma</div>
+                <div style={{ fontSize: 16, fontWeight: 700, color: (rsb || 0) < 300 ? C.red : C.green, fontFamily: F.mono }}>{(rsb || 0).toFixed(0)}<span style={{ fontSize: 8, marginLeft: 2, color: C.tertiary }}>μm</span></div>
+              </div>
+              <div style={{ textAlign: 'center' }}>
+                <div style={{ fontSize: 8, fontWeight: 700, color: C.tertiary, textTransform: 'uppercase', marginBottom: 4 }}>PTA</div>
+                <div style={{ fontSize: 16, fontWeight: 700, color: (pta || 0) > 40 ? C.red : C.primary, fontFamily: F.mono }}>{(pta || 0).toFixed(1)}<span style={{ fontSize: 8, marginLeft: 2, color: C.tertiary }}>%</span></div>
+              </div>
+            </div>
+          </div>
         </div>
       </div>
-    </div>
-  );
+      </>
+    );
+  } catch (err) {
+    return <div style={{ color: C.red, fontSize: 11, padding: 20 }}>Calculation Error: {String(err)}</div>;
+  }
 }
 
 export function EnhancementTab() {
-  const { draft, setDraft, enhancementPlan, setEnhancementPlan, setEyeField } = useSessionStore();
-  const [showCalendar, setShowCalendar] = useState(false);
-  const calendarRef = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    if (showCalendar && calendarRef.current) {
-      setTimeout(() => {
-        calendarRef.current?.scrollIntoView({ behavior: 'smooth', block: 'end' });
-      }, 100);
-    }
-  }, [showCalendar]);
-  const { enhancementEye, setEnhancementEye } = useUIStore();
+  const { draft, setDraft, enhancementPlan, setEnhancementPlan, toggleSurgicalEye } = useSessionStore();
+  const { enhancementEye, setEnhancementEye, openOCR } = useUIStore();
 
   if (!draft) return null;
 
-  const laser = draft.laser ?? 'ex500';
-  const eyeData = draft[enhancementEye] ?? newEyeData();
-  const residualKey = `residual_${enhancementEye}` as 'residual_od' | 'residual_os';
-  const residual: any = draft[residualKey] ?? { sph: '', cyl: '', ax: '', k1: '', k2: '' };
-  const ec = eyeColors(enhancementEye);
+  try {
+    const ec = eyeColors(enhancementEye);
+    const laser = draft.laser ?? 'ex500';
+    const residualKey = `residual_${enhancementEye}` as any;
+    const residual: any = (draft as any)[residualKey] ?? { sph: '', cyl: '', ax: '' };
 
-  const getLatestK = (eye: 'od' | 'os') => {
-    const periods = ['1y', '6m', '3m', '1m', '1w', '1d'] as const;
-    for (const p of periods) {
-      const pData = (draft.periods as any)?.[p]?.[eye];
-      if (pData?.k1 || pData?.k2) return { k1: pData.k1 || '', k2: pData.k2 || '' };
-    }
-    return { k1: draft[eye]?.k1 || '', k2: draft[eye]?.k2 || '' }; // Fallback to pre-op
-  };
+    return (
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+        <div style={{ display: 'flex', justifyContent: 'center' }}>
+          <EyeToggle value={enhancementEye} onChange={setEnhancementEye} onLongPress={toggleSurgicalEye} />
+        </div>
 
-  const getLatestRef = (eye: 'od' | 'os') => {
-    const fmt = (v: string | number) => {
-      const n = parseFloat(String(v));
-      if (isNaN(n)) return '';
-      return n > 0 ? `+${n.toFixed(2)}` : n === 0 ? '0.00' : n.toFixed(2);
-    };
-    const periods = ['1y', '6m', '3m', '1m', '1w', '1d'] as const;
-    for (const p of periods) {
-      const pData = (draft.periods as any)?.[p]?.[eye];
-      if (pData?.sph !== undefined && pData?.sph !== '') return { sph: fmt(pData.sph), cyl: fmt(pData.cyl || '0.00'), ax: pData.ax || '0' };
-    }
-    return { sph: '', cyl: '', ax: '' }; 
-  };
+        <div style={{ background: C.card, borderRadius: 20, padding: '16px 12px', border: `1px solid ${C.border}`, display: 'flex', flexDirection: 'column', gap: 14 }}>
+          <div style={{ display: 'flex', alignItems: 'center', padding: '0 4px' }}>
+            <span style={{ fontSize: 10, fontWeight: 700, color: ec.color, textTransform: 'uppercase', letterSpacing: '0.14em' }}>Residual Refraction</span>
+          </div>
 
-  const latestRef = getLatestRef(enhancementEye);
-  const enhSph = residual.sph !== undefined && residual.sph !== '' ? residual.sph : latestRef.sph;
-  const enhCyl = residual.cyl !== undefined && residual.cyl !== '' ? residual.cyl : latestRef.cyl;
-  const enhAx  = residual.ax  !== undefined && residual.ax  !== '' ? residual.ax  : latestRef.ax;
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 8 }}>
+            {[
+              { label: 'SPH', field: 'sph', step: 0.25, fmt: (v:any) => (parseFloat(v)>0?'+':'')+parseFloat(v||0).toFixed(2) },
+              { label: 'CYL', field: 'cyl', step: 0.25, fmt: (v:any) => parseFloat(v||0).toFixed(2) },
+              { label: 'AXIS', field: 'ax', step: 5, fmt: (v:any) => (v||0)+'°' },
+            ].map(f => {
+              const curVal = parseFloat(residual[f.field] || '0') || 0;
+              const update = (delta: number) => {
+                let next = curVal + delta;
+                if (f.field === 'ax') {
+                  if (next < 0) next = 180 + next;
+                  if (next >= 180) next = next - 180;
+                }
+                setDraft({ [residualKey]: { ...residual, [f.field]: String(next) } });
+              };
 
-  const enhK1 = residual.k1 || getLatestK(enhancementEye).k1;
-  const enhK2 = residual.k2 || getLatestK(enhancementEye).k2;
-
-  const setResidual = (patch: any) => {
-    setDraft({ [residualKey]: { ...residual, ...patch } });
-  };
-
-  const recalc = () => {
-    const age = parseFloat(draft.age ?? '0') || 0;
-    const fakeEyeData = (eye: 'od' | 'os') => {
-      const res: any = draft[`residual_${eye}` as 'residual_od' | 'residual_os'] ?? {};
-      const latestK = getLatestK(eye);
-      const latestR = getLatestRef(eye);
-      return {
-        ...newEyeData(),
-        man_sph: res.sph !== undefined && res.sph !== '' ? res.sph : (latestR.sph || '0.00'),
-        man_cyl: res.cyl !== undefined && res.cyl !== '' ? res.cyl : (latestR.cyl || '0.00'),
-        man_ax:  res.ax  !== undefined && res.ax  !== '' ? res.ax  : (latestR.ax  || '0'),
-        cct:  draft[eye]?.cct  || '',
-        k1:   res.k1 || latestK.k1,
-        k2:   res.k2 || latestK.k2,
-        kavg: '',
-      };
-    };
-    setEnhancementPlan({
-      od: computeRefPlan(fakeEyeData('od') as any, laser as any, false, !!draft.doRound, age, !!draft.noNomogram) ?? undefined,
-      os: computeRefPlan(fakeEyeData('os') as any, laser as any, false, !!draft.doRound, age, !!draft.noNomogram) ?? undefined,
-    });
-  };
-
-  useEffect(() => {
-    if (!enhancementPlan) recalc();
-  }, []);
-
-  return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 16, padding: '0 4px' }}>
-
-      {/* Лазер */}
-      <div style={{
-        background: C.surface2, border: `1px solid ${C.border}`,
-        borderRadius: 16, overflow: 'hidden',
-      }}>
-        <div style={{ padding: '10px 12px' }}>
-          <div style={{ fontFamily: F.sans, fontSize: 9, fontWeight: 800, color: C.muted, letterSpacing: '.07em', textTransform: 'uppercase', marginBottom: 8 }}>ЛАЗЕР (ЭКСИМЕР)</div>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 4 }}>
-            {EXCIMER_LASERS.map(l => (
-              <Chip
-                key={l.id}
-                label={l.shortLabel}
-                active={laser === l.id}
-                color={l.color}
-                onClick={() => setDraft({ laser: l.id })}
-                style={{ width: '100%', justifyContent: 'center', height: 22, fontSize: 8, padding: '0 4px' }}
-              />
-            ))}
-            <Chip
-              label="Без ном."
-              active={!!draft.noNomogram}
-              color={C.red}
-              onClick={() => setDraft({ noNomogram: !draft.noNomogram })}
-              style={{ width: '100%', justifyContent: 'center', height: 22, fontSize: 8, padding: '0 4px' }}
-            />
+              return (
+                <div key={f.label} style={{ background: C.surface, borderRadius: 12, padding: '8px 4px', border: `1px solid ${C.border}`, textAlign: 'center' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '0 6px 6px', borderBottom: `1px solid ${C.border}40`, marginBottom: 8 }}>
+                    <button onClick={() => update(-f.step)} style={{ background: 'none', border: 'none', color: C.muted2, fontSize: 16, width: 20, height: 20, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 0, cursor: 'pointer', outline: 'none' }}>−</button>
+                    <div style={{ fontSize: 7, color: C.muted2, fontWeight: 900, textTransform: 'uppercase', letterSpacing: '0.05em' }}>{f.label}</div>
+                    <button onClick={() => update(f.step)} style={{ background: 'none', border: 'none', color: C.muted2, fontSize: 16, width: 20, height: 20, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 0, cursor: 'pointer', outline: 'none' }}>+</button>
+                  </div>
+                  <div style={{ fontSize: 20, fontWeight: 900, color: f.label === 'AXIS' ? C.text : ec.color, fontFamily: F.mono, lineHeight: 1 }}>{f.fmt(curVal)}</div>
+                </div>
+              );
+            })}
           </div>
         </div>
+
+        <EnhancementResult 
+          eye={enhancementEye} 
+          laser={laser} 
+          onReset={() => setEnhancementPlan(null)} 
+        />
+        
+        <div style={{ height: 40 }} />
       </div>
-
-      {/* Остаточная рефракция + кератометрия */}
-      <div style={{
-        background: C.surface2, border: `1px solid ${C.border}`,
-        borderRadius: 16, overflow: 'hidden',
-      }}>
-        <div style={{ padding: '12px 14px', display: 'flex', flexDirection: 'column', gap: 10 }}>
-          <div style={{ fontFamily: F.sans, fontSize: 9, fontWeight: 800, color: C.muted, letterSpacing: '.07em', textTransform: 'uppercase' }}>ОСТАТОЧНАЯ РЕФРАКЦИЯ</div>
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 8 }}>
-            <DField label="SPH" value={enhSph} onChange={v => setResidual({ sph: v })} type="text" placeholder="0.00" accentColor={ec.color} textColor={C.text} />
-            <DField label="CYL" value={enhCyl} onChange={v => setResidual({ cyl: v })} type="text" placeholder="0.00" accentColor={ec.color} textColor={C.text} />
-            <DField label="AX"  value={enhAx}  onChange={v => setResidual({ ax: v })}  type="text" placeholder="0"    accentColor={ec.color} textColor={C.text} />
-          </div>
-
-          <div style={{ borderTop: `1px solid ${C.border}`, paddingTop: 10 }}>
-            <div style={{ fontFamily: F.sans, fontSize: 9, fontWeight: 800, color: C.muted, letterSpacing: '.07em', textTransform: 'uppercase', marginBottom: 8 }}>КЕРАТОМЕТРИЯ</div>
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 8 }}>
-              <DField label="K1 D"   value={enhK1}   onChange={v => setResidual({ k1: v })} type="text" placeholder="43.00" accentColor={ec.color} textColor={C.text} />
-              <DField label="K2 D"   value={enhK2}   onChange={v => setResidual({ k2: v })} type="text" placeholder="44.00" accentColor={ec.color} textColor={C.text} />
-              <DField label="OZ мм"  value={draft.oz ?? '6.5'} onChange={v => setDraft({ oz: v })}             type="number" step=".1" accentColor={ec.color} textColor={C.text} />
-            </div>
-          </div>
-        </div>
-      </div>
-
-      {/* Eye toggle */}
-      <div style={{ display: 'flex', justifyContent: 'center', margin: '4px 0' }}>
-        <EyeToggle value={enhancementEye} onChange={setEnhancementEye} />
-      </div>
-
-      <EnhancementResult eye={enhancementEye} onReset={recalc} />
-
-      {/* Кнопка записи на операцию */}
-      <div style={{ padding: '12px 0 24px 0' }}>
-        <button onClick={() => setShowCalendar(v => !v)} style={{
-          width: '100%', background: draft.date ? `${C.green}15` : C.accentLt,
-          border: `1px solid ${draft.date ? C.green : C.accent}40`,
-          borderRadius: 20, padding: 14, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 10,
-          color: draft.date ? '#10B981' : C.accent, fontFamily: F.sans, fontSize: 13, fontWeight: 800,
-          boxShadow: `0 4px 12px ${draft.date ? C.green : C.accent}15`,
-          cursor: 'pointer', transition: 'all 0.2s'
-        }}>
-          <svg width="20" height="20" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2.5">
-            <path strokeLinecap="round" strokeLinejoin="round" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
-          </svg>
-          {draft.date 
-            ? (draft.isEnhancement ? `ДОКОРРЕКЦИЯ: ${new Date(draft.date).toLocaleDateString('ru-RU')}` : `ОПЕРАЦИЯ: ${new Date(draft.date).toLocaleDateString('ru-RU')}`)
-            : 'ЗАПИСАТЬ НА ДОКОРРЕКЦИЮ'}
-        </button>
-
-        {showCalendar && (
-          <div ref={calendarRef} style={{ animation: 'fadeIn .2s ease' }}>
-            <Calendar 
-              selectedDate={draft.date || null} 
-              onSelect={(isoDate) => { 
-                setDraft({ date: isoDate, status: 'planned', isEnhancement: true }); 
-                setTimeout(() => setShowCalendar(false), 200); 
-              }} 
-            />
-          </div>
-        )}
-      </div>
-
-    </div>
-  );
+    );
+  } catch (err) {
+    return <div style={{ color: C.red, padding: 24 }}>Render Error: {String(err)}</div>;
+  }
 }

@@ -190,12 +190,18 @@ def scrape_kane_formula_both(data: dict) -> dict:
                 except Exception:
                     pass
 
-            for side in sides:
+            # Kane requires eye1 (right) to be filled for calculation to trigger.
+            # Map slots: always put first available eye in slot 1, second in slot 2.
+            slot_map = {}  # slot_index (1 or 2) → original side key
+            for i, side in enumerate(sides):
+                slot = i + 1  # 1-based
+                slot_map[slot] = side
+
+            for slot, side in slot_map.items():
                 d = data[side]
-                side_label = "right" if side == "od" else "left"
-                suff = "1" if side == "od" else "2"
-                print(f"[Kane] Filling {side}...")
-                # nontoric radio also needs jQuery .prop() for GetFormData() .is(':checked')
+                side_label = "right" if slot == 1 else "left"
+                suff = str(slot)
+                print(f"[Kane] Filling {side} → slot {slot} ({side_label})...")
                 page.evaluate("""(n) => { jQuery('[name="' + n + '"]').prop('checked', true).trigger('change'); }""",
                                f"nontoric_{suff}")
                 fill_by_name(f"al_{side_label}",   d.get("al", ""))
@@ -242,10 +248,10 @@ def scrape_kane_formula_both(data: dict) -> dict:
                 return { eye1: parseContainer('eye1_results'), eye2: parseContainer('eye2_results') };
             }""")
 
-            for side in sides:
-                eye_key = "eye1" if side == "od" else "eye2"
+            for slot, side in slot_map.items():
+                eye_key = f"eye{slot}"
                 rows = results_data.get(eye_key, [])
-                print(f"[Kane] {side}: {len(rows)} rows")
+                print(f"[Kane] {side} (slot {slot}): {len(rows)} rows")
                 if not rows:
                     continue
                 tbl = [{"power": r[0], "ref": r[1]} for r in rows]

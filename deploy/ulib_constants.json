@@ -1,0 +1,2738 @@
+[
+  {
+    "name": "1stQ Basis Z",
+    "a_nominal": 118.0,
+    "a0": 0.325,
+    "a1": 0.255,
+    "a2": 0.141,
+    "a_srkt": 118.1,
+    "n": 672
+  },
+  {
+    "name": "1stQ Basis Q",
+    "a_nominal": 118.0,
+    "a0": 0.278,
+    "a1": 0.427,
+    "a2": 0.12,
+    "a_srkt": 118.1,
+    "n": 601
+  },
+  {
+    "name": "1stQ Basis Z progressiv - discontinued",
+    "a_nominal": 118.0,
+    "a0": 1.18,
+    "a1": 0.4,
+    "a2": 0.1,
+    "a_srkt": 118.8,
+    "n": 59
+  },
+  {
+    "name": "1stQ Basis Z hydrophob (+)",
+    "a_nominal": 118.0,
+    "a0": 1.32,
+    "a1": 0.4,
+    "a2": 0.1,
+    "a_srkt": 118.9,
+    "n": 97
+  },
+  {
+    "name": "1stQ Basis K",
+    "a_nominal": 118.9,
+    "a0": 0.95,
+    "a1": 0.4,
+    "a2": 0.1,
+    "a_srkt": 118.3,
+    "n": 122
+  },
+  {
+    "name": "Aaren Scientific OPTIVIS",
+    "a_nominal": 118.1,
+    "a0": 0.75,
+    "a1": 0.4,
+    "a2": 0.1,
+    "a_srkt": 118.0,
+    "n": 71
+  },
+  {
+    "name": "Aaren Scientific AQUA 4 Y RM",
+    "a_nominal": 118.5,
+    "a0": 1.36,
+    "a1": 0.4,
+    "a2": 0.1,
+    "a_srkt": 118.8,
+    "n": 117
+  },
+  {
+    "name": "Aaren Scientific EC-3",
+    "a_nominal": 118.2,
+    "a0": 1.45,
+    "a1": 0.4,
+    "a2": 0.1,
+    "a_srkt": 119.1,
+    "n": 35
+  },
+  {
+    "name": "Aaren Scientific EC-1YH PAL",
+    "a_nominal": 117.8,
+    "a0": 1.2,
+    "a1": 0.4,
+    "a2": 0.1,
+    "a_srkt": 118.7,
+    "n": 100
+  },
+  {
+    "name": "Aaren Scientific EC-1R PAL",
+    "a_nominal": 118.3,
+    "a0": 1.22,
+    "a1": 0.4,
+    "a2": 0.1,
+    "a_srkt": 118.7,
+    "n": 55
+  },
+  {
+    "name": "Aaren Scientific EC-3 PAL",
+    "a_nominal": 117.7,
+    "a0": 1.1,
+    "a1": 0.4,
+    "a2": 0.1,
+    "a_srkt": 118.4,
+    "n": 47
+  },
+  {
+    "name": "Alcon AcrySof MA60BM (Japan)",
+    "a_nominal": 118.9,
+    "a0": 1.98,
+    "a1": 0.4,
+    "a2": 0.1,
+    "a_srkt": 119.8,
+    "n": 99
+  },
+  {
+    "name": "Alcon SA60AT (Japan)",
+    "a_nominal": 118.4,
+    "a0": -1.627,
+    "a1": 0.305,
+    "a2": 0.248,
+    "a_srkt": 118.9,
+    "n": 501
+  },
+  {
+    "name": "Alcon SN60WF (Japan)",
+    "a_nominal": 118.7,
+    "a0": -1.268,
+    "a1": 0.342,
+    "a2": 0.233,
+    "a_srkt": 119.1,
+    "n": 202
+  },
+  {
+    "name": "Alcon SN60WF IQ (India)",
+    "a_nominal": 118.7,
+    "a0": 1.35,
+    "a1": 0.4,
+    "a2": 0.1,
+    "a_srkt": 118.9,
+    "n": 68
+  },
+  {
+    "name": "Alcon AcrySof MA60BM",
+    "a_nominal": 118.9,
+    "a0": 1.443,
+    "a1": 0.077,
+    "a2": 0.163,
+    "a_srkt": 119.8,
+    "n": 271
+  },
+  {
+    "name": "Alcon AcrySof MA60AC",
+    "a_nominal": 118.4,
+    "a0": 0.229,
+    "a1": 0.011,
+    "a2": 0.205,
+    "a_srkt": 119.2,
+    "n": 399
+  },
+  {
+    "name": "Alcon AcrySof MA50BM",
+    "a_nominal": 118.9,
+    "a0": 1.75,
+    "a1": 0.4,
+    "a2": 0.1,
+    "a_srkt": 119.4,
+    "n": 141
+  },
+  {
+    "name": "Alcon AcrySof MA30BA",
+    "a_nominal": 118.9,
+    "a0": 1.81,
+    "a1": 0.4,
+    "a2": 0.1,
+    "a_srkt": 119.4,
+    "n": 49
+  },
+  {
+    "name": "Alcon AcrySof MA30AC",
+    "a_nominal": 118.4,
+    "a0": 1.34,
+    "a1": 0.4,
+    "a2": 0.1,
+    "a_srkt": 118.7,
+    "n": 67
+  },
+  {
+    "name": "Alcon MA60MA (+diopters)",
+    "a_nominal": 118.9,
+    "a0": 5.78,
+    "a1": 0.4,
+    "a2": 0.1,
+    "a_srkt": 126.6,
+    "n": 91
+  },
+  {
+    "name": "Alcon MA60MA (-diopters)",
+    "a_nominal": 118.9,
+    "a0": -4.22,
+    "a1": 0.4,
+    "a2": 0.1,
+    "a_srkt": 103.6,
+    "n": 39
+  },
+  {
+    "name": "Alcon MZ30BD",
+    "a_nominal": 118.7,
+    "a0": 1.51,
+    "a1": 0.4,
+    "a2": 0.1,
+    "a_srkt": 119.2,
+    "n": 36
+  },
+  {
+    "name": "Alcon SA30AL",
+    "a_nominal": 118.4,
+    "a0": 1.26,
+    "a1": 0.4,
+    "a2": 0.1,
+    "a_srkt": 118.8,
+    "n": 115
+  },
+  {
+    "name": "Alcon SA60AT",
+    "a_nominal": 118.4,
+    "a0": -0.111,
+    "a1": 0.249,
+    "a2": 0.179,
+    "a_srkt": 118.8,
+    "n": 1867
+  },
+  {
+    "name": "Alcon SN60WF",
+    "a_nominal": 118.7,
+    "a0": -0.769,
+    "a1": 0.234,
+    "a2": 0.217,
+    "a_srkt": 119.0,
+    "n": 5363
+  },
+  {
+    "name": "Alcon ReSTOR SA60D3",
+    "a_nominal": 118.1,
+    "a0": -0.123,
+    "a1": 0.099,
+    "a2": 0.189,
+    "a_srkt": 118.5,
+    "n": 339
+  },
+  {
+    "name": "Alcon ReSTOR SN6AD1/3",
+    "a_nominal": 118.9,
+    "a0": -0.385,
+    "a1": 0.197,
+    "a2": 0.204,
+    "a_srkt": 119.0,
+    "n": 885
+  },
+  {
+    "name": "Alcon Toric SN6AT(2-9)",
+    "a_nominal": 119.0,
+    "a0": -0.323,
+    "a1": 0.213,
+    "a2": 0.208,
+    "a_srkt": 119.2,
+    "n": 584
+  },
+  {
+    "name": "Alcon Toric SN6AT(3-5) (Japan)",
+    "a_nominal": 119.0,
+    "a0": 1.78,
+    "a1": 0.4,
+    "a2": 0.1,
+    "a_srkt": 119.3,
+    "n": 77
+  },
+  {
+    "name": "Alcon ReSTOR SN6AD1/3 (India)",
+    "a_nominal": 119.1,
+    "a0": 1.35,
+    "a1": 0.4,
+    "a2": 0.1,
+    "a_srkt": 119.0,
+    "n": 66
+  },
+  {
+    "name": "Alcon ReSTOR SN6AD2   (India)",
+    "a_nominal": 119.1,
+    "a0": 1.45,
+    "a1": 0.4,
+    "a2": 0.1,
+    "a_srkt": 119.2,
+    "n": 31
+  },
+  {
+    "name": "Alcon ReSTOR SV25T0   (India)",
+    "a_nominal": 119.1,
+    "a0": 1.63,
+    "a1": 0.4,
+    "a2": 0.1,
+    "a_srkt": 119.3,
+    "n": 16
+  },
+  {
+    "name": "Alcon ReSTOR SV25T0",
+    "a_nominal": 119.1,
+    "a0": 1.66,
+    "a1": 0.4,
+    "a2": 0.1,
+    "a_srkt": 119.5,
+    "n": 70
+  },
+  {
+    "name": "Alcon Panoptix TFNT00",
+    "a_nominal": 119.1,
+    "a0": 1.39,
+    "a1": 0.4,
+    "a2": 0.1,
+    "a_srkt": 119.1,
+    "n": 26
+  },
+  {
+    "name": "AMO SI30 NB",
+    "a_nominal": 117.4,
+    "a0": 1.23,
+    "a1": 0.4,
+    "a2": 0.1,
+    "a_srkt": 118.5,
+    "n": 34
+  },
+  {
+    "name": "AMO SI40 NB",
+    "a_nominal": 118.0,
+    "a0": -0.199,
+    "a1": 0.276,
+    "a2": 0.169,
+    "a_srkt": 118.4,
+    "n": 1172
+  },
+  {
+    "name": "AMO ClariFlex",
+    "a_nominal": 118.0,
+    "a0": 0.92,
+    "a1": 0.4,
+    "a2": 0.1,
+    "a_srkt": 118.3,
+    "n": 142
+  },
+  {
+    "name": "AMO ClariFlex (Japan)",
+    "a_nominal": 118.0,
+    "a0": 1.38,
+    "a1": 0.4,
+    "a2": 0.1,
+    "a_srkt": 118.7,
+    "n": 29
+  },
+  {
+    "name": "AMO Sensar AR40",
+    "a_nominal": 118.4,
+    "a0": 0.472,
+    "a1": 0.077,
+    "a2": 0.174,
+    "a_srkt": 118.7,
+    "n": 368
+  },
+  {
+    "name": "AMO Sensar AR40E",
+    "a_nominal": 118.4,
+    "a0": -2.42,
+    "a1": 0.157,
+    "a2": 0.288,
+    "a_srkt": 118.7,
+    "n": 653
+  },
+  {
+    "name": "AMO Sensar 1-piece AAB00",
+    "a_nominal": 118.4,
+    "a0": -1.004,
+    "a1": 0.182,
+    "a2": 0.232,
+    "a_srkt": 119.0,
+    "n": 415
+  },
+  {
+    "name": "AMO ReZoom NXG1",
+    "a_nominal": 118.4,
+    "a0": 0.92,
+    "a1": 0.4,
+    "a2": 0.1,
+    "a_srkt": 118.3,
+    "n": 113
+  },
+  {
+    "name": "AMO SA40 Array",
+    "a_nominal": 118.0,
+    "a0": 0.65,
+    "a1": 0.4,
+    "a2": 0.1,
+    "a_srkt": 117.9,
+    "n": 183
+  },
+  {
+    "name": "AMO SI55",
+    "a_nominal": 118.0,
+    "a0": 1.1,
+    "a1": 0.4,
+    "a2": 0.1,
+    "a_srkt": 118.7,
+    "n": 77
+  },
+  {
+    "name": "AMO PS60 ANB",
+    "a_nominal": 116.7,
+    "a0": 1.15,
+    "a1": 0.4,
+    "a2": 0.1,
+    "a_srkt": 118.7,
+    "n": 18
+  },
+  {
+    "name": "AMO Verisyse 50 aph.retropup.",
+    "a_nominal": 116.8,
+    "a0": -0.25,
+    "a1": 0.4,
+    "a2": 0.1,
+    "a_srkt": 116.9,
+    "n": 20
+  },
+  {
+    "name": "AMO CeeOn 911A",
+    "a_nominal": 118.3,
+    "a0": 0.568,
+    "a1": 0.224,
+    "a2": 0.152,
+    "a_srkt": 118.7,
+    "n": 647
+  },
+  {
+    "name": "AMO 808C",
+    "a_nominal": 118.0,
+    "a0": 1.5,
+    "a1": 0.4,
+    "a2": 0.1,
+    "a_srkt": 119.1,
+    "n": 130
+  },
+  {
+    "name": "AMO Tecnis Z9000",
+    "a_nominal": 119.0,
+    "a0": -0.663,
+    "a1": 0.117,
+    "a2": 0.232,
+    "a_srkt": 119.2,
+    "n": 494
+  },
+  {
+    "name": "AMO Tecnis Z9001",
+    "a_nominal": 119.0,
+    "a0": 1.5,
+    "a1": 0.4,
+    "a2": 0.1,
+    "a_srkt": 119.2,
+    "n": 53
+  },
+  {
+    "name": "AMO Tecnis Z9002",
+    "a_nominal": 118.7,
+    "a0": -1.201,
+    "a1": 0.102,
+    "a2": 0.246,
+    "a_srkt": 118.8,
+    "n": 1275
+  },
+  {
+    "name": "AMO Tecnis ZM900",
+    "a_nominal": 119.0,
+    "a0": 1.6,
+    "a1": 0.4,
+    "a2": 0.1,
+    "a_srkt": 119.8,
+    "n": 118
+  },
+  {
+    "name": "AMO Tecnis ZA9003",
+    "a_nominal": 119.1,
+    "a0": -1.298,
+    "a1": 0.233,
+    "a2": 0.24,
+    "a_srkt": 119.1,
+    "n": 1309
+  },
+  {
+    "name": "AMO Tecnis 1 ZCB00",
+    "a_nominal": 118.8,
+    "a0": -1.302,
+    "a1": 0.21,
+    "a2": 0.251,
+    "a_srkt": 119.3,
+    "n": 2041
+  },
+  {
+    "name": "AMO Tecnis ZMA00",
+    "a_nominal": 119.1,
+    "a0": -1.75,
+    "a1": 0.242,
+    "a2": 0.266,
+    "a_srkt": 119.5,
+    "n": 205
+  },
+  {
+    "name": "AMO Tecnis ZMB00 (Hongkong)",
+    "a_nominal": 118.8,
+    "a0": 1.93,
+    "a1": 0.4,
+    "a2": 0.1,
+    "a_srkt": 119.7,
+    "n": 51
+  },
+  {
+    "name": "AMO Tecnis ZMB00",
+    "a_nominal": 118.8,
+    "a0": -1.013,
+    "a1": 0.199,
+    "a2": 0.242,
+    "a_srkt": 119.5,
+    "n": 184
+  },
+  {
+    "name": "AMO Tecnis OptiBlue (Japan)",
+    "a_nominal": 118.8,
+    "a0": -0.329,
+    "a1": 0.332,
+    "a2": 0.203,
+    "a_srkt": 119.5,
+    "n": 247
+  },
+  {
+    "name": "ARGONOPTICS TRICE",
+    "a_nominal": 118.0,
+    "a0": 1.13,
+    "a1": 0.4,
+    "a2": 0.1,
+    "a_srkt": 118.5,
+    "n": 60
+  },
+  {
+    "name": "ARGONOPTICS EUROMAXX",
+    "a_nominal": 118.0,
+    "a0": 0.87,
+    "a1": 0.4,
+    "a2": 0.1,
+    "a_srkt": 118.2,
+    "n": 105
+  },
+  {
+    "name": "AUROLAB FH5600AS (India)",
+    "a_nominal": 118.0,
+    "a0": 0.68,
+    "a1": 0.4,
+    "a2": 0.1,
+    "a_srkt": 117.8,
+    "n": 99
+  },
+  {
+    "name": "Bausch&Lomb BL27",
+    "a_nominal": 117.8,
+    "a0": 1.16,
+    "a1": 0.4,
+    "a2": 0.1,
+    "a_srkt": 118.6,
+    "n": 96
+  },
+  {
+    "name": "Bausch&Lomb Soflex2",
+    "a_nominal": 118.1,
+    "a0": -1.323,
+    "a1": 0.038,
+    "a2": 0.249,
+    "a_srkt": 118.4,
+    "n": 216
+  },
+  {
+    "name": "Bausch&Lomb Akreos Adapt",
+    "a_nominal": 118.0,
+    "a0": 0.96,
+    "a1": 0.4,
+    "a2": 0.1,
+    "a_srkt": 118.4,
+    "n": 62
+  },
+  {
+    "name": "Bausch&Lomb Akreos Adapt-AO",
+    "a_nominal": 118.0,
+    "a0": -0.83,
+    "a1": 0.305,
+    "a2": 0.191,
+    "a_srkt": 118.4,
+    "n": 253
+  },
+  {
+    "name": "Bausch&Lomb Akreos FIT",
+    "a_nominal": 118.0,
+    "a0": 0.78,
+    "a1": 0.4,
+    "a2": 0.1,
+    "a_srkt": 118.1,
+    "n": 71
+  },
+  {
+    "name": "Bausch&Lomb LI61U Soflex",
+    "a_nominal": 118.0,
+    "a0": 0.272,
+    "a1": 0.182,
+    "a2": 0.163,
+    "a_srkt": 118.5,
+    "n": 713
+  },
+  {
+    "name": "Bausch&Lomb LI61SE Soflex2",
+    "a_nominal": 118.0,
+    "a0": 1.09,
+    "a1": 0.4,
+    "a2": 0.1,
+    "a_srkt": 118.5,
+    "n": 98
+  },
+  {
+    "name": "Bausch&Lomb LI61AO SofPort",
+    "a_nominal": 118.0,
+    "a0": 0.057,
+    "a1": 0.186,
+    "a2": 0.171,
+    "a_srkt": 118.5,
+    "n": 464
+  },
+  {
+    "name": "Bausch&Lomb Akreos AO MI60",
+    "a_nominal": 118.4,
+    "a0": 1.49,
+    "a1": 0.4,
+    "a2": 0.1,
+    "a_srkt": 119.1,
+    "n": 102
+  },
+  {
+    "name": "Bausch&Lomb enVista MX60",
+    "a_nominal": 118.2,
+    "a0": 1.46,
+    "a1": 0.4,
+    "a2": 0.1,
+    "a_srkt": 119.2,
+    "n": 152
+  },
+  {
+    "name": "Bausch&Lomb S 122UV",
+    "a_nominal": 115.8,
+    "a0": -1.13,
+    "a1": 0.4,
+    "a2": 0.1,
+    "a_srkt": 115.1,
+    "n": 29
+  },
+  {
+    "name": "Bausch&Lomb L 122UV",
+    "a_nominal": 115.8,
+    "a0": -1.1,
+    "a1": 0.4,
+    "a2": 0.1,
+    "a_srkt": 115.1,
+    "n": 22
+  },
+  {
+    "name": "Bausch&Lomb INCISE MJ14",
+    "a_nominal": 118.7,
+    "a0": 1.35,
+    "a1": 0.4,
+    "a2": 0.1,
+    "a_srkt": 118.9,
+    "n": 90
+  },
+  {
+    "name": "Biotech Vision Bioacryl 60125 discont.",
+    "a_nominal": 118.1,
+    "a0": 1.53,
+    "a1": 0.4,
+    "a2": 0.1,
+    "a_srkt": 119.2,
+    "n": 68
+  },
+  {
+    "name": "Biotech Vision Bioacryl 65    discont.",
+    "a_nominal": 118.0,
+    "a0": 1.39,
+    "a1": 0.4,
+    "a2": 0.1,
+    "a_srkt": 118.9,
+    "n": 180
+  },
+  {
+    "name": "Biotech Vision Eyecryl-SERT PLHF2",
+    "a_nominal": 118.5,
+    "a0": 1.03,
+    "a1": 0.4,
+    "a2": 0.1,
+    "a_srkt": 118.4,
+    "n": 55
+  },
+  {
+    "name": "Biotech Vision Eyecryl Plus ASHFY600",
+    "a_nominal": 118.5,
+    "a0": 1.2,
+    "a1": 0.4,
+    "a2": 0.1,
+    "a_srkt": 118.6,
+    "n": 49
+  },
+  {
+    "name": "Biotech Vision Eyecryl Plus 600",
+    "a_nominal": 118.0,
+    "a0": 0.94,
+    "a1": 0.4,
+    "a2": 0.1,
+    "a_srkt": 118.4,
+    "n": 51
+  },
+  {
+    "name": "Biotech Vision Eyecryl Plus HSAS600",
+    "a_nominal": 118.0,
+    "a0": 1.03,
+    "a1": 0.4,
+    "a2": 0.1,
+    "a_srkt": 118.3,
+    "n": 58
+  },
+  {
+    "name": "Biotech Vision Eyecryl Toric",
+    "a_nominal": 118.5,
+    "a0": 1.3,
+    "a1": 0.4,
+    "a2": 0.1,
+    "a_srkt": 118.7,
+    "n": 50
+  },
+  {
+    "name": "Canon AQ-110NV (Japan)",
+    "a_nominal": 119.0,
+    "a0": 0.107,
+    "a1": 0.262,
+    "a2": 0.189,
+    "a_srkt": 119.4,
+    "n": 479
+  },
+  {
+    "name": "Canon AQ-310AI (Japan)",
+    "a_nominal": 119.5,
+    "a0": 2.17,
+    "a1": 0.4,
+    "a2": 0.1,
+    "a_srkt": 120.1,
+    "n": 68
+  },
+  {
+    "name": "Ciba memory lens CV232",
+    "a_nominal": 119.0,
+    "a0": 1.4,
+    "a1": 0.4,
+    "a2": 0.1,
+    "a_srkt": 119.0,
+    "n": 61
+  },
+  {
+    "name": "Corneal BR110",
+    "a_nominal": 118.5,
+    "a0": 1.4,
+    "a1": 0.4,
+    "a2": 0.1,
+    "a_srkt": 119.0,
+    "n": 63
+  },
+  {
+    "name": "Corneal 600SE",
+    "a_nominal": 119.5,
+    "a0": 2.26,
+    "a1": 0.4,
+    "a2": 0.1,
+    "a_srkt": 120.3,
+    "n": 51
+  },
+  {
+    "name": "Corneal Quatrix",
+    "a_nominal": 119.6,
+    "a0": 1.91,
+    "a1": 0.4,
+    "a2": 0.1,
+    "a_srkt": 119.8,
+    "n": 73
+  },
+  {
+    "name": "Croma IDEAlens (HEMA25%)",
+    "a_nominal": 118.68,
+    "a0": 1.19,
+    "a1": 0.4,
+    "a2": 0.1,
+    "a_srkt": 118.7,
+    "n": 49
+  },
+  {
+    "name": "Croma Versario Classic",
+    "a_nominal": 120.0,
+    "a0": 1.8,
+    "a1": 0.4,
+    "a2": 0.1,
+    "a_srkt": 119.7,
+    "n": 56
+  },
+  {
+    "name": "Curamed SA700",
+    "a_nominal": 118.8,
+    "a0": 1.31,
+    "a1": 0.4,
+    "a2": 0.1,
+    "a_srkt": 118.8,
+    "n": 114
+  },
+  {
+    "name": "Curamed ASPHERICx HP60CA  (+)",
+    "a_nominal": 118.4,
+    "a0": 1.1,
+    "a1": 0.4,
+    "a2": 0.1,
+    "a_srkt": 118.5,
+    "n": 38
+  },
+  {
+    "name": "Curamed PL 600",
+    "a_nominal": 118.8,
+    "a0": 0.209,
+    "a1": 0.124,
+    "a2": 0.182,
+    "a_srkt": 118.8,
+    "n": 180
+  },
+  {
+    "name": "Curamed ASPHERICx HD600YA",
+    "a_nominal": 118.4,
+    "a0": 1.27,
+    "a1": 0.4,
+    "a2": 0.1,
+    "a_srkt": 118.8,
+    "n": 53
+  },
+  {
+    "name": "Curamed SA60CZ",
+    "a_nominal": 118.8,
+    "a0": 1.07,
+    "a1": 0.4,
+    "a2": 0.1,
+    "a_srkt": 118.5,
+    "n": 151
+  },
+  {
+    "name": "Curamed HD60CZ-YA",
+    "a_nominal": 118.4,
+    "a0": 1.3,
+    "a1": 0.4,
+    "a2": 0.1,
+    "a_srkt": 118.9,
+    "n": 127
+  },
+  {
+    "name": "Domilens Siflex4 discontinued",
+    "a_nominal": 118.4,
+    "a0": 1.18,
+    "a1": 0.4,
+    "a2": 0.1,
+    "a_srkt": 118.9,
+    "n": 83
+  },
+  {
+    "name": "Domilens Siflex8 discontinued",
+    "a_nominal": 118.2,
+    "a0": 1.04,
+    "a1": 0.4,
+    "a2": 0.1,
+    "a_srkt": 118.3,
+    "n": 34
+  },
+  {
+    "name": "Domilens Silens6 discontinued",
+    "a_nominal": 118.1,
+    "a0": 1.05,
+    "a1": 0.4,
+    "a2": 0.1,
+    "a_srkt": 118.6,
+    "n": 110
+  },
+  {
+    "name": "Domilens Flex65L discontinued",
+    "a_nominal": 118.4,
+    "a0": 1.45,
+    "a1": 0.4,
+    "a2": 0.1,
+    "a_srkt": 118.9,
+    "n": 50
+  },
+  {
+    "name": "Domilens SofTec1",
+    "a_nominal": 118.0,
+    "a0": 0.98,
+    "a1": 0.4,
+    "a2": 0.1,
+    "a_srkt": 118.4,
+    "n": 61
+  },
+  {
+    "name": "Domilens Nex-Load Preloaded",
+    "a_nominal": 119.2,
+    "a0": 1.73,
+    "a1": 0.4,
+    "a2": 0.1,
+    "a_srkt": 119.5,
+    "n": 98
+  },
+  {
+    "name": "Domilens Domicryl M100",
+    "a_nominal": 118.4,
+    "a0": 1.56,
+    "a1": 0.4,
+    "a2": 0.1,
+    "a_srkt": 119.3,
+    "n": 144
+  },
+  {
+    "name": "Domilens Nidek NS-60YG Aktis SP y",
+    "a_nominal": 118.4,
+    "a0": 1.61,
+    "a1": 0.4,
+    "a2": 0.1,
+    "a_srkt": 119.3,
+    "n": 127
+  },
+  {
+    "name": "Domilens Nidek Nex-Acri N4-18YG AKTIS AA",
+    "a_nominal": 118.4,
+    "a0": 1.34,
+    "a1": 0.4,
+    "a2": 0.1,
+    "a_srkt": 118.9,
+    "n": 57
+  },
+  {
+    "name": "DISTRA F3000/3013",
+    "a_nominal": 118.2,
+    "a0": 0.56,
+    "a1": 0.4,
+    "a2": 0.1,
+    "a_srkt": 117.7,
+    "n": 40
+  },
+  {
+    "name": "Dr.Schmidt MS612   discontinued",
+    "a_nominal": 118.6,
+    "a0": 0.416,
+    "a1": 0.167,
+    "a2": 0.172,
+    "a_srkt": 119.0,
+    "n": 585
+  },
+  {
+    "name": "Dr.Schmidt MC TE   discontinued",
+    "a_nominal": 119.0,
+    "a0": 1.949,
+    "a1": 0.296,
+    "a2": 0.1,
+    "a_srkt": 119.4,
+    "n": 336
+  },
+  {
+    "name": "Dr.Schmidt MC575   discontinued",
+    "a_nominal": 119.0,
+    "a0": 1.17,
+    "a1": 0.4,
+    "a2": 0.1,
+    "a_srkt": 118.7,
+    "n": 40
+  },
+  {
+    "name": "Dr.Schmidt MP2125",
+    "a_nominal": 118.2,
+    "a0": 1.34,
+    "a1": 0.4,
+    "a2": 0.1,
+    "a_srkt": 119.0,
+    "n": 107
+  },
+  {
+    "name": "Dr.Schmidt MC6125AS",
+    "a_nominal": 118.4,
+    "a0": 0.885,
+    "a1": 0.312,
+    "a2": 0.125,
+    "a_srkt": 118.7,
+    "n": 204
+  },
+  {
+    "name": "Eyecryl ACTV DIYHS600ROH (*****)",
+    "a_nominal": 118.0,
+    "a0": 0.56,
+    "a1": 0.4,
+    "a2": 0.1,
+    "a_srkt": 117.6,
+    "n": 57
+  },
+  {
+    "name": "Eyecryl ACTV +3DIHFY600",
+    "a_nominal": 118.5,
+    "a0": 1.24,
+    "a1": 0.4,
+    "a2": 0.1,
+    "a_srkt": 118.7,
+    "n": 55
+  },
+  {
+    "name": "Eyekon SC25-Fold",
+    "a_nominal": 118.0,
+    "a0": 0.92,
+    "a1": 0.4,
+    "a2": 0.1,
+    "a_srkt": 118.2,
+    "n": 213
+  },
+  {
+    "name": "Eyeol EYE-DIFF Plus",
+    "a_nominal": 118.0,
+    "a0": 0.93,
+    "a1": 0.4,
+    "a2": 0.1,
+    "a_srkt": 118.4,
+    "n": 75
+  },
+  {
+    "name": "Eyeol Hyflex",
+    "a_nominal": 118.8,
+    "a0": 1.54,
+    "a1": 0.4,
+    "a2": 0.1,
+    "a_srkt": 119.2,
+    "n": 49
+  },
+  {
+    "name": "Eyeol LW5752R",
+    "a_nominal": 118.0,
+    "a0": 1.27,
+    "a1": 0.4,
+    "a2": 0.1,
+    "a_srkt": 118.9,
+    "n": 61
+  },
+  {
+    "name": "eyeonics AT-45 crystalens",
+    "a_nominal": 119.24,
+    "a0": 0.773,
+    "a1": 0.222,
+    "a2": 0.16,
+    "a_srkt": 119.3,
+    "n": 236
+  },
+  {
+    "name": "eyeonics AT-50SE crystalens",
+    "a_nominal": 119.0,
+    "a0": 0.318,
+    "a1": 0.139,
+    "a2": 0.182,
+    "a_srkt": 119.1,
+    "n": 224
+  },
+  {
+    "name": "Fritz Ruck HA-4-Q",
+    "a_nominal": 118.1,
+    "a0": 1.14,
+    "a1": 0.4,
+    "a2": 0.1,
+    "a_srkt": 118.6,
+    "n": 88
+  },
+  {
+    "name": "Fritz Ruck PH60-135",
+    "a_nominal": 118.2,
+    "a0": 1.28,
+    "a1": 0.4,
+    "a2": 0.1,
+    "a_srkt": 118.7,
+    "n": 47
+  },
+  {
+    "name": "Gen. Innov. XP-55",
+    "a_nominal": 118.0,
+    "a0": 0.272,
+    "a1": 0.245,
+    "a2": 0.154,
+    "a_srkt": 118.5,
+    "n": 259
+  },
+  {
+    "name": "Gen. Innov. 310",
+    "a_nominal": 118.0,
+    "a0": 1.01,
+    "a1": 0.4,
+    "a2": 0.1,
+    "a_srkt": 118.5,
+    "n": 83
+  },
+  {
+    "name": "Hanita B-lens",
+    "a_nominal": 118.2,
+    "a0": 1.01,
+    "a1": 0.4,
+    "a2": 0.1,
+    "a_srkt": 118.6,
+    "n": 52
+  },
+  {
+    "name": "Hanita SEELENS",
+    "a_nominal": 118.6,
+    "a0": 1.29,
+    "a1": 0.4,
+    "a2": 0.1,
+    "a_srkt": 118.9,
+    "n": 51
+  },
+  {
+    "name": "Hanita SEELENS MICS",
+    "a_nominal": 118.6,
+    "a0": 1.38,
+    "a1": 0.4,
+    "a2": 0.1,
+    "a_srkt": 119.0,
+    "n": 35
+  },
+  {
+    "name": "Hanita SEELENS AF",
+    "a_nominal": 119.0,
+    "a0": 1.25,
+    "a1": 0.4,
+    "a2": 0.1,
+    "a_srkt": 118.8,
+    "n": 27
+  },
+  {
+    "name": "Hanita BunnyLens MF",
+    "a_nominal": 118.5,
+    "a0": 1.22,
+    "a1": 0.4,
+    "a2": 0.1,
+    "a_srkt": 118.9,
+    "n": 36
+  },
+  {
+    "name": "Hanita SEELENS MF",
+    "a_nominal": 118.6,
+    "a0": 1.0,
+    "a1": 0.4,
+    "a2": 0.1,
+    "a_srkt": 118.6,
+    "n": 34
+  },
+  {
+    "name": "Hexavision HQ-203HEP  (+)",
+    "a_nominal": 118.2,
+    "a0": 1.14,
+    "a1": 0.4,
+    "a2": 0.1,
+    "a_srkt": 118.5,
+    "n": 151
+  },
+  {
+    "name": "HumanOptics 1CU     discontinued",
+    "a_nominal": 118.1,
+    "a0": 1.833,
+    "a1": 0.225,
+    "a2": 0.094,
+    "a_srkt": 118.7,
+    "n": 268
+  },
+  {
+    "name": "HumanOptics MC611MI discontinued",
+    "a_nominal": 118.3,
+    "a0": 1.59,
+    "a1": 0.4,
+    "a2": 0.1,
+    "a_srkt": 119.4,
+    "n": 66
+  },
+  {
+    "name": "HumanOptics Aspira-aA(Y)  (+)",
+    "a_nominal": 118.4,
+    "a0": 0.429,
+    "a1": 0.236,
+    "a2": 0.151,
+    "a_srkt": 118.6,
+    "n": 295
+  },
+  {
+    "name": "HumanOptics Diff-aA(Y)",
+    "a_nominal": 118.4,
+    "a0": 1.28,
+    "a1": 0.4,
+    "a2": 0.1,
+    "a_srkt": 118.9,
+    "n": 87
+  },
+  {
+    "name": "HumanOptics Torica-aA(Y)",
+    "a_nominal": 118.4,
+    "a0": 1.18,
+    "a1": 0.4,
+    "a2": 0.1,
+    "a_srkt": 118.3,
+    "n": 44
+  },
+  {
+    "name": "HumanOptics Aspira-aQA",
+    "a_nominal": 118.7,
+    "a0": 1.35,
+    "a1": 0.4,
+    "a2": 0.1,
+    "a_srkt": 118.9,
+    "n": 113
+  },
+  {
+    "name": "Hoya AF-1(UV) VA60BB (Japan)",
+    "a_nominal": 118.7,
+    "a0": 0.458,
+    "a1": 0.15,
+    "a2": 0.172,
+    "a_srkt": 118.7,
+    "n": 271
+  },
+  {
+    "name": "Hoya AF-1(UV) VA60BBR (Japan)",
+    "a_nominal": 118.4,
+    "a0": 1.28,
+    "a1": 0.4,
+    "a2": 0.1,
+    "a_srkt": 118.5,
+    "n": 90
+  },
+  {
+    "name": "Hoya VA60BA (Japan)",
+    "a_nominal": 119.2,
+    "a0": 1.47,
+    "a1": 0.4,
+    "a2": 0.1,
+    "a_srkt": 118.7,
+    "n": 27
+  },
+  {
+    "name": "Hoya UV55SB (Japan)(**)",
+    "a_nominal": 117.6,
+    "a0": 1.38,
+    "a1": 0.4,
+    "a2": 0.1,
+    "a_srkt": 118.6,
+    "n": 109
+  },
+  {
+    "name": "Hoya iMics1 NY-60 (Japan)",
+    "a_nominal": 118.4,
+    "a0": 1.29,
+    "a1": 0.4,
+    "a2": 0.1,
+    "a_srkt": 118.7,
+    "n": 45
+  },
+  {
+    "name": "Hoya iSert Micro 251 (Japan)",
+    "a_nominal": 118.4,
+    "a0": 0.57,
+    "a1": 0.197,
+    "a2": 0.163,
+    "a_srkt": 118.8,
+    "n": 249
+  },
+  {
+    "name": "Hoya AF-1 VA-60BB",
+    "a_nominal": 118.7,
+    "a0": 1.24,
+    "a1": 0.4,
+    "a2": 0.1,
+    "a_srkt": 118.7,
+    "n": 50
+  },
+  {
+    "name": "Hoya AF-1 YA-60BB",
+    "a_nominal": 118.7,
+    "a0": 1.3,
+    "a1": 0.4,
+    "a2": 0.1,
+    "a_srkt": 118.9,
+    "n": 106
+  },
+  {
+    "name": "Hoya AF-1 YA-65BB(***) (+)",
+    "a_nominal": 118.3,
+    "a0": 1.31,
+    "a1": 0.4,
+    "a2": 0.1,
+    "a_srkt": 118.7,
+    "n": 88
+  },
+  {
+    "name": "Hoya AF-1 YA-60BBR  Hoya iSert PY-60R (+)",
+    "a_nominal": 118.4,
+    "a0": 1.06,
+    "a1": 0.4,
+    "a2": 0.1,
+    "a_srkt": 118.5,
+    "n": 134
+  },
+  {
+    "name": "Hoya AF-1 FY-60AD  Hoya iSert PY-60AD (+)",
+    "a_nominal": 118.4,
+    "a0": -0.093,
+    "a1": -0.023,
+    "a2": 0.208,
+    "a_srkt": 118.6,
+    "n": 254
+  },
+  {
+    "name": "Hoya iMics Y-60H",
+    "a_nominal": 118.0,
+    "a0": 1.13,
+    "a1": 0.4,
+    "a2": 0.1,
+    "a_srkt": 118.6,
+    "n": 113
+  },
+  {
+    "name": "Hoya iMics1 NY-60  Hoya iSert 250/251 (+)",
+    "a_nominal": 118.4,
+    "a0": -0.542,
+    "a1": 0.161,
+    "a2": 0.204,
+    "a_srkt": 118.5,
+    "n": 319
+  },
+  {
+    "name": "i-Medical i-Flex",
+    "a_nominal": 118.8,
+    "a0": 1.05,
+    "a1": 0.4,
+    "a2": 0.1,
+    "a_srkt": 118.4,
+    "n": 184
+  },
+  {
+    "name": "i-Medical i-Soft",
+    "a_nominal": 118.8,
+    "a0": 1.24,
+    "a1": 0.4,
+    "a2": 0.1,
+    "a_srkt": 118.6,
+    "n": 107
+  },
+  {
+    "name": "i-Medical 6011C (HP60-PUV)",
+    "a_nominal": 118.8,
+    "a0": 1.45,
+    "a1": 0.4,
+    "a2": 0.1,
+    "a_srkt": 119.1,
+    "n": 51
+  },
+  {
+    "name": "i-Medical Accurate Aspheric",
+    "a_nominal": 118.8,
+    "a0": 1.06,
+    "a1": 0.4,
+    "a2": 0.1,
+    "a_srkt": 118.5,
+    "n": 30
+  },
+  {
+    "name": "i-Medical Overview AS natural",
+    "a_nominal": 118.8,
+    "a0": 1.94,
+    "a1": 0.4,
+    "a2": 0.1,
+    "a_srkt": 119.8,
+    "n": 49
+  },
+  {
+    "name": "Kowa Avansee AN6K",
+    "a_nominal": 118.7,
+    "a0": 1.57,
+    "a1": 0.4,
+    "a2": 0.1,
+    "a_srkt": 119.0,
+    "n": 100
+  },
+  {
+    "name": "Lenstec LS-106",
+    "a_nominal": 118.4,
+    "a0": 1.61,
+    "a1": 0.4,
+    "a2": 0.1,
+    "a_srkt": 119.4,
+    "n": 33
+  },
+  {
+    "name": "Lenstec Softec HDO",
+    "a_nominal": 118.4,
+    "a0": 0.055,
+    "a1": 0.178,
+    "a2": 0.173,
+    "a_srkt": 118.5,
+    "n": 221
+  },
+  {
+    "name": "Medicem WIOL-CF",
+    "a_nominal": null,
+    "a0": 2.36,
+    "a1": 0.4,
+    "a2": 0.1,
+    "a_srkt": 120.6,
+    "n": 179
+  },
+  {
+    "name": "Medicontur Z-Flex 690",
+    "a_nominal": 118.0,
+    "a0": 0.237,
+    "a1": 0.315,
+    "a2": 0.138,
+    "a_srkt": 118.2,
+    "n": 437
+  },
+  {
+    "name": "Medicontur Q-Flex 640",
+    "a_nominal": 118.0,
+    "a0": -0.208,
+    "a1": 0.516,
+    "a2": 0.13,
+    "a_srkt": 118.1,
+    "n": 264
+  },
+  {
+    "name": "Medicontur Bi-Flex 877 (hydrophob acryl)",
+    "a_nominal": 118.0,
+    "a0": 1.39,
+    "a1": 0.4,
+    "a2": 0.1,
+    "a_srkt": 119.1,
+    "n": 52
+  },
+  {
+    "name": "Medicontur Bi-Flex 677 (hydrophil acryl)",
+    "a_nominal": 118.0,
+    "a0": 0.79,
+    "a1": 0.4,
+    "a2": 0.1,
+    "a_srkt": 118.0,
+    "n": 103
+  },
+  {
+    "name": "MBI PreciSAL 302A/302AC",
+    "a_nominal": 118.7,
+    "a0": 1.32,
+    "a1": 0.4,
+    "a2": 0.1,
+    "a_srkt": 118.9,
+    "n": 190
+  },
+  {
+    "name": "MBI PreciSAL 300A/300AC",
+    "a_nominal": 118.3,
+    "a0": 1.26,
+    "a1": 0.4,
+    "a2": 0.1,
+    "a_srkt": 118.7,
+    "n": 49
+  },
+  {
+    "name": "MD-TECH I-Stream ISP",
+    "a_nominal": 118.0,
+    "a0": 1.46,
+    "a1": 0.4,
+    "a2": 0.1,
+    "a_srkt": 119.2,
+    "n": 14
+  },
+  {
+    "name": "MIRA HI-MY (****)",
+    "a_nominal": 120.0,
+    "a0": 4.19,
+    "a1": 0.4,
+    "a2": 0.1,
+    "a_srkt": 122.2,
+    "n": 17
+  },
+  {
+    "name": "Morcher 63A (LOTUS Serie)",
+    "a_nominal": 119.7,
+    "a0": 1.3,
+    "a1": 0.4,
+    "a2": 0.1,
+    "a_srkt": 118.8,
+    "n": 50
+  },
+  {
+    "name": "Morcher TYPE 92S",
+    "a_nominal": 119.7,
+    "a0": 1.4,
+    "a1": 0.4,
+    "a2": 0.1,
+    "a_srkt": 119.1,
+    "n": 71
+  },
+  {
+    "name": "Moss Vision Optiflex MO/F-013",
+    "a_nominal": 118.0,
+    "a0": 0.71,
+    "a1": 0.4,
+    "a2": 0.1,
+    "a_srkt": 117.9,
+    "n": 50
+  },
+  {
+    "name": "Moss Vision Optiflex MO/F-023",
+    "a_nominal": 118.5,
+    "a0": 1.42,
+    "a1": 0.4,
+    "a2": 0.1,
+    "a_srkt": 119.0,
+    "n": 49
+  },
+  {
+    "name": "Moss Vision Optiflex MO/F-022",
+    "a_nominal": 118.5,
+    "a0": 1.37,
+    "a1": 0.4,
+    "a2": 0.1,
+    "a_srkt": 119.1,
+    "n": 49
+  },
+  {
+    "name": "Moss Vision Optiflex MO/FNYA-01",
+    "a_nominal": 118.0,
+    "a0": 0.69,
+    "a1": 0.4,
+    "a2": 0.1,
+    "a_srkt": 118.0,
+    "n": 52
+  },
+  {
+    "name": "Moss Vision Optiflex MO/FNY-D003",
+    "a_nominal": 118.0,
+    "a0": 0.81,
+    "a1": 0.4,
+    "a2": 0.1,
+    "a_srkt": 117.9,
+    "n": 49
+  },
+  {
+    "name": "Moss Vision Optiflex MOHF-D012",
+    "a_nominal": 118.5,
+    "a0": 0.95,
+    "a1": 0.4,
+    "a2": 0.1,
+    "a_srkt": 118.4,
+    "n": 49
+  },
+  {
+    "name": "Moss Vision Optiflex MO/F-001",
+    "a_nominal": 118.0,
+    "a0": 1.06,
+    "a1": 0.4,
+    "a2": 0.1,
+    "a_srkt": 118.5,
+    "n": 48
+  },
+  {
+    "name": "Nidek Nex-Acri",
+    "a_nominal": 118.8,
+    "a0": 1.55,
+    "a1": 0.4,
+    "a2": 0.1,
+    "a_srkt": 119.2,
+    "n": 72
+  },
+  {
+    "name": "Nidek Nex-Acri AA",
+    "a_nominal": 119.5,
+    "a0": 1.56,
+    "a1": 0.4,
+    "a2": 0.1,
+    "a_srkt": 119.2,
+    "n": 167
+  },
+  {
+    "name": "Oculentis L-302 discontinued",
+    "a_nominal": 118.5,
+    "a0": 1.3,
+    "a1": 0.4,
+    "a2": 0.1,
+    "a_srkt": 118.9,
+    "n": 195
+  },
+  {
+    "name": "Oculentis LS-312-1Y discontinued",
+    "a_nominal": 118.0,
+    "a0": -2.017,
+    "a1": 0.066,
+    "a2": 0.271,
+    "a_srkt": 118.3,
+    "n": 291
+  },
+  {
+    "name": "Oculentis LS-313-1Y discontinued",
+    "a_nominal": 118.0,
+    "a0": 1.1,
+    "a1": 0.4,
+    "a2": 0.1,
+    "a_srkt": 118.5,
+    "n": 20
+  },
+  {
+    "name": "Oculentis L-402-1 discontinued",
+    "a_nominal": 118.0,
+    "a0": 1.58,
+    "a1": 0.4,
+    "a2": 0.1,
+    "a_srkt": 119.2,
+    "n": 9
+  },
+  {
+    "name": "Oculentis Lentis Mplus LS-312MF discont",
+    "a_nominal": 118.0,
+    "a0": 1.03,
+    "a1": 0.4,
+    "a2": 0.1,
+    "a_srkt": 118.5,
+    "n": 187
+  },
+  {
+    "name": "Oculentis L-302-1",
+    "a_nominal": 118.0,
+    "a0": 1.833,
+    "a1": 0.138,
+    "a2": 0.096,
+    "a_srkt": 118.3,
+    "n": 530
+  },
+  {
+    "name": "Oculentis L-303",
+    "a_nominal": 118.0,
+    "a0": 0.962,
+    "a1": -0.074,
+    "a2": 0.161,
+    "a_srkt": 118.3,
+    "n": 250
+  },
+  {
+    "name": "Oculentis L-312",
+    "a_nominal": 118.0,
+    "a0": -2.476,
+    "a1": 0.046,
+    "a2": 0.3,
+    "a_srkt": 118.5,
+    "n": 1166
+  },
+  {
+    "name": "Oculentis L-313",
+    "a_nominal": 118.0,
+    "a0": 0.82,
+    "a1": 0.4,
+    "a2": 0.1,
+    "a_srkt": 118.1,
+    "n": 23
+  },
+  {
+    "name": "Oculentis L-400 (45C)",
+    "a_nominal": 118.0,
+    "a0": 0.202,
+    "a1": 0.075,
+    "a2": 0.179,
+    "a_srkt": 118.4,
+    "n": 209
+  },
+  {
+    "name": "Oculentis L-401 (47C)",
+    "a_nominal": 118.0,
+    "a0": 0.93,
+    "a1": 0.4,
+    "a2": 0.1,
+    "a_srkt": 118.3,
+    "n": 98
+  },
+  {
+    "name": "Oculentis L-402",
+    "a_nominal": 118.0,
+    "a0": -1.204,
+    "a1": 0.103,
+    "a2": 0.23,
+    "a_srkt": 118.2,
+    "n": 618
+  },
+  {
+    "name": "Oculentis L-403",
+    "a_nominal": 118.0,
+    "a0": 1.02,
+    "a1": 0.4,
+    "a2": 0.1,
+    "a_srkt": 118.4,
+    "n": 14
+  },
+  {
+    "name": "Oculentis L-450",
+    "a_nominal": 118.2,
+    "a0": 1.3,
+    "a1": 0.4,
+    "a2": 0.1,
+    "a_srkt": 118.8,
+    "n": 27
+  },
+  {
+    "name": "Oculentis LS-502-1",
+    "a_nominal": 118.0,
+    "a0": -1.014,
+    "a1": 0.153,
+    "a2": 0.227,
+    "a_srkt": 118.7,
+    "n": 230
+  },
+  {
+    "name": "Oculentis LS-505",
+    "a_nominal": 118.0,
+    "a0": 1.02,
+    "a1": 0.4,
+    "a2": 0.1,
+    "a_srkt": 118.3,
+    "n": 39
+  },
+  {
+    "name": "Oculentis LU-800 RZI",
+    "a_nominal": 116.0,
+    "a0": -0.11,
+    "a1": 0.4,
+    "a2": 0.1,
+    "a_srkt": 116.6,
+    "n": 47
+  },
+  {
+    "name": "Oculentis L-301-1",
+    "a_nominal": 118.0,
+    "a0": 1.05,
+    "a1": 0.4,
+    "a2": 0.1,
+    "a_srkt": 118.3,
+    "n": 51
+  },
+  {
+    "name": "Oculentis LU-313 MF30T",
+    "a_nominal": 118.0,
+    "a0": 0.87,
+    "a1": 0.4,
+    "a2": 0.1,
+    "a_srkt": 118.2,
+    "n": 121
+  },
+  {
+    "name": "Oculentis LS-313 MF30",
+    "a_nominal": 118.0,
+    "a0": 0.95,
+    "a1": 0.4,
+    "a2": 0.1,
+    "a_srkt": 118.5,
+    "n": 239
+  },
+  {
+    "name": "Oculentis LU-313 MF30T Japan",
+    "a_nominal": 118.0,
+    "a0": 1.07,
+    "a1": 0.4,
+    "a2": 0.1,
+    "a_srkt": 118.1,
+    "n": 37
+  },
+  {
+    "name": "Oculentis LS-313 MF30  Japan",
+    "a_nominal": 118.0,
+    "a0": 1.02,
+    "a1": 0.4,
+    "a2": 0.1,
+    "a_srkt": 118.5,
+    "n": 55
+  },
+  {
+    "name": "Oculentis LS-412Y",
+    "a_nominal": 118.0,
+    "a0": 0.88,
+    "a1": 0.4,
+    "a2": 0.1,
+    "a_srkt": 118.2,
+    "n": 44
+  },
+  {
+    "name": "Oculentis LS-312Y",
+    "a_nominal": 118.0,
+    "a0": 0.86,
+    "a1": 0.4,
+    "a2": 0.1,
+    "a_srkt": 118.1,
+    "n": 86
+  },
+  {
+    "name": "Oculentis LS-313Y",
+    "a_nominal": 118.0,
+    "a0": 1.02,
+    "a1": 0.4,
+    "a2": 0.1,
+    "a_srkt": 118.4,
+    "n": 133
+  },
+  {
+    "name": "Oculentis LU-313T",
+    "a_nominal": 118.0,
+    "a0": 0.97,
+    "a1": 0.4,
+    "a2": 0.1,
+    "a_srkt": 118.2,
+    "n": 162
+  },
+  {
+    "name": "OII Aqua-Sense III",
+    "a_nominal": 118.2,
+    "a0": 0.86,
+    "a1": 0.4,
+    "a2": 0.1,
+    "a_srkt": 118.2,
+    "n": 79
+  },
+  {
+    "name": "OII Aqua-Sense III-130",
+    "a_nominal": 118.2,
+    "a0": 1.02,
+    "a1": 0.4,
+    "a2": 0.1,
+    "a_srkt": 118.4,
+    "n": 30
+  },
+  {
+    "name": "Omni GenNext",
+    "a_nominal": 118.2,
+    "a0": 1.02,
+    "a1": 0.4,
+    "a2": 0.1,
+    "a_srkt": 118.4,
+    "n": 32
+  },
+  {
+    "name": "Omni LBHY32UVASP",
+    "a_nominal": 119.0,
+    "a0": 1.7,
+    "a1": 0.4,
+    "a2": 0.1,
+    "a_srkt": 119.6,
+    "n": 49
+  },
+  {
+    "name": "OPHTHALMOPro Hyperflex",
+    "a_nominal": 118.4,
+    "a0": 2.11,
+    "a1": 0.4,
+    "a2": 0.1,
+    "a_srkt": 120.1,
+    "n": 155
+  },
+  {
+    "name": "Ophtec Artisan 205 aph.retropup.",
+    "a_nominal": 116.8,
+    "a0": -0.25,
+    "a1": 0.4,
+    "a2": 0.1,
+    "a_srkt": 116.9,
+    "n": 20
+  },
+  {
+    "name": "Ophtec PC265",
+    "a_nominal": 118.0,
+    "a0": 1.32,
+    "a1": 0.4,
+    "a2": 0.1,
+    "a_srkt": 118.9,
+    "n": 63
+  },
+  {
+    "name": "Ophtec PC410",
+    "a_nominal": 117.5,
+    "a0": 0.89,
+    "a1": 0.4,
+    "a2": 0.1,
+    "a_srkt": 118.2,
+    "n": 17
+  },
+  {
+    "name": "Ophtec PC420",
+    "a_nominal": 117.2,
+    "a0": 0.71,
+    "a1": 0.4,
+    "a2": 0.1,
+    "a_srkt": 117.9,
+    "n": 56
+  },
+  {
+    "name": "Ophtec PC430",
+    "a_nominal": 118.0,
+    "a0": 0.86,
+    "a1": 0.4,
+    "a2": 0.1,
+    "a_srkt": 118.2,
+    "n": 51
+  },
+  {
+    "name": "Ophtec REF510",
+    "a_nominal": 117.5,
+    "a0": 0.7,
+    "a1": 0.4,
+    "a2": 0.1,
+    "a_srkt": 118.0,
+    "n": 127
+  },
+  {
+    "name": "Ophtec PC 525 ErgomaX",
+    "a_nominal": 118.0,
+    "a0": 0.93,
+    "a1": 0.4,
+    "a2": 0.1,
+    "a_srkt": 118.2,
+    "n": 51
+  },
+  {
+    "name": "Ophtec PC 530 TrimaX",
+    "a_nominal": 117.8,
+    "a0": 1.32,
+    "a1": 0.4,
+    "a2": 0.1,
+    "a_srkt": 118.8,
+    "n": 80
+  },
+  {
+    "name": "Ophtec PC 550 MonomaX",
+    "a_nominal": 118.0,
+    "a0": 1.22,
+    "a1": 0.4,
+    "a2": 0.1,
+    "a_srkt": 118.7,
+    "n": 103
+  },
+  {
+    "name": "Ophtec PC 545 QuadrimaX",
+    "a_nominal": 118.0,
+    "a0": 1.03,
+    "a1": 0.4,
+    "a2": 0.1,
+    "a_srkt": 118.4,
+    "n": 75
+  },
+  {
+    "name": "Ophtec PC 620 Luna - discontinued",
+    "a_nominal": 119.0,
+    "a0": 1.71,
+    "a1": 0.4,
+    "a2": 0.1,
+    "a_srkt": 119.6,
+    "n": 52
+  },
+  {
+    "name": "Ophtec Precizon Monofocal 560",
+    "a_nominal": 118.0,
+    "a0": 1.02,
+    "a1": 0.4,
+    "a2": 0.1,
+    "a_srkt": 118.5,
+    "n": 25
+  },
+  {
+    "name": "Physiol Slimflex/Yellowflex",
+    "a_nominal": 118.5,
+    "a0": 1.36,
+    "a1": 0.4,
+    "a2": 0.1,
+    "a_srkt": 118.9,
+    "n": 27
+  },
+  {
+    "name": "Physiol FineVision",
+    "a_nominal": 118.8,
+    "a0": 1.3,
+    "a1": 0.4,
+    "a2": 0.1,
+    "a_srkt": 119.1,
+    "n": 198
+  },
+  {
+    "name": "Physiol PodEye",
+    "a_nominal": 118.9,
+    "a0": 1.7,
+    "a1": 0.4,
+    "a2": 0.1,
+    "a_srkt": 119.4,
+    "n": 71
+  },
+  {
+    "name": "Polytech Polylens A60",
+    "a_nominal": 118.0,
+    "a0": 0.85,
+    "a1": 0.4,
+    "a2": 0.1,
+    "a_srkt": 118.2,
+    "n": 57
+  },
+  {
+    "name": "Polytech Polylens A61      (+)",
+    "a_nominal": 118.2,
+    "a0": 0.86,
+    "a1": 0.4,
+    "a2": 0.1,
+    "a_srkt": 118.2,
+    "n": 79
+  },
+  {
+    "name": "Polytech Polylens A62      (+)",
+    "a_nominal": 118.2,
+    "a0": 1.15,
+    "a1": 0.4,
+    "a2": 0.1,
+    "a_srkt": 118.6,
+    "n": 141
+  },
+  {
+    "name": "Polytech Polylens A64      (+)",
+    "a_nominal": 118.1,
+    "a0": -1.374,
+    "a1": 0.039,
+    "a2": 0.251,
+    "a_srkt": 118.4,
+    "n": 680
+  },
+  {
+    "name": "Polytech Polylens S80",
+    "a_nominal": 117.8,
+    "a0": 0.49,
+    "a1": 0.4,
+    "a2": 0.1,
+    "a_srkt": 117.5,
+    "n": 155
+  },
+  {
+    "name": "Polytech Polylens P265",
+    "a_nominal": 118.0,
+    "a0": 1.32,
+    "a1": 0.4,
+    "a2": 0.1,
+    "a_srkt": 118.9,
+    "n": 63
+  },
+  {
+    "name": "Polytech Polylens H10(Y10)AS",
+    "a_nominal": 117.8,
+    "a0": -0.726,
+    "a1": 0.182,
+    "a2": 0.204,
+    "a_srkt": 118.4,
+    "n": 1954
+  },
+  {
+    "name": "Polytech Polylens H10(Y10) (+)",
+    "a_nominal": 118.1,
+    "a0": 1.1,
+    "a1": 0.4,
+    "a2": 0.1,
+    "a_srkt": 118.5,
+    "n": 55
+  },
+  {
+    "name": "Polytech Polylens H30(Y30) (+)",
+    "a_nominal": 118.2,
+    "a0": 1.34,
+    "a1": 0.4,
+    "a2": 0.1,
+    "a_srkt": 118.9,
+    "n": 181
+  },
+  {
+    "name": "Polytech Polylens H35(Y35) (+)",
+    "a_nominal": 118.2,
+    "a0": 0.95,
+    "a1": 0.4,
+    "a2": 0.1,
+    "a_srkt": 118.2,
+    "n": 41
+  },
+  {
+    "name": "Polytech Polylens AS64",
+    "a_nominal": 118.4,
+    "a0": -1.336,
+    "a1": 0.272,
+    "a2": 0.22,
+    "a_srkt": 118.4,
+    "n": 261
+  },
+  {
+    "name": "Polytech Polylens AS62",
+    "a_nominal": 118.2,
+    "a0": -1.527,
+    "a1": 0.152,
+    "a2": 0.237,
+    "a_srkt": 118.2,
+    "n": 342
+  },
+  {
+    "name": "Polytech Polylens AS66/AS66-Y",
+    "a_nominal": 118.2,
+    "a0": 0.939,
+    "a1": 0.25,
+    "a2": 0.133,
+    "a_srkt": 118.6,
+    "n": 283
+  },
+  {
+    "name": "Polytech Polylens AS61",
+    "a_nominal": 118.2,
+    "a0": -2.993,
+    "a1": 0.189,
+    "a2": 0.294,
+    "a_srkt": 118.1,
+    "n": 429
+  },
+  {
+    "name": "Polytech Polylens H11(Y11) (+)",
+    "a_nominal": 118.3,
+    "a0": -0.037,
+    "a1": 0.032,
+    "a2": 0.214,
+    "a_srkt": 119.1,
+    "n": 253
+  },
+  {
+    "name": "Polytech Aurium 404",
+    "a_nominal": 118.3,
+    "a0": 1.57,
+    "a1": 0.4,
+    "a2": 0.1,
+    "a_srkt": 119.3,
+    "n": 50
+  },
+  {
+    "name": "Polytech Alsiol (VF)",
+    "a_nominal": 118.0,
+    "a0": 1.08,
+    "a1": 0.4,
+    "a2": 0.1,
+    "a_srkt": 118.6,
+    "n": 72
+  },
+  {
+    "name": "ProOptik PSA 105S",
+    "a_nominal": 118.7,
+    "a0": 1.52,
+    "a1": 0.4,
+    "a2": 0.1,
+    "a_srkt": 119.1,
+    "n": 119
+  },
+  {
+    "name": "Rayner 755 U",
+    "a_nominal": 118.0,
+    "a0": 1.6,
+    "a1": 0.21,
+    "a2": 0.11,
+    "a_srkt": 118.8,
+    "n": 98
+  },
+  {
+    "name": "Rayner Centerflex 570 H",
+    "a_nominal": 118.0,
+    "a0": 1.04,
+    "a1": 0.4,
+    "a2": 0.1,
+    "a_srkt": 118.4,
+    "n": 118
+  },
+  {
+    "name": "Rayner C-Flex 570 C",
+    "a_nominal": 118.0,
+    "a0": 1.27,
+    "a1": 0.4,
+    "a2": 0.1,
+    "a_srkt": 118.8,
+    "n": 149
+  },
+  {
+    "name": "Rayner Superflex 620 H",
+    "a_nominal": 118.0,
+    "a0": 1.2,
+    "a1": 0.4,
+    "a2": 0.1,
+    "a_srkt": 118.8,
+    "n": 144
+  },
+  {
+    "name": "Rayner Superflex Asph 920 H",
+    "a_nominal": 118.0,
+    "a0": 1.02,
+    "a1": 0.4,
+    "a2": 0.1,
+    "a_srkt": 118.3,
+    "n": 169
+  },
+  {
+    "name": "Rayner C-flex Asph 970 C",
+    "a_nominal": 118.0,
+    "a0": 1.19,
+    "a1": 0.4,
+    "a2": 0.1,
+    "a_srkt": 118.8,
+    "n": 72
+  },
+  {
+    "name": "Rayner Mflex 630F",
+    "a_nominal": 118.6,
+    "a0": 1.3,
+    "a1": 0.4,
+    "a2": 0.1,
+    "a_srkt": 118.9,
+    "n": 96
+  },
+  {
+    "name": "Santen X-70 (Japan)",
+    "a_nominal": 118.9,
+    "a0": 1.86,
+    "a1": 0.4,
+    "a2": 0.1,
+    "a_srkt": 119.6,
+    "n": 78
+  },
+  {
+    "name": "Santen W-60 (Japan)",
+    "a_nominal": 119.1,
+    "a0": 0.653,
+    "a1": 0.229,
+    "a2": 0.173,
+    "a_srkt": 119.4,
+    "n": 321
+  },
+  {
+    "name": "SIFI Mini 4 Ready",
+    "a_nominal": 118.6,
+    "a0": 1.6,
+    "a1": 0.4,
+    "a2": 0.1,
+    "a_srkt": 119.0,
+    "n": 21
+  },
+  {
+    "name": "SIFI Mini Well",
+    "a_nominal": 118.6,
+    "a0": 1.33,
+    "a1": 0.4,
+    "a2": 0.1,
+    "a_srkt": 118.8,
+    "n": 49
+  },
+  {
+    "name": "Soleko FIL611",
+    "a_nominal": 118.5,
+    "a0": 0.051,
+    "a1": 0.14,
+    "a2": 0.197,
+    "a_srkt": 119.1,
+    "n": 259
+  },
+  {
+    "name": "Staar AQ 2010",
+    "a_nominal": 118.5,
+    "a0": 1.56,
+    "a1": 0.4,
+    "a2": 0.1,
+    "a_srkt": 119.3,
+    "n": 49
+  },
+  {
+    "name": "Staar AQ 2003V",
+    "a_nominal": 118.5,
+    "a0": 1.53,
+    "a1": 0.4,
+    "a2": 0.1,
+    "a_srkt": 119.2,
+    "n": 65
+  },
+  {
+    "name": "Staar KS-3",
+    "a_nominal": 119.0,
+    "a0": 1.51,
+    "a1": 0.4,
+    "a2": 0.1,
+    "a_srkt": 119.1,
+    "n": 63
+  },
+  {
+    "name": "Staar KS-SP (Japan)",
+    "a_nominal": 119.1,
+    "a0": 0.943,
+    "a1": 0.243,
+    "a2": 0.161,
+    "a_srkt": 119.5,
+    "n": 207
+  },
+  {
+    "name": "Technoko TA625",
+    "a_nominal": 118.0,
+    "a0": 1.17,
+    "a1": 0.4,
+    "a2": 0.1,
+    "a_srkt": 118.7,
+    "n": 40
+  },
+  {
+    "name": "Technomed EASYCARE600",
+    "a_nominal": 118.0,
+    "a0": 0.929,
+    "a1": 0.166,
+    "a2": 0.132,
+    "a_srkt": 118.3,
+    "n": 242
+  },
+  {
+    "name": "Tekia Tek-Lens Mod.411S",
+    "a_nominal": 117.8,
+    "a0": 0.49,
+    "a1": 0.4,
+    "a2": 0.1,
+    "a_srkt": 117.5,
+    "n": 155
+  },
+  {
+    "name": "Tekia Tek-Lens Mod.614",
+    "a_nominal": 118.0,
+    "a0": 0.85,
+    "a1": 0.4,
+    "a2": 0.1,
+    "a_srkt": 118.2,
+    "n": 57
+  },
+  {
+    "name": "Visional RBAG",
+    "a_nominal": 120.2,
+    "a0": 1.88,
+    "a1": 0.4,
+    "a2": 0.1,
+    "a_srkt": 119.7,
+    "n": 64
+  },
+  {
+    "name": "Visiontech Medical Optics Liteflex",
+    "a_nominal": 118.2,
+    "a0": 1.17,
+    "a1": 0.4,
+    "a2": 0.1,
+    "a_srkt": 118.6,
+    "n": 63
+  },
+  {
+    "name": "Visiontech Medical Optics Liteflex A",
+    "a_nominal": 118.2,
+    "a0": 1.21,
+    "a1": 0.4,
+    "a2": 0.1,
+    "a_srkt": 118.6,
+    "n": 48
+  },
+  {
+    "name": "VSY Acriva UD Reviol MFM 611",
+    "a_nominal": 118.0,
+    "a0": 0.67,
+    "a1": 0.4,
+    "a2": 0.1,
+    "a_srkt": 118.3,
+    "n": 49
+  },
+  {
+    "name": "VSY Acriva UD 613",
+    "a_nominal": 118.0,
+    "a0": 0.95,
+    "a1": 0.4,
+    "a2": 0.1,
+    "a_srkt": 118.4,
+    "n": 49
+  },
+  {
+    "name": "VSY Acriva UD Reviol MF 613",
+    "a_nominal": 118.0,
+    "a0": 0.65,
+    "a1": 0.4,
+    "a2": 0.1,
+    "a_srkt": 118.1,
+    "n": 48
+  },
+  {
+    "name": "VSY Acriva UD Reviol MFB 625",
+    "a_nominal": 118.0,
+    "a0": 0.7,
+    "a1": 0.4,
+    "a2": 0.1,
+    "a_srkt": 117.9,
+    "n": 49
+  },
+  {
+    "name": "WEFISinnovid WEFINO 100",
+    "a_nominal": 118.7,
+    "a0": 1.39,
+    "a1": 0.4,
+    "a2": 0.1,
+    "a_srkt": 119.0,
+    "n": 50
+  },
+  {
+    "name": "W2O CareFlex II",
+    "a_nominal": 118.7,
+    "a0": 1.32,
+    "a1": 0.4,
+    "a2": 0.1,
+    "a_srkt": 118.9,
+    "n": 146
+  },
+  {
+    "name": "Xcelens IDEA (HEMA26%)",
+    "a_nominal": 119.0,
+    "a0": 1.78,
+    "a1": 0.4,
+    "a2": 0.1,
+    "a_srkt": 119.6,
+    "n": 55
+  },
+  {
+    "name": "Zarracom Focusforce Aspheric AS60125",
+    "a_nominal": 118.4,
+    "a0": 1.33,
+    "a1": 0.4,
+    "a2": 0.1,
+    "a_srkt": 118.9,
+    "n": 49
+  },
+  {
+    "name": "Zarracom Focusforce Basic F260",
+    "a_nominal": 118.4,
+    "a0": 1.55,
+    "a1": 0.4,
+    "a2": 0.1,
+    "a_srkt": 119.2,
+    "n": 49
+  },
+  {
+    "name": "Zarracom Focusforce Ultraflex UF60125",
+    "a_nominal": 118.4,
+    "a0": 1.58,
+    "a1": 0.4,
+    "a2": 0.1,
+    "a_srkt": 119.3,
+    "n": 48
+  },
+  {
+    "name": "ZEISS Stabibag",
+    "a_nominal": 118.0,
+    "a0": 1.28,
+    "a1": 0.4,
+    "a2": 0.1,
+    "a_srkt": 118.9,
+    "n": 132
+  },
+  {
+    "name": "ZEISS CT SPHERIS 203(P) (XL Stabi, XL Stabi Sky)",
+    "a_nominal": 118.0,
+    "a0": 1.05,
+    "a1": 0.4,
+    "a2": 0.1,
+    "a_srkt": 118.5,
+    "n": 98
+  },
+  {
+    "name": "ZEISS CT ASPHINA 603P   (XL Stabi ZO)",
+    "a_nominal": 118.2,
+    "a0": -0.463,
+    "a1": 0.078,
+    "a2": 0.218,
+    "a_srkt": 118.9,
+    "n": 442
+  },
+  {
+    "name": "ZEISS Haptibag",
+    "a_nominal": 118.2,
+    "a0": 0.84,
+    "a1": 0.4,
+    "a2": 0.1,
+    "a_srkt": 118.1,
+    "n": 33
+  },
+  {
+    "name": "ZEISS Hydromax",
+    "a_nominal": 118.5,
+    "a0": 1.55,
+    "a1": 0.4,
+    "a2": 0.1,
+    "a_srkt": 119.3,
+    "n": 62
+  },
+  {
+    "name": "ZEISS XL Octo Sky",
+    "a_nominal": 117.9,
+    "a0": 0.99,
+    "a1": 0.4,
+    "a2": 0.1,
+    "a_srkt": 118.4,
+    "n": 115
+  },
+  {
+    "name": "ZEISS CT ASPHINA 604P   (Invent ZO)",
+    "a_nominal": 118.1,
+    "a0": 1.4,
+    "a1": 0.4,
+    "a2": 0.1,
+    "a_srkt": 118.9,
+    "n": 21
+  },
+  {
+    "name": "ZEISS TS43 - discontinued",
+    "a_nominal": 118.5,
+    "a0": 1.13,
+    "a1": 0.4,
+    "a2": 0.1,
+    "a_srkt": 118.4,
+    "n": 13
+  },
+  {
+    "name": "ZEISS Acri.Lens 11C",
+    "a_nominal": 118.0,
+    "a0": 1.21,
+    "a1": 0.4,
+    "a2": 0.1,
+    "a_srkt": 118.9,
+    "n": 22
+  },
+  {
+    "name": "ZEISS Acri.Lens 12C",
+    "a_nominal": 118.9,
+    "a0": 1.42,
+    "a1": 0.4,
+    "a2": 0.1,
+    "a_srkt": 119.2,
+    "n": 16
+  },
+  {
+    "name": "ZEISS AT LISA 809M      (AT LISA 366D)",
+    "a_nominal": 117.5,
+    "a0": 0.675,
+    "a1": 0.028,
+    "a2": 0.149,
+    "a_srkt": 118.0,
+    "n": 334
+  },
+  {
+    "name": "ZEISS AT LISA 801       (Acri.LISA 376D)",
+    "a_nominal": 117.7,
+    "a0": 0.82,
+    "a1": 0.4,
+    "a2": 0.1,
+    "a_srkt": 118.1,
+    "n": 48
+  },
+  {
+    "name": "ZEISS CT ASPHINA 409M   (Acri.Smart 46LC)",
+    "a_nominal": 117.7,
+    "a0": 0.322,
+    "a1": 0.162,
+    "a2": 0.158,
+    "a_srkt": 118.3,
+    "n": 662
+  },
+  {
+    "name": "ZEISS CT ASPHINA 509M (India)",
+    "a_nominal": 118.3,
+    "a0": 0.61,
+    "a1": 0.4,
+    "a2": 0.1,
+    "a_srkt": 117.6,
+    "n": 198
+  },
+  {
+    "name": "ZEISS CT ASPHINA 509M   (Acri.Smart 36A)",
+    "a_nominal": 118.0,
+    "a0": 0.68,
+    "a1": 0.4,
+    "a2": 0.1,
+    "a_srkt": 117.9,
+    "n": 92
+  },
+  {
+    "name": "ZEISS CT ASPHINA 404    (Acri.Lyc 44LC)",
+    "a_nominal": 118.0,
+    "a0": 0.126,
+    "a1": 0.025,
+    "a2": 0.19,
+    "a_srkt": 118.5,
+    "n": 237
+  },
+  {
+    "name": "ZEISS Acri.Lyc 45S",
+    "a_nominal": 118.2,
+    "a0": 1.2,
+    "a1": 0.4,
+    "a2": 0.1,
+    "a_srkt": 118.7,
+    "n": 158
+  },
+  {
+    "name": "ZEISS Acri.Lyc 45LC",
+    "a_nominal": 118.2,
+    "a0": 1.26,
+    "a1": 0.4,
+    "a2": 0.1,
+    "a_srkt": 118.9,
+    "n": 55
+  },
+  {
+    "name": "ZEISS CT 47LC           (Acri.Lyc 47LC)",
+    "a_nominal": 117.7,
+    "a0": 0.308,
+    "a1": 0.3,
+    "a2": 0.133,
+    "a_srkt": 117.9,
+    "n": 192
+  },
+  {
+    "name": "ZEISS CT 47S            (Acri.Lyc 47S)",
+    "a_nominal": 117.6,
+    "a0": 0.95,
+    "a1": 0.4,
+    "a2": 0.1,
+    "a_srkt": 118.3,
+    "n": 165
+  },
+  {
+    "name": "Zeiss AT LISA tri839 MP Korea",
+    "a_nominal": 118.3,
+    "a0": 0.637,
+    "a1": 0.331,
+    "a2": 0.131,
+    "a_srkt": 118.5,
+    "n": 366
+  },
+  {
+    "name": "ZEISS AT TORBI 709 MP",
+    "a_nominal": 118.3,
+    "a0": 1.13,
+    "a1": 0.4,
+    "a2": 0.1,
+    "a_srkt": 118.5,
+    "n": 48
+  },
+  {
+    "name": "Zeiss AT LISA toric 909 MP",
+    "a_nominal": 118.3,
+    "a0": 1.02,
+    "a1": 0.4,
+    "a2": 0.1,
+    "a_srkt": 118.4,
+    "n": 43
+  },
+  {
+    "name": "Zeiss CT LUCIA 201P/PY",
+    "a_nominal": 118.5,
+    "a0": 1.53,
+    "a1": 0.4,
+    "a2": 0.1,
+    "a_srkt": 119.3,
+    "n": 48
+  },
+  {
+    "name": "Zeiss CT LUCIA 601P/PY",
+    "a_nominal": 119.1,
+    "a0": 1.49,
+    "a1": 0.4,
+    "a2": 0.1,
+    "a_srkt": 119.2,
+    "n": 77
+  },
+  {
+    "name": "Zeiss CT LUCIA 611P/PY",
+    "a_nominal": 119.9,
+    "a0": 2.1,
+    "a1": 0.4,
+    "a2": 0.1,
+    "a_srkt": 120.1,
+    "n": 133
+  },
+  {
+    "name": "ZEISS CT SPHERIS 209M   (Acri.Smart 46S)",
+    "a_nominal": 117.6,
+    "a0": 0.574,
+    "a1": 0.166,
+    "a2": 0.148,
+    "a_srkt": 118.3,
+    "n": 873
+  },
+  {
+    "name": "ZEISS AT LISA tri839 MP",
+    "a_nominal": 118.3,
+    "a0": -1.477,
+    "a1": 0.058,
+    "a2": 0.262,
+    "a_srkt": 118.9,
+    "n": 237
+  },
+  {
+    "name": "Zeiss AT LISA tri toric 939MP",
+    "a_nominal": 118.8,
+    "a0": 0.96,
+    "a1": 0.4,
+    "a2": 0.1,
+    "a_srkt": 118.5,
+    "n": 73
+  },
+  {
+    "name": "ZEISS CT SPHERIS 204    (Acri.Lyc 44S)",
+    "a_nominal": 118.0,
+    "a0": 0.93,
+    "a1": 0.4,
+    "a2": 0.1,
+    "a_srkt": 118.3,
+    "n": 177
+  }
+]

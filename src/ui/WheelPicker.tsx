@@ -41,7 +41,9 @@ export function WheelPicker({
   const fmt = (v: number) => {
     const n = parseFloat(String(v));
     if (isNaN(n)) return '—';
-    return (n >= 0 ? '+' : '') + n.toFixed(dec);
+    const s = n.toFixed(dec);
+    const showPlus = (unit === 'D' || unit === 'dptr') && n > 0;
+    return (showPlus ? '+' : '') + s;
   };
 
   const curIdx = useMemo(() => {
@@ -74,57 +76,58 @@ export function WheelPicker({
     <div
       style={{
         position: 'fixed', inset: 0, zIndex: 200,
-        background: 'rgba(0,0,0,.72)',
+        background: 'rgba(0,0,0,.85)',
         display: 'flex', flexDirection: 'column', justifyContent: 'flex-end',
       }}
       onClick={onClose}
     >
       <div
-        style={{ background: C.surface2, borderRadius: '20px 20px 0 0' }}
+        style={{ background: C.card, borderRadius: '24px 24px 0 0', borderTop: `1px solid ${C.border}`, boxShadow: '0 -10px 40px rgba(0,0,0,0.5)' }}
         onClick={e => e.stopPropagation()}
       >
-        {/* Шапка */}
+        {/* Header */}
         <div
           style={{
             display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-            padding: '14px 20px', borderBottom: `1px solid ${C.border}`,
+            padding: '16px 20px', borderBottom: `1px solid ${C.border}`,
           }}
         >
           <button
             onClick={onClose}
-            style={{ fontFamily: F.sans, fontSize: 14, color: C.muted, background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}
+            style={{ fontFamily: F.sans, fontSize: 13, fontWeight: 700, color: C.muted2, background: 'none', border: 'none', cursor: 'pointer', padding: 0, textTransform: 'uppercase', letterSpacing: '0.04em' }}
           >
-            Отмена
+            CANCEL
           </button>
-          <span style={{ fontFamily: F.sans, fontSize: 14, fontWeight: 600, color: C.text }}>
-            {label} ({unit})
+          <span style={{ fontFamily: F.sans, fontSize: 12, fontWeight: 900, color: C.text, textTransform: 'uppercase', letterSpacing: '0.1em' }}>
+            {label} {unit && `(${unit})`}
           </span>
           <button
             onClick={() => onConfirm(vals[selIdx])}
-            style={{ fontFamily: F.sans, fontSize: 14, fontWeight: 700, color: C.accent, background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}
+            style={{ fontFamily: F.sans, fontSize: 13, fontWeight: 900, color: C.green, background: 'none', border: 'none', cursor: 'pointer', padding: 0, textTransform: 'uppercase', letterSpacing: '0.04em' }}
           >
-            Готово
+            DONE
           </button>
         </div>
 
-        {/* Барабан */}
-        <div style={{ position: 'relative', height: ITEM_H * 5, margin: '8px 16px' }}>
-          {/* Подсветка выбранного */}
+        {/* Wheel Drum */}
+        <div style={{ position: 'relative', height: ITEM_H * 5, margin: '12px 20px' }}>
+          {/* Highlight selection */}
           <div style={{
             position: 'absolute', top: ITEM_H * 2, left: 0, right: 0, height: ITEM_H,
-            background: C.surface3, borderRadius: 10,
+            background: 'rgba(255,255,255,0.03)', borderRadius: 12,
+            border: `1px solid ${C.border}40`,
             pointerEvents: 'none', zIndex: 1,
           }} />
-          {/* Верхний fade */}
+          
           <div style={{
             position: 'absolute', top: 0, left: 0, right: 0, height: ITEM_H * 2,
-            background: `linear-gradient(to bottom,${C.surface2},transparent)`,
+            background: `linear-gradient(to bottom, ${C.card}, transparent)`,
             pointerEvents: 'none', zIndex: 2,
           }} />
-          {/* Нижний fade */}
+          
           <div style={{
             position: 'absolute', bottom: 0, left: 0, right: 0, height: ITEM_H * 2,
-            background: `linear-gradient(to top,${C.surface2},transparent)`,
+            background: `linear-gradient(to top, ${C.card}, transparent)`,
             pointerEvents: 'none', zIndex: 2,
           }} />
 
@@ -162,10 +165,11 @@ export function WheelPicker({
                 <span
                   style={{
                     fontFamily: F.mono,
-                    fontSize: i === selIdx ? 20 : 15,
-                    fontWeight: i === selIdx ? 700 : 400,
-                    color: i === selIdx ? C.text : C.muted,
-                    transition: 'font-size .1s, color .1s',
+                    fontSize: i === selIdx ? 24 : 16,
+                    fontWeight: i === selIdx ? 900 : 400,
+                    color: i === selIdx ? C.text : C.muted3,
+                    transition: 'all 0.1s cubic-bezier(0.4, 0, 0.2, 1)',
+                    letterSpacing: i === selIdx ? '0.05em' : '0',
                   }}
                 >
                   {fmt(v)}
@@ -175,18 +179,19 @@ export function WheelPicker({
           </div>
         </div>
 
-        {/* Текущее значение */}
+        {/* Selected value display */}
         <div
           style={{
             textAlign: 'center',
             fontFamily: F.mono,
-            fontSize: 22,
-            fontWeight: 700,
-            color: C.accent,
-            padding: '4px 0 calc(24px + env(safe-area-inset-bottom, 0px))',
+            fontSize: 26,
+            fontWeight: 900,
+            color: C.green,
+            padding: '8px 0 calc(32px + env(safe-area-inset-bottom, 0px))',
+            letterSpacing: '0.04em'
           }}
         >
-          {fmt(vals[selIdx])} {unit}
+          {fmt(vals[selIdx])} <span style={{ fontSize: 12, color: C.muted3 }}>{unit}</span>
         </div>
       </div>
     </div>
