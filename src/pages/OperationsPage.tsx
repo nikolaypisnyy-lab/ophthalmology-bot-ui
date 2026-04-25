@@ -19,8 +19,8 @@ function MonthCalendar({
   const [year, setYear] = useState(initDate.getFullYear());
   const [month, setMonth] = useState(initDate.getMonth());
 
-  const MONTHS = ['Январь','Февраль','Март','Апрель','Май','Июнь','Июль','Август','Сентябрь','Октябрь','Ноябрь','Декабрь'];
-  const DOW = ['Пн','Вт','Ср','Чт','Пт','Сб','Вс'];
+  const MONTHS = ['January','February','March','April','May','June','July','August','September','October','November','December'];
+  const DOW = ['Mon','Tue','Wed','Thu','Fri','Sat','Sun'];
 
   const firstDay = new Date(year, month, 1);
   const startDow = (firstDay.getDay() + 6) % 7;
@@ -114,7 +114,7 @@ export function OperationsPage() {
   const fmtDate = (d: string) => {
     if (!d) return '—';
     const [y, m, day] = d.split('-');
-    const M = ['янв','фев','мар','апр','май','июн','июл','авг','сен','окт','ноя','дек'];
+    const M = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
     return `${+day} ${M[+m - 1]} ${y}`;
   };
 
@@ -167,7 +167,7 @@ export function OperationsPage() {
             fontFamily: F.mono, fontSize: 11, fontWeight: 700,
             padding: '4px 12px', borderRadius: 20, border: `1px solid ${C.accent}20`
           }}>
-            {dayPatients.length} ПАЦИЕНТОВ
+            {dayPatients.length} PATIENTS
           </span>
         </div>
       </div>
@@ -176,7 +176,7 @@ export function OperationsPage() {
       <div style={{ padding: '8px 16px 120px', width: '100%' }}>
           {dayPatients.length === 0 && (
             <div style={{ textAlign: 'center', padding: 48, color: C.muted, fontFamily: F.sans, fontSize: 14 }}>
-              Нет операций на этот день
+              No operations scheduled for this day
             </div>
           )}
           {dayPatients.map((p, i) => {
@@ -314,11 +314,16 @@ export function OperationsPage() {
                       }}>
                         <span style={{ fontSize: 8, fontWeight: 800, color: C.tertiary, textTransform: 'uppercase' }}>PLAN:</span>
                         <span style={{ fontFamily: F.mono, fontSize: 10, fontWeight: 700, color: C.cat }}>
-                          {(p.savedPlan?.od?.iolModel || p.savedPlan?.os?.iolModel || 'No IOL Selected')}
+                          {p.iolResult?.lens || 'No IOL Selected'}
                         </span>
                         <div style={{ width: 1, height: 8, background: C.border, opacity: 0.3 }} />
                         <span style={{ fontFamily: F.mono, fontSize: 11, fontWeight: 900, color: C.primary }}>
-                          {(p.savedPlan?.od?.iolPower || p.savedPlan?.os?.iolPower || '0.0')} D
+                          {(() => {
+                            const eye = p.eye?.toLowerCase() === 'os' ? 'os' : 'od';
+                            const pwr = p.iolResult?.[eye]?.selectedPower ?? (p.iolResult as any)?.power;
+                            if (pwr === undefined || pwr === null || pwr === '—') return '0.0';
+                            return typeof pwr === 'number' ? pwr.toFixed(2) : pwr;
+                          })()} D
                         </span>
                       </div>
                     )}

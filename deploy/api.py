@@ -248,8 +248,6 @@ def get_patients(telegram_id: str = Header(None), db: MedEyeDB = Depends(get_cli
         if visit:
             vid = visit.get("visit_id", "")
             latest_meas = all_meas.get(vid)
-            if latest_meas and "iol_calc" in latest_meas:
-                p["has_iol_calc"] = True
             
             if latest_meas:
                 periods = latest_meas.get("periods", {})
@@ -265,6 +263,14 @@ def get_patients(telegram_id: str = Header(None), db: MedEyeDB = Depends(get_cli
                                 p["postSphOS"], p["postCylOS"], p["postAxOS"], p["postVaOS"] = os.get("sph"), os.get("cyl"), os.get("ax"), os.get("va")
                                 p["status"] = "done"
                             if "status" in p: break
+                
+                # Also include IOL results for ResultsPage display
+                if "iolResult" in latest_meas:
+                    p["iolResult"] = latest_meas["iolResult"]
+                if "toricResults" in latest_meas:
+                    p["toricResults"] = latest_meas["toricResults"]
+                if "iol_calc" in latest_meas:
+                    p["has_iol_calc"] = True
 
     clinic_id = "default"
     if telegram_id:

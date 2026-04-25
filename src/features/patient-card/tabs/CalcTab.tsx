@@ -313,9 +313,14 @@ export function CalcTab() {
                     key={i}
                     onClick={() => {
                       haptic.light();
-                      const eyeRes = (iolResult as any)?.[activeEye] || {};
-                      useSessionStore.getState().setIOLResult({
-                        ...(iolResult || {}),
+                      const st = useSessionStore.getState();
+                      const curIOL = st.iolResult || st.draft?.iolResult || {};
+                      const eyeRes = (curIOL as any)?.[activeEye] || {};
+                      
+                      st.setIOLResult({
+                        ...curIOL,
+                        lens: (curIOL as any).lens || 'AcrySof IQ',
+                        aConst: (curIOL as any).aConst || 119.3,
                         [activeEye]: {
                           ...eyeRes,
                           selectedPower: r.power,

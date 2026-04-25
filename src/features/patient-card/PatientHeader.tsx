@@ -99,22 +99,8 @@ export function PatientHeader({ onSave, isSaving }: PatientHeaderProps) {
           />
         </div>
 
-        <button
-          onClick={() => { haptic.medium(); onSave(); }}
-          disabled={isSaving}
-          style={{
-            height: 36, padding: '0 14px', borderRadius: 12,
-            background: isSaving ? C.surface : `linear-gradient(135deg, ${C.indigo} 0%, #3B82F6 100%)`,
-            border: 'none', color: '#fff',
-            fontFamily: F.sans, fontSize: 12, fontWeight: 900,
-            cursor: 'pointer', transition: 'all 0.3s',
-            display: 'flex', alignItems: 'center', gap: 6, flexShrink: 0
-          }}
-        >
-          {isSaving ? (
-            <div style={{ width: 14, height: 14, borderRadius: '50%', border: '2px solid transparent', borderTopColor: '#fff', animation: 'spin 0.6s linear infinite' }} />
-          ) : 'SAVE'}
-        </button>
+        {/* Spacer for symmetry in top row */}
+        <div style={{ width: 36, height: 36, flexShrink: 0 }} />
       </div>
 
       {/* Second Row: TYPE (Left) + AGE/SEX (Center) */}
@@ -143,14 +129,14 @@ export function PatientHeader({ onSave, isSaving }: PatientHeaderProps) {
           <span style={{ textAlign: 'center' }}>{typeLabel}</span>
         </button>
 
-        {/* COMPACT CENTERED AGE/SEX */}
         <div style={{
           display: 'flex', alignItems: 'center', gap: 8,
           background: draft.sex === 'Ж' ? 'rgba(244, 114, 182, 0.1)' : draft.sex === 'М' ? 'rgba(37, 99, 235, 0.1)' : 'rgba(255,255,255,0.05)',
           padding: '4px 14px', borderRadius: 12,
           border: `1px solid ${draft.sex === 'Ж' ? 'rgba(244, 114, 182, 0.2)' : draft.sex === 'М' ? 'rgba(37, 99, 235, 0.3)' : C.border}`,
-          position: 'absolute', left: '50%', transform: 'translateX(-50%)',
-          transition: 'all 0.3s'
+          position: 'absolute', left: '50%', transform: 'translateX(calc(-50% + 10px))',
+          transition: 'all 0.3s',
+          zIndex: 5
         }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
             <span style={{ fontFamily: F.sans, fontSize: 9.5, fontWeight: 900, color: C.muted2 }}>A</span>
@@ -178,6 +164,33 @@ export function PatientHeader({ onSave, isSaving }: PatientHeaderProps) {
             {draft.sex === 'М' ? 'MALE' : draft.sex === 'Ж' ? 'FEMALE' : 'SEX?'}
           </button>
         </div>
+
+        {/* Squashed SAVE Button - Symmetrical with Type Button */}
+        <button
+          onClick={() => { haptic.medium(); onSave(); }}
+          disabled={isSaving}
+          style={{
+            marginLeft: 'auto',
+            background: isSaving ? C.surface : `linear-gradient(135deg, ${C.green} 0%, #10B981 100%)`,
+            border: `1px solid rgba(255,255,255,0.1)`,
+            borderRadius: 10, padding: '6px 16px',
+            fontFamily: F.sans, fontSize: 9, fontWeight: 900,
+            color: '#FFFFFF', cursor: 'pointer',
+            letterSpacing: '0.12em', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
+            transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
+            minWidth: 100,
+            boxShadow: '0 4px 12px rgba(0,0,0,0.2)'
+          }}
+        >
+          {isSaving ? (
+            <div style={{ width: 10, height: 10, borderRadius: '50%', border: '2px solid transparent', borderTopColor: '#fff', animation: 'spin 0.6s linear infinite' }} />
+          ) : (
+            <>
+              <div style={{ width: 6, height: 6, borderRadius: '2px', background: '#FFF', flexShrink: 0 }} />
+              <span>SAVE</span>
+            </>
+          )}
+        </button>
       </div>
 
       {/* Navigation Tabs */}

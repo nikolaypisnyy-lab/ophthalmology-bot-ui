@@ -71,14 +71,12 @@ def get_nomogram_offsets(clinic_db_path):
                     r_sph = float(r_eye['sph'] or 0)
                     r_cyl = float(r_eye.get('cyl') or 0)
                     
-                    # Разная логика для ЛКЗ и Катаракты
                     p_type = prim.get('patient_type', 'refraction')
                     if p_type == 'cataract':
-                        # Для катаракты p_sph — это Target Refraction
-                        sph_errors.append(r_sph - p_sph)
-                    else:
-                        # Для ЛКЗ p_sph — это сила абляции (обработана номограммой)
-                        sph_errors.append(r_sph)
+                        continue
+                    
+                    # Для ЛКЗ p_sph — это сила абляции (обработана номограммой)
+                    sph_errors.append(r_sph)
                     
                     # Ошибка по цилиндру (всегда считаем как остаточный цилиндр)
                     if r_cyl != 0:

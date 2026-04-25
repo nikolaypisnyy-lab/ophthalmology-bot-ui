@@ -42,7 +42,7 @@ export function PatientCard() {
 
     // 1. Edge Swipe to Close (Свайп от левого края вправо)
     if (touchStartX.current < 30 && delta > 80) {
-      haptic.notification('warning'); // Более ощутимый отклик на закрытие
+      haptic.medium(); // Feedback on close
       closePatient();
       return;
     }

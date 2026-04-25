@@ -109,7 +109,8 @@ export function computeRefPlan(
     } else if (pAntC !== null) {
       const pAx = pAntA ?? (kAx ?? ax);
       if (pPostC !== null) {
-        const s = sumCylinders(pAntC, pAx, pPostC, pPostA ?? 90);
+        // Суммируем векторы: передний (минус) + задний (плюс) = вычитание при совпадении осей
+        const s = sumCylinders(-Math.abs(pAntC), pAx, Math.abs(pPostC), pPostA ?? 90);
         cornealCc = s.cyl; cornealCa = s.ax; cornealSrcLabel = 'Pentacam Ant+Post';
       } else {
         const s = sumCylinders(pAntC, pAx, 0, 0);

@@ -20,7 +20,7 @@ export function CorneaSafetyCard({
   const isDangerRSB = rsb < 300;
   const isWarnPTA = pta >= 40;
   
-  const rsbColor = isDangerRSB ? C.red : (rsb < 380 ? C.yellow : C.green);
+  const rsbColor = isDangerRSB ? C.red : (rsb < 330 ? C.yellow : C.green);
   const ptaColor = isWarnPTA ? C.red : C.green;
 
   // Percentage for progress bars
@@ -99,8 +99,8 @@ export function CorneaSafetyCard({
           {/* RSB Layer */}
           <div style={{
             height: '48px', borderRadius: '4px', display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-            padding: '0 12px', background: isDangerRSB ? 'rgba(239, 68, 68, 0.25)' : (rsb < 380 ? 'rgba(245, 158, 11, 0.25)' : 'rgba(16, 185, 129, 0.25)'), 
-            border: `1px solid ${isDangerRSB ? 'rgba(239, 68, 68, 0.4)' : (rsb < 380 ? 'rgba(245, 158, 11, 0.4)' : 'rgba(16, 185, 129, 0.4)')}`,
+            padding: '0 12px', background: isDangerRSB ? 'rgba(239, 68, 68, 0.25)' : (rsb < 330 ? 'rgba(245, 158, 11, 0.25)' : 'rgba(16, 185, 129, 0.25)'), 
+            border: `1px solid ${isDangerRSB ? 'rgba(239, 68, 68, 0.4)' : (rsb < 330 ? 'rgba(245, 158, 11, 0.4)' : 'rgba(16, 185, 129, 0.4)')}`,
             color: rsbColor, fontFamily: F.mono, fontSize: '10px', fontWeight: 900
           }}>
             <span style={{ letterSpacing: '0.06em', textTransform: 'uppercase', fontSize: '9.5px' }}>RSB · Residual Stroma</span>
@@ -128,7 +128,7 @@ export function CorneaSafetyCard({
       {/* Metrics Grid with Progress Bars */}
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' }}>
         <MetricCard label="ABL" value={abl} unit="µm" sub={`per diopter ~${(abl/10 || 14).toFixed(0)}µm`} pct={ablPct} color="#fbbf24" />
-        <MetricCard label="RSB" value={rsb} unit="µm" sub="min 300 · target 380+" color={rsbColor} pct={rsbPct} mark={300/5.5} />
+        <MetricCard label="RSB" value={rsb} unit="µm" sub="min 300 · warning < 330" color={rsbColor} pct={rsbPct} mark={300/5.5} />
         <MetricCard label="PTA" value={pta} unit="%" sub="limit 40% · ectasia" color={ptaColor} pct={ptaPct} mark={80} />
         <MetricCard label="K-post" value={kpost.toFixed(2)} unit="D" sub={kpre ? `Δ from ${kpre.toFixed(2)}` : 'corneal k'} pct={kpostPct} barColor={C.indigo} />
       </div>

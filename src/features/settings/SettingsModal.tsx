@@ -24,12 +24,12 @@ export function SettingsModal() {
   const handleExportTelegram = async () => {
     try {
       setLoading(true);
-      setMsg({ text: 'Отправка базы в Telegram...', type: 'info' });
+      setMsg({ text: 'Sending database to Telegram...', type: 'info' });
       
       const response: any = await apiPost('/database/export_telegram', {});
-      if (response.status === 'error') throw new Error(response.detail || 'Ошибка отправки');
+      if (response.status === 'error') throw new Error(response.detail || 'Sending error');
       
-      setMsg({ text: 'База успешно отправлена вам в Telegram!', type: 'info' });
+      setMsg({ text: 'Database successfully sent to your Telegram!', type: 'info' });
     } catch (e: any) {
       setMsg({ text: e.message, type: 'error' });
     } finally {
@@ -40,13 +40,13 @@ export function SettingsModal() {
   const handleExportFile = async () => {
     try {
       setLoading(true);
-      setMsg({ text: 'Запрос на скачивание...', type: 'info' });
+      setMsg({ text: 'Download request...', type: 'info' });
       
       // Прямое скачивание через window.open (надежнее для мобильных браузеров в WebApp)
       const downloadUrl = `${window.location.origin}${API_BASE}/database/export?tid=${TELEGRAM_ID}`;
       window.open(downloadUrl, '_blank');
       
-      setMsg({ text: 'Попытка скачивания запущена!', type: 'info' });
+      setMsg({ text: 'Download attempt started!', type: 'info' });
     } catch (e: any) {
       setMsg({ text: e.message, type: 'error' });
     } finally {
@@ -58,13 +58,13 @@ export function SettingsModal() {
     const file = e.target.files?.[0];
     if (!file) return;
 
-    if (!window.confirm('ВНИМАНИЕ: Импорт полностью ЗАМЕНИТ текущую базу данных. Вы уверены?')) {
+    if (!window.confirm('WARNING: Import will completely REPLACE the current database. Are you sure?')) {
       return;
     }
 
     try {
       setLoading(true);
-      setMsg({ text: 'Загрузка базы...', type: 'info' });
+      setMsg({ text: 'Uploading database...', type: 'info' });
       
       const formData = new FormData();
       formData.append('file', file);
@@ -75,9 +75,9 @@ export function SettingsModal() {
         body: formData
       });
       
-      if (!response.ok) throw new Error('Ошибка импорта');
+      if (!response.ok) throw new Error('Import error');
       
-      setMsg({ text: 'База успешно импортирована! Приложение будет перезагружено.', type: 'info' });
+      setMsg({ text: 'Database successfully imported! The app will be reloaded.', type: 'info' });
       setTimeout(() => window.location.reload(), 2000);
     } catch (e: any) {
       setMsg({ text: e.message, type: 'error' });
@@ -109,7 +109,7 @@ export function SettingsModal() {
       >
         {/* Заголовок */}
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 24 }}>
-          <h2 style={{ margin: 0, fontFamily: F.sans, fontSize: 20, fontWeight: 700, color: C.text }}>Настройки</h2>
+          <h2 style={{ margin: 0, fontFamily: F.sans, fontSize: 20, fontWeight: 700, color: C.text }}>Settings</h2>
           <button 
             onClick={closeSettings}
             style={{ 
@@ -140,10 +140,10 @@ export function SettingsModal() {
           </div>
           <div style={{ minWidth: 0 }}>
             <div style={{ fontFamily: F.sans, fontSize: 11, fontWeight: 600, color: C.accent, letterSpacing: '.08em', textTransform: 'uppercase', marginBottom: 2 }}>
-              Текущая база данных
+              Current Database
             </div>
             <div style={{ fontFamily: F.sans, fontSize: 15, fontWeight: 700, color: C.text, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-              {activeName ?? 'Загрузка...'}
+              {activeName ?? 'Loading...'}
             </div>
           </div>
         </div>
@@ -163,7 +163,7 @@ export function SettingsModal() {
 
         <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
           <div style={{ paddingBottom: 8, borderBottom: `1px solid ${C.border}`, marginBottom: 4 }}>
-            <span style={{ fontSize: 11, fontWeight: 800, color: C.muted, textTransform: 'uppercase', letterSpacing: '.05em' }}>Работа с данными (SQLite)</span>
+            <span style={{ fontSize: 11, fontWeight: 800, color: C.muted, textTransform: 'uppercase', letterSpacing: '.05em' }}>Data Management (SQLite)</span>
           </div>
 
           <button 
@@ -179,7 +179,7 @@ export function SettingsModal() {
             <div style={{ width: 36, height: 36, borderRadius: 10, background: C.accentLt, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke={C.accent} strokeWidth="2.5"><path d="M22 2L11 13M22 2l-7 20-4-9-9-4 20-7z"/></svg>
             </div>
-            Прислать в Telegram бота
+            Send to Telegram Bot
           </button>
 
           <button 
@@ -194,7 +194,7 @@ export function SettingsModal() {
             <div style={{ width: 28, height: 28, borderRadius: 8, background: C.surface3, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke={C.muted2} strokeWidth="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M7 10l5 5 5-5M12 15V3"/></svg>
             </div>
-            Скачать на устройство (.db)
+            Download to device (.db)
           </button>
 
           <label style={{
@@ -206,14 +206,14 @@ export function SettingsModal() {
             <div style={{ width: 36, height: 36, borderRadius: 10, background: C.osLt, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke={C.os} strokeWidth="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M17 8l-5-5-5 5M12 3v12"/></svg>
             </div>
-            Загрузить базу пациентов (.db)
+            Upload patient database (.db)
           </label>
 
           {/* Переключатель клиник */}
           {clinics.length > 1 && (
             <div style={{ marginTop: 8 }}>
               <div style={{ paddingBottom: 8, borderBottom: `1px solid ${C.border}`, marginBottom: 8 }}>
-                <span style={{ fontSize: 11, fontWeight: 800, color: C.muted, textTransform: 'uppercase', letterSpacing: '.05em' }}>Клиника</span>
+                <span style={{ fontSize: 11, fontWeight: 800, color: C.muted, textTransform: 'uppercase', letterSpacing: '.05em' }}>Clinic</span>
               </div>
               <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
                 {clinics.map(c => {
@@ -249,7 +249,7 @@ export function SettingsModal() {
           {activeClinicId && (
             <div style={{ marginTop: 12 }}>
               <div style={{ paddingBottom: 8, borderBottom: `1px solid ${C.border}`, marginBottom: 8 }}>
-                <span style={{ fontSize: 11, fontWeight: 800, color: C.muted, textTransform: 'uppercase', letterSpacing: '.05em' }}>Лазер клиники</span>
+                <span style={{ fontSize: 11, fontWeight: 800, color: C.muted, textTransform: 'uppercase', letterSpacing: '.05em' }}>Clinic Laser</span>
               </div>
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 6 }}>
                 {LASERS.map(l => {

@@ -245,7 +245,7 @@ function CardSkeleton({ onBack }: { onBack: () => void }) {
               fontFamily: F.sans, fontSize: 13, flexShrink: 0,
             }}
           >
-            ← Назад
+            ← Back
           </button>
           <div style={{ flex: 1, height: 18, background: C.surface2, borderRadius: 6, opacity: 0.5 }} />
         </div>
@@ -261,7 +261,7 @@ function CardSkeleton({ onBack }: { onBack: () => void }) {
           animation: 'spin 0.8s linear infinite',
         }} />
         <span style={{ fontFamily: F.sans, fontSize: 13, color: C.muted }}>
-          Загрузка...
+          Loading...
         </span>
       </div>
     </div>
@@ -412,7 +412,7 @@ export function App() {
               animation: 'spin 0.8s linear infinite',
             }} />
             <span style={{ fontFamily: F.sans, fontSize: 13, color: C.muted }}>
-              Подключение к клинике...
+              Connecting to clinic...
             </span>
           </div>
         ) : clinicError ? (
@@ -428,7 +428,7 @@ export function App() {
             </svg>
             <div style={{ textAlign: 'center' }}>
               <div style={{ fontFamily: F.sans, fontSize: 16, fontWeight: 700, color: C.text, marginBottom: 8 }}>
-                Нет доступа
+                Access Denied
               </div>
               <div style={{ fontFamily: F.sans, fontSize: 13, color: C.muted, lineHeight: 1.5 }}>
                 {clinicError}
@@ -441,7 +441,7 @@ export function App() {
                   color: C.text, fontFamily: F.sans, fontSize: 13, fontWeight: 600
                 }}
               >
-                Повторить
+                Retry
               </button>
             </div>
           </div>

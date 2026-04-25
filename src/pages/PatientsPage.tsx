@@ -57,7 +57,7 @@ function PatientCard({
           cursor: 'pointer'
         }}
       >
-        Удалить
+        Delete
       </div>
 
       {/* Main Card */}
@@ -408,7 +408,7 @@ export function PatientsPage() {
 
   return (
     <div 
-      style={{ display: 'flex', flexDirection: 'column', flex: 1, position: 'relative', zIndex: 10 }}
+      style={{ display: 'flex', flexDirection: 'column', flex: 1, position: 'relative', zIndex: 10, minHeight: 0 }}
     >
       {/* Фильтры */}
       <div style={{ padding: '12px 16px 8px', display: 'flex', flexDirection: 'column', gap: 10 }}>
@@ -430,9 +430,9 @@ export function PatientsPage() {
           </button>
         </div>
         <div style={{ display: 'flex', gap: 8, overflowX: 'auto', paddingBottom: 2 }}>
-          <Chip label="Все" active={typeFilter === 'all'} color={C.accent} onClick={() => setTypeFilter('all')} />
-          <Chip label="Рефракция" active={typeFilter === 'refraction'} color={C.ref} onClick={() => setTypeFilter('refraction')} />
-          <Chip label="Катаракта" active={typeFilter === 'cataract'} color={C.cat} onClick={() => setTypeFilter('cataract')} />
+          <Chip label="All" active={typeFilter === 'all'} color={C.accent} onClick={() => setTypeFilter('all')} />
+          <Chip label="Refraction" active={typeFilter === 'refraction'} color={C.ref} onClick={() => setTypeFilter('refraction')} />
+          <Chip label="Cataract" active={typeFilter === 'cataract'} color={C.cat} onClick={() => setTypeFilter('cataract')} />
         </div>
       </div>
 
@@ -442,17 +442,19 @@ export function PatientsPage() {
         overflowY: 'auto', 
         padding: '4px 16px 100px',
         WebkitOverflowScrolling: 'touch',
+        overscrollBehavior: 'none',
         position: 'relative',
-        zIndex: 100 // Чтобы точно быть сверху
+        zIndex: 100, // Чтобы точно быть сверху
+        minHeight: 0
       }}>
         {loading && patients.length === 0 && (
           <div style={{ textAlign: 'center', padding: 40, color: C.muted, fontFamily: F.sans, fontSize: 14 }}>
-            Загрузка...
+            Loading...
           </div>
         )}
         {!loading && visible.length === 0 && (
           <div style={{ textAlign: 'center', padding: 40, color: C.muted, fontFamily: F.sans, fontSize: 14 }}>
-            {searchQuery ? 'Ничего не найдено' : 'Нет пациентов'}
+              {searchQuery ? 'Nothing found' : 'No patients'}
           </div>
         )}
         {visible.map((p, i) => (

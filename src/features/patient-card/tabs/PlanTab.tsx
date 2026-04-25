@@ -36,10 +36,11 @@ function CataractPlanTab() {
 
   // incAx — ось разреза (BioTab сохраняет в draft.incAx)
   const incisionAx = parseInt((draft as any).incAx ?? draft.siaAx ?? '90') || 90;
+  const hasPentacam = !!(eyeData.p_tot_c || eyeData.p_tot_k);
   const k1 = parseFloat(eyeData.k1 || '0');
   const k2 = parseFloat(eyeData.k2 || '0');
   const k1Ax = parseFloat(eyeData.k_ax || '0');
-  const steepAx = k2 > k1 ? (k1Ax + 90) % 180 : k1Ax;
+  const steepAx = hasPentacam ? (parseFloat(eyeData.p_tot_a) || 0) : (k2 > k1 ? (k1Ax + 90) % 180 : k1Ax);
 
   const toricOn = !!(draft as any).toricMode;
   const toric = toricResults?.[planEye];
@@ -204,12 +205,12 @@ function CataractPlanTab() {
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 16 }}>
           <div style={{ flex: 1 }}>
             <div style={{ fontFamily: F.sans, fontSize: 8, fontWeight: 900, color: C.muted2, textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 4 }}>SELECTED MODEL</div>
-            <div style={{ fontFamily: F.sans, fontSize: 18, fontWeight: 900, color: C.text, lineHeight: 1.2 }}>{(iolResult as any)?.lens || 'SELECT MODEL IN IOL TAB'}</div>
+            <div style={{ fontFamily: F.sans, fontSize: 18, fontWeight: 900, color: C.text, lineHeight: 1.2 }}>{(iolResult as any)?.lens || draft.iolResult?.lens || 'SELECT MODEL IN IOL TAB'}</div>
           </div>
           <div style={{ textAlign: 'right', marginLeft: 12 }}>
             <div style={{ fontFamily: F.sans, fontSize: 8, fontWeight: 900, color: ec.color, textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 4 }}>POWER</div>
             <div style={{ fontFamily: F.mono, fontSize: 28, fontWeight: 900, color: ec.color }}>
-              {r?.selectedPower ? r.selectedPower.toFixed(2) : ((iolResult as any)?.power || '—')}
+              {r?.selectedPower ? r.selectedPower.toFixed(2) : ((iolResult as any)?.power || draft.iolResult?.power || '—')}
             </div>
           </div>
         </div>
@@ -234,6 +235,7 @@ function CataractPlanTab() {
 function RefractionPlanTab() {
   const { draft, setDraft, refPlan, setPlanField, planTweaked, isRounding, toggleRounding } = useSessionStore();
   const { planEye, editingField, setEditingField, tempValue, setTempValue } = useUIStore();
+  const { activeRefNomo, activeRefNomoCyl } = useClinicStore();
   const { haptic } = useTelegram();
   
   const inputRef = useRef<HTMLInputElement>(null);
@@ -282,7 +284,7 @@ function RefractionPlanTab() {
 
   useEffect(() => {
     if (!draft || planTweaked) return;
-    const data = draft[planEye];
+    const data = draft[planEye] || newEyeData();
     const strategy = data.astigStrategy || draft.astigStrategy || 'manifest';
     let bSph = parseFloat(data.man_sph) || 0;
     let bCyl = parseFloat(data.man_cyl) || 0;
@@ -318,6 +320,10 @@ function RefractionPlanTab() {
       } catch(e) {}
     }
 
+    // Apply Clinical Nomogram Correction (selected in Results -> Auto-Nomogram)
+    if (activeRefNomo) targetSph += activeRefNomo;
+    if (activeRefNomoCyl) targetCyl += activeRefNomoCyl;
+
     const finalSph = Math.round(targetSph * 100) / 100;
     const finalCyl = Math.round(targetCyl * 100) / 100;
     const currentPlan = refPlan?.[planEye];
@@ -333,7 +339,7 @@ function RefractionPlanTab() {
       }
       autoSetPlan(planEye, { sph: s, cyl: c, ax: bAx });
     }
-  }, [draft?.laser, draft?.od?.astigStrategy, draft?.os?.astigStrategy, draft?.astigStrategy, planEye, draft?.od?.man_sph, draft?.os?.man_sph, draft?.od?.man_cyl, draft?.os?.man_cyl, planTweaked, isRounding]);
+  }, [draft?.laser, draft?.od?.astigStrategy, draft?.os?.astigStrategy, draft?.astigStrategy, planEye, draft?.od?.man_sph, draft?.os?.man_sph, draft?.od?.man_cyl, draft?.os?.man_cyl, planTweaked, isRounding, activeRefNomo, activeRefNomoCyl]);
 
   if (!draft) return null;
 
@@ -376,7 +382,11 @@ function RefractionPlanTab() {
           <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
             <div style={{ fontSize: 12, fontWeight: 900, color: ec.color, fontFamily: F.mono }}>{fmt(data.man_sph)} / {fmt(data.man_cyl)} × {data.man_ax || '0'}°</div>
             <div style={{ width: 28, height: 28, borderRadius: '50%', background: C.surface, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-              <AxisDial axis={safeAx(data.man_ax)} kAxis={safeAx(data.k_topo_ax || data.k1_ax || data.k_ax)} size={22} color={ec.color} tickWidth={1.5} />
+              <AxisDial 
+                axis={safeAx(data.man_ax)} 
+                kAxis={safeAx(data.p_tot_a || data.k1_ax || data.k_ax)} 
+                size={22} color={ec.color} tickWidth={1.5} 
+              />
             </div>
           </div>
         </div>
@@ -385,14 +395,19 @@ function RefractionPlanTab() {
           <div style={{ fontSize: 8, color: C.indigo, fontWeight: 900, letterSpacing: '0.04em' }}>NARROW</div><div style={{ textAlign: 'center', fontSize: 10, fontFamily: F.mono, fontWeight: 600 }}>{fmt(data.n_sph)}</div><div style={{ textAlign: 'center', fontSize: 10, fontFamily: F.mono, fontWeight: 600 }}>{fmt(data.n_cyl)}</div><div style={{ textAlign: 'center', fontSize: 10, fontFamily: F.mono, fontWeight: 600 }}>{data.n_ax || '0'}°</div>
           <div style={{ fontSize: 8, color: C.muted2, fontWeight: 900, letterSpacing: '0.04em' }}>WIDE</div><div style={{ textAlign: 'center', fontSize: 10, fontFamily: F.mono, color: C.muted2 }}>{fmt(data.c_sph)}</div><div style={{ textAlign: 'center', fontSize: 10, fontFamily: F.mono, color: C.muted2 }}>{fmt(data.c_cyl)}</div><div style={{ textAlign: 'center', fontSize: 10, fontFamily: F.mono, color: C.muted2 }}>{data.c_ax || '0'}°</div>
           {(() => {
-              const hasPentacam = !!(data.k_topo_k1 || data.k_topo_k2);
-              const k1 = parseFloat(hasPentacam ? data.k_topo_k1 : data.k1 || 0);
-              const k2 = parseFloat(hasPentacam ? data.k_topo_k2 : data.k2 || 0);
-              const kavg = hasPentacam ? ((k1 + k2) / 2).toFixed(2) : data.kavg;
-              const cyl = (k1 && k2) ? '-' + Math.abs(k1 - k2).toFixed(2) : '0.00';
-              const ax = hasPentacam ? data.k_topo_ax : data.k1_ax || data.k_ax || '0';
+              const hasP = !!(data.p_tot_c || data.p_tot_k);
+              const kavg = hasP ? data.p_tot_k : data.kavg;
+              const cyl = hasP ? data.p_tot_c : ((parseFloat(data.k1) && parseFloat(data.k2)) ? '-' + Math.abs(parseFloat(data.k2) - parseFloat(data.k1)).toFixed(2) : '0.00');
+              const ax = hasP ? data.p_tot_a : (data.k1_ax || data.k_ax || '0');
               return (
-                <><div style={{ fontSize: 8, color: C.amber, fontWeight: 900, letterSpacing: '0.04em' }}>{hasPentacam ? 'PENTACAM' : 'CORNEAL K'}</div><div style={{ textAlign: 'center', fontSize: 10, fontFamily: F.mono, color: C.amber, fontWeight: 600 }}>{kavg}</div><div style={{ textAlign: 'center', fontSize: 10, fontFamily: F.mono, color: C.amber, fontWeight: 600 }}>{cyl}</div><div style={{ textAlign: 'center', fontSize: 10, fontFamily: F.mono, color: C.amber, fontWeight: 600 }}>{ax}°</div></>
+                <>
+                  <div style={{ fontSize: 8, color: C.amber, fontWeight: 900, letterSpacing: '0.04em' }}>
+                    {hasP ? 'PENTACAM' : 'CORNEAL K'}
+                  </div>
+                  <div style={{ textAlign: 'center', fontSize: 10, fontFamily: F.mono, color: C.amber, fontWeight: 600 }}>{kavg || '—'}</div>
+                  <div style={{ textAlign: 'center', fontSize: 10, fontFamily: F.mono, color: C.amber, fontWeight: 600 }}>{cyl}</div>
+                  <div style={{ textAlign: 'center', fontSize: 10, fontFamily: F.mono, color: C.amber, fontWeight: 600 }}>{ax}°</div>
+                </>
               );
           })()}
         </div>
@@ -561,7 +576,7 @@ export function PlanTab() {
           <svg width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2.5"><path d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" /></svg>
           {draft.date ? `SURGERY: ${new Date(draft.date).toLocaleDateString()}` : 'SCHEDULE SURGERY'}
         </button>
-        {showCalendar && <Calendar selectedDate={draft.date || null} onSelect={iso => { haptic.notification('success'); setDraft({ date: iso, status: 'planned' }); setShowCalendar(false); }} />}
+        {showCalendar && <Calendar selectedDate={draft.date || null} onSelect={iso => { haptic.success(); setDraft({ date: iso, status: 'planned' }); setShowCalendar(false); }} />}
       </div>
     </div>
   );

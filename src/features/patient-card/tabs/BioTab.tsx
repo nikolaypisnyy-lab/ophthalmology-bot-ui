@@ -6,6 +6,7 @@ import { EyeToggle, SectionLabel, AxisDial, WheelField } from '../../../ui';
 import { useTelegram } from '../../../hooks/useTelegram';
 import { LensModal } from '../LensModal';
 import { calculateIOL } from '../../../api/calculate';
+import { sumCylinders } from '../../../calculators/astigmatism';
 
 // ВЫНОСИМ КОМПОНЕНТЫ НАРУЖУ, чтобы React не пересоздавал их при каждом рендере стейта!
 const EntryCell = ({ 
@@ -141,7 +142,51 @@ export function BioTab() {
   const [isLensModalOpen, setIsLensModalOpen] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
   const [lastCalc, setLastCalc] = useState<string | null>(null);
-  const [pMode, setPMode] = useState<'ANT' | 'POST' | 'TOTAL'>('TOTAL');
+  const [pMode, setPMode] = useState<'ANT' | 'POST' | 'TOTAL'>('ANT');
+
+  // --- ВЕКТОРНЫЙ СУММАРНЫЙ АСТИГМАТИЗМ (PENTACAM) ---
+  useEffect(() => {
+    if (!draft || !draft[activeEye]) return;
+    const eye = draft[activeEye] as any;
+    
+    // Считаем Total автоматически из ANT и POST
+    const ac = parseFloat(eye.p_ant_c || '0');
+    const aa = parseFloat(eye.p_ant_a || '0');
+    const pc = parseFloat(eye.p_post_c || '0');
+    const pa = parseFloat(eye.p_post_a || '0');
+    
+    if (ac !== 0 || pc !== 0) {
+      // ПРИМЕЧАНИЕ: Передняя поверхность — собирающая (минус-цилиндр), 
+      // Задняя — рассеивающая (плюс-цилиндр в эквиваленте).
+      // Чтобы они вычитались при совпадении осей, знаки должны быть разными.
+      const res = sumCylinders(-Math.abs(ac), aa, Math.abs(pc), pa);
+      
+      const tc = (res.cyl > 0 ? '+' : '') + res.cyl.toFixed(2);
+      const ta = res.ax.toString();
+      
+      // Автоматический Km (среднее K1/K2)
+      const k1 = parseFloat(eye.k1 || '0');
+      const k2 = parseFloat(eye.k2 || '0');
+      const km = (k1 && k2) ? ((k1 + k2) / 2).toFixed(2) : '';
+
+      // Обновляем только если значения реально изменились и мы НЕ в режиме редактирования полей TOTAL
+      const isEditingTotal = editingField === 'p_tot_c' || editingField === 'p_tot_a' || editingField === 'p_tot_k';
+      if (!isEditingTotal) {
+        if (eye.p_tot_c !== tc || eye.p_tot_a !== ta) {
+          setEyeField(activeEye, 'p_tot_c', tc);
+          setEyeField(activeEye, 'p_tot_a', ta);
+        }
+        if (km && !eye.p_tot_k) {
+          setEyeField(activeEye, 'p_tot_k', km);
+        }
+      }
+    }
+  }, [
+    draft[activeEye]?.p_ant_c, draft[activeEye]?.p_ant_a, 
+    draft[activeEye]?.p_post_c, draft[activeEye]?.p_post_a,
+    draft[activeEye]?.k1, draft[activeEye]?.k2,
+    activeEye, editingField
+  ]);
 
   useEffect(() => {
     if (editingField && inputRef.current) {
@@ -263,14 +308,24 @@ export function BioTab() {
         const currentResults = Array.isArray(rawResults) ? rawResults : (rawResults[formula] || []);
         
         // Получаем актуальный iolResult из стора
-        const latestIOL = useSessionStore.getState().iolResult;
+        const st = useSessionStore.getState();
+        const latestIOL = st.iolResult;
+        const currentLens = latestIOL?.lens || st.draft?.iolResult?.lens || 'AcrySof IQ';
+        const currentA = latestIOL?.aConst || st.draft?.iolResult?.aConst || 119.3;
+
         if (!latestIOL?.power || latestIOL.power === '—') {
           const emmetropia = currentResults.find((r: any) => r.is_emmetropia);
           if (emmetropia) {
-            setIOLResult({ 
-              ...(latestIOL || { lens: draft.iolResult?.lens || 'AcrySof IQ', aConst: (draft.iolResult as any)?.aConst || 119.3, targetRefr: parseFloat(draft.targetRefr || '0'), timestamp: new Date().toISOString(), source: 'api' }), 
+            st.setIOLResult({ 
+              ...(latestIOL || { 
+                lens: currentLens, 
+                aConst: currentA, 
+                targetRefr: parseFloat(draft.targetRefr || '0'), 
+                timestamp: new Date().toISOString(), 
+                source: 'api' 
+              }), 
               power: (emmetropia.power > 0 ? '+' : '') + emmetropia.power.toFixed(2) 
-            });
+            } as any);
           }
         }
       } else {
@@ -630,22 +685,43 @@ export function BioTab() {
                 ))}
               </div>
             </div>
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 8, alignItems: 'center', marginBottom: 16 }}>
-              <EntryCell field="kavg" label={`${pMode}-AVG`} color={C.text} val={data.kavg} stepOverride={0.1} onStep={handleStep} onStartEdit={handleStartEdit} isEditing={editingField === 'kavg'} tempValue={tempValue} onTempChange={setTempValue} onFinish={handleFinishEdit} inputRef={inputRef} />
-              <EntryCell field="k1_cyl" label={`${pMode}-CYL`} color={C.indigo} val={data.k1_cyl} onStep={handleStep} onStartEdit={handleStartEdit} isEditing={editingField === 'k1_cyl'} tempValue={tempValue} onTempChange={setTempValue} onFinish={handleFinishEdit} inputRef={inputRef} />
-              <EntryCell field="k1_ax" label={`${pMode}-AX`} color={C.indigo} val={data.k1_ax} isAx onStep={handleStep} onStartEdit={handleStartEdit} isEditing={editingField === 'k1_ax'} tempValue={tempValue} onTempChange={setTempValue} onFinish={handleFinishEdit} inputRef={inputRef} />
+            <div style={{ 
+              display: 'grid', 
+              gridTemplateColumns: pMode === 'TOTAL' ? 'repeat(3, 1fr)' : 'repeat(2, 1fr)', 
+              gap: 8, alignItems: 'center', marginBottom: 16 
+            }}>
+              {(() => {
+                const prefix = pMode === 'ANT' ? 'p_ant' : pMode === 'POST' ? 'p_post' : 'p_tot';
+                const fK = `${prefix}_k`;
+                const fC = `${prefix}_c`;
+                const fA = `${prefix}_a`;
+                
+                return (
+                  <>
+                    {pMode === 'TOTAL' && (
+                      <EntryCell 
+                        field={fK} label="TOTAL KM" color={C.indigo} val={data[fK]} stepOverride={0.1} 
+                        onStep={handleStep} onStartEdit={handleStartEdit} isEditing={editingField === fK} 
+                        tempValue={tempValue} onTempChange={setTempValue} onFinish={handleFinishEdit} inputRef={inputRef} 
+                      />
+                    )}
+                    <EntryCell 
+                      field={fC} label={`${pMode}-CYL`} color={C.indigo} val={data[fC]} 
+                      onStep={handleStep} onStartEdit={handleStartEdit} isEditing={editingField === fC} 
+                      tempValue={tempValue} onTempChange={setTempValue} onFinish={handleFinishEdit} inputRef={inputRef} 
+                    />
+                    <EntryCell 
+                      field={fA} label={`${pMode}-AX`} color={C.indigo} val={data[fA]} isAx 
+                      onStep={handleStep} onStartEdit={handleStartEdit} isEditing={editingField === fA} 
+                      tempValue={tempValue} onTempChange={setTempValue} onFinish={handleFinishEdit} inputRef={inputRef} 
+                    />
+                  </>
+                );
+              })()}
             </div>
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1.4fr', gap: 8, alignItems: 'center' }}>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: 8, alignItems: 'center' }}>
               <div style={{ background: C.surface, borderRadius: 12, padding: '8px 10px', border: `1px solid ${C.border}`, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                <span style={{ fontSize: 7, fontWeight: 900, color: C.muted3, textTransform: 'uppercase' }}>ANT ASTIG</span>
-                <FlatInput field="ant_astig" color={C.text} val={data.ant_astig} onStartEdit={handleStartEdit} isEditing={editingField === 'ant_astig'} tempValue={tempValue} onTempChange={setTempValue} onFinish={handleFinishEdit} inputRef={inputRef} />
-              </div>
-              <div style={{ background: C.surface, borderRadius: 12, padding: '8px 10px', border: `1px solid ${C.border}`, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                <span style={{ fontSize: 7, fontWeight: 900, color: C.muted3, textTransform: 'uppercase' }}>POST ASTIG</span>
-                <FlatInput field="post_astig" color={C.muted3} val={data.post_astig} onStartEdit={handleStartEdit} isEditing={editingField === 'post_astig'} tempValue={tempValue} onTempChange={setTempValue} onFinish={handleFinishEdit} inputRef={inputRef} />
-              </div>
-              <div style={{ background: C.surface, borderRadius: 12, padding: '8px 10px', border: `1px solid ${C.border}`, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                <span style={{ fontSize: 7, fontWeight: 900, color: C.muted3, textTransform: 'uppercase' }}>PACHY</span>
+                <span style={{ fontSize: 7, fontWeight: 900, color: C.muted3, textTransform: 'uppercase' }}>PACHY (CCT)</span>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 2 }}>
                   <FlatInput field="cct" color={C.amber} val={data.cct} onStartEdit={handleStartEdit} isEditing={editingField === 'cct'} tempValue={tempValue} onTempChange={setTempValue} onFinish={handleFinishEdit} inputRef={inputRef} />
                   <span style={{ fontSize: 9, color: C.muted3, fontWeight: 700 }}>µm</span>

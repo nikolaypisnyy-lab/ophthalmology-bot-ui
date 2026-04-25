@@ -53,10 +53,13 @@ export interface EyeData {
   k1_cyl?: string;
 
   // Pentacam
-  p_ant_c: string;  // передняя поверхность — цилиндр
+  p_ant_k: string;  // передняя — Km
+  p_ant_c: string;  // передняя — цилиндр
   p_ant_a: string;  // передняя — ось
+  p_post_k: string; // задняя — Km
   p_post_c: string; // задняя — цилиндр
   p_post_a: string; // задняя — ось
+  p_tot_k: string;  // total — Km
   p_tot_c: string;  // total — цилиндр
   p_tot_a: string;  // total — ось
 
@@ -133,7 +136,9 @@ export function newEyeData(): EyeData {
     n_sph: '0.00', n_cyl: '0.00', n_ax: '', kavg: '', kercyl: '', kerax: '',
     c_sph: '0.00', c_cyl: '0.00', c_ax: '',
     k1: '', k2: '', k_ax: '',
-    p_ant_c: '', p_ant_a: '', p_post_c: '', p_post_a: '', p_tot_c: '', p_tot_a: '',
+    p_ant_k: '', p_ant_c: '', p_ant_a: '', 
+    p_post_k: '', p_post_c: '', p_post_a: '', 
+    p_tot_k: '', p_tot_c: '', p_tot_a: '',
     cct: '', wtw: '', iop: '', acd: '',
   };
 }
