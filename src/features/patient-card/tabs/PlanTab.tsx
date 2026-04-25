@@ -284,8 +284,8 @@ function RefractionPlanTab() {
 
   useEffect(() => {
     if (!draft || planTweaked) return;
-    const data = draft[planEye] || newEyeData();
-    const strategy = data.astigStrategy || draft.astigStrategy || 'manifest';
+    const data = (draft as any)[planEye] || newEyeData();
+    const strategy = (data as any)?.astigStrategy || (draft as any)?.astigStrategy || 'manifest';
     let bSph = parseFloat(data.man_sph) || 0;
     let bCyl = parseFloat(data.man_cyl) || 0;
     let bAx = safeAx(data.man_ax);
@@ -344,7 +344,7 @@ function RefractionPlanTab() {
   if (!draft) return null;
 
   const ec = eyeColors(planEye);
-  const data = draft?.[planEye] ?? newEyeData();
+  const data = (draft as any)?.[planEye] || newEyeData();
   const rawPlan = (refPlan as any)?.[planEye];
   const plan = {
     sph: parseFloat(rawPlan?.sph ?? data.man_sph ?? 0) || 0,
@@ -418,7 +418,7 @@ function RefractionPlanTab() {
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 12, marginBottom: 12 }}>
             <div style={{ display: 'flex', gap: 4, background: C.surface, padding: 2, borderRadius: 10 }}>
               {(['manifest', 'corneal', 'vector', 'wavefront'] as const).map(s => {
-                const currentStrategy = data.astigStrategy || draft.astigStrategy || 'manifest';
+                const currentStrategy = (data as any)?.astigStrategy || (draft as any)?.astigStrategy || 'manifest';
                 return (
                   <button 
                     key={s} 

@@ -81,8 +81,8 @@ export function PatientCard() {
       if (!updated.os) updated.os = {};
       
       // Забираем стратегии из черновика, который редактировался в PlanTab
-      updated.od.astigStrategy = draft.od?.astigStrategy;
-      updated.os.astigStrategy = draft.os?.astigStrategy;
+      updated.od.astigStrategy = (draft as any).od?.astigStrategy;
+      updated.os.astigStrategy = (draft as any).os?.astigStrategy;
 
       if (formulaResults) {
         updated.formulaResults = formulaResults;
