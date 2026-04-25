@@ -44,3 +44,25 @@ Backups/
 root/
 root 2/
 refmaster_current/
+
+# Python artifacts
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# Workspace artifacts
+scratch/
+medeye_codebase.txt
+refmaster_codebase.txt
+*.png
+*.webm
+
+# Deployment temp
+deploy_bot_only.sh
+deploy_standard.sh
+run_deploy.sh
+restore_emergency.sh
+restore_full_from_local.sh
+backup_all_to_local.sh
+deploy.sh
