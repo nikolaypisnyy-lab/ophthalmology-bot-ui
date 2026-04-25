@@ -3,6 +3,8 @@ import { C, F } from '../../constants/design';
 import { useUIStore } from '../../store/useUIStore';
 import { useSessionStore } from '../../store/useSessionStore';
 import { runOCR } from '../../api/calculate';
+import { useClinicStore } from '../../store/useClinicStore';
+import { T } from '../../constants/translations';
 
 // ── Маппинг Gemini ответа в поля ─────────────────────────────────────────────
 
@@ -84,6 +86,8 @@ type Stage = 'idle' | 'scanning' | 'parsed' | 'done';
 export function OCRModal() {
   const { ocrOpen, ocrSection, ocrOnResult, closeOCR, activeTab, activePeriod } = useUIStore();
   const { draft, setEyeField, setBioField, setDraft, setPeriodEyeField } = useSessionStore();
+  const { language } = useClinicStore();
+  const t = T(language);
 
   const [files, setFiles] = useState<File[]>([]);
   const [previews, setPreviews] = useState<string[]>([]);
@@ -301,7 +305,7 @@ export function OCRModal() {
               <rect x="7" y="7" width="10" height="10" rx="1" />
             </svg>
             <span style={{ fontFamily: F.sans, fontSize: 14, color: C.accent, fontWeight: 600, textAlign: 'center' }}>
-              Select Photo / PDF<br/><span style={{fontSize: 12, fontWeight: 400}}>you can select several at once</span>
+              {t.scanButton}<br/><span style={{fontSize: 12, fontWeight: 400}}>{language === 'ru' ? 'можно выбрать несколько сразу' : 'you can select several at once'}</span>
             </span>
             <span style={{ fontFamily: F.sans, fontSize: 11, color: C.muted, textAlign: 'center' }}>
               Autoref, Pentacam, Reports
@@ -360,14 +364,14 @@ export function OCRModal() {
               <svg width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="3">
                 <polyline points="20 6 9 17 4 12" />
               </svg>
-              Data Recognized
+              {t.success}
             </div>
 
             <div style={{ fontSize: 13, color: C.text, display: 'flex', flexDirection: 'column', gap: 3 }}>
-              {fields.name && <div>Patient: <b>{fields.name}</b></div>}
-              {fields.age && <div>Age: <b>{fields.age} years</b></div>}
+              {fields.name && <div>{t.fullName}: <b>{fields.name}</b></div>}
+              {fields.age && <div>{t.age}: <b>{fields.age} {t.years}</b></div>}
               <div style={{ color: fields.type === 'cataract' ? C.cat : C.ref, fontSize: 11, fontWeight: 700, textTransform: 'uppercase' }}>
-                {fields.type === 'cataract' ? 'Biometry / Cataract' : 'LASIK / Refraction'}
+                {fields.type === 'cataract' ? (language === 'ru' ? 'Биометрия / Катаракта' : 'Biometry / Cataract') : (language === 'ru' ? 'ЛКЗ / Рефракция' : 'LASIK / Refraction')}
               </div>
             </div>
 
@@ -377,7 +381,7 @@ export function OCRModal() {
               return (
                 <div key={eye} style={{ padding: '8px 12px', background: C.surface, borderRadius: 10, borderLeft: `3px solid ${eye === 'od' ? C.od : C.os}` }}>
                   <div style={{ color: eye === 'od' ? C.od : C.os, fontSize: 11, fontWeight: 800, textTransform: 'uppercase', marginBottom: 4 }}>
-                    {eye === 'od' ? 'Right Eye (OD)' : 'Left Eye (OS)'}
+                    {eye === 'od' ? t.od : t.os}
                   </div>
                   <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '4px 8px', fontFamily: F.mono, fontSize: 11, color: C.text }}>
                     {d.al && <div>AL: <b>{d.al}</b></div>}
@@ -417,7 +421,7 @@ export function OCRModal() {
                   fontFamily: F.sans, fontSize: 14, color: C.muted, cursor: 'pointer',
                 }}
               >
-                Reset
+                {language === 'ru' ? 'Сброс' : 'Reset'}
               </button>
               <button
                 onClick={apply}
@@ -427,7 +431,7 @@ export function OCRModal() {
                   fontFamily: F.sans, fontSize: 14, fontWeight: 700, color: '#fff', cursor: 'pointer',
                 }}
               >
-                Apply Data
+                {t.apply}
               </button>
             </>
           ) : (
@@ -448,7 +452,7 @@ export function OCRModal() {
                 <div style={{ width: '100%', display: 'flex', flexDirection: 'column', gap: 8, alignItems: 'center' }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                     <span style={{ display: 'inline-block', animation: 'spin 1s linear infinite' }}>⟳</span>
-                    <span>Recognizing... {Math.round(Math.min(progress, 100))}%</span>
+                    <span>{t.scanning}... {Math.round(Math.min(progress, 100))}%</span>
                   </div>
                   <div style={{ width: '100%', height: 4, background: C.surface2, borderRadius: 4, overflow: 'hidden' }}>
                     <div style={{
@@ -460,9 +464,9 @@ export function OCRModal() {
                   </div>
                 </div>
               ) : files.length ? (
-                'Recognize'
+                language === 'ru' ? 'РАСПОЗНАТЬ' : 'RECOGNIZE'
               ) : (
-                'Select File'
+                t.scanButton
               )}
             </button>
           )}

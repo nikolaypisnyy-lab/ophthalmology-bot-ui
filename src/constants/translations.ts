@@ -1,0 +1,168 @@
+import { Language } from '../store/useClinicStore';
+
+export const T = (lang: Language) => {
+  const translations = {
+    en: {
+      // Common
+      all: 'All',
+      refraction: 'Refraction',
+      cataract: 'Cataract',
+      save: 'Save',
+      cancel: 'Cancel',
+      delete: 'Delete',
+      loading: 'Loading...',
+      noResults: 'No results found',
+      noPatients: 'No patients',
+      search: 'Search patients...',
+      back: 'Back',
+      operated: 'OPERATED',
+      planned: 'PLANNED',
+
+      // Results Page
+      resultsTitle: 'Results',
+      totalCases: 'Total Cases',
+      iolSuccess: 'IOL Success',
+      lasikSuccess: 'LASIK Success',
+      nomogramTitle: 'LASER NOMOGRAM',
+      proAnalytics: 'Pro Analytics',
+      eyesAnalyzed: 'Eyes Analyzed',
+      sphereSE: 'Sphere (SE)',
+      cylinder: 'Cylinder',
+      correction: 'Correction',
+      apply: 'APPLY',
+      active: 'ACTIVE',
+      noCasesRecorded: 'No cases recorded yet',
+
+      // Settings
+      settings: 'Settings',
+      currentDb: 'Current Database',
+      dataManagement: 'Data Management (SQLite)',
+      sendTelegram: 'Send to Telegram Bot',
+      downloadDevice: 'Download to device (.db)',
+      uploadDb: 'Upload patient database (.db)',
+      clinic: 'Clinic',
+      clinicLaser: 'Clinic Laser',
+      language: 'Language',
+      accessDenied: 'Access Denied',
+      retry: 'Retry',
+      dbSentTelegram: 'Database successfully sent to your Telegram!',
+      dbImported: 'Database successfully imported! The app will be reloaded.',
+      importWarning: 'WARNING: Import will completely REPLACE the current database. Are you sure?',
+
+      // Patient Card / Form
+      newPatient: 'New Patient',
+      scanRecords: 'Enter details or scan clinical records',
+      scan: 'SCAN',
+      fullName: 'Full Name',
+      age: 'Age',
+      gender: 'Gender',
+      male: 'MALE',
+      female: 'FEMALE',
+      clinicalPath: 'Clinical Path',
+      surgeryEye: 'Surgery Eye',
+      createPatient: 'Create Patient Entry',
+      years: 'years',
+      rightEye: 'Right Eye (OD)',
+      leftEye: 'Left Eye (OS)',
+
+      // Tabs
+      bio: 'Biometry',
+      calc: 'Calculation',
+      plan: 'Plan',
+      result: 'Result',
+
+      // OCR
+      ocrTitle: 'OCR Recognition',
+      selectFile: 'Select Photo / PDF',
+      multiSelectHint: 'you can select several at once',
+      ocrHint: 'Autoref, Pentacam, Reports',
+      dataRecognized: 'Data Recognized',
+      recognizing: 'Recognizing...',
+      recognize: 'Recognize',
+      restart: 'Reset',
+      applyData: 'Apply Data',
+    },
+    ru: {
+      // Common
+      all: 'Все',
+      refraction: 'Рефракция',
+      cataract: 'Катаракта',
+      save: 'Сохранить',
+      cancel: 'Отмена',
+      delete: 'Удалить',
+      loading: 'Загрузка...',
+      noResults: 'Ничего не найдено',
+      noPatients: 'Нет пациентов',
+      search: 'Поиск пациентов...',
+      back: 'Назад',
+      operated: 'ОПЕРИРОВАН',
+      planned: 'ЗАПЛАНИРОВАН',
+
+      // Results Page
+      resultsTitle: 'Результаты',
+      totalCases: 'Всего случаев',
+      iolSuccess: 'Успех ИОЛ',
+      lasikSuccess: 'Успех ЛКЗ',
+      nomogramTitle: 'ЛАЗЕРНЫЙ НОМОГРАММ',
+      proAnalytics: 'Про-аналитика',
+      eyesAnalyzed: 'Глаз проанализировано',
+      sphereSE: 'Сфера (SE)',
+      cylinder: 'Цилиндр',
+      correction: 'Поправка',
+      apply: 'ПРИМЕНИТЬ',
+      active: 'АКТИВНО',
+      noCasesRecorded: 'Случаев пока не записано',
+
+      // Settings
+      settings: 'Настройки',
+      currentDb: 'Текущая база данных',
+      dataManagement: 'Работа с данными (SQLite)',
+      sendTelegram: 'Прислать в Telegram бота',
+      downloadDevice: 'Скачать на устройство (.db)',
+      uploadDb: 'Загрузить базу пациентов (.db)',
+      clinic: 'Клиника',
+      clinicLaser: 'Лазер клиники',
+      language: 'Язык',
+      accessDenied: 'Нет доступа',
+      retry: 'Повторить',
+      dbSentTelegram: 'База успешно отправлена вам в Telegram!',
+      dbImported: 'База успешно импортирована! Приложение будет перезагружено.',
+      importWarning: 'ВНИМАНИЕ: Импорт полностью ЗАМЕНИТ текущую базу данных. Вы уверены?',
+
+      // Patient Card / Form
+      newPatient: 'Новый пациент',
+      scanRecords: 'Введите данные или отсканируйте выписки',
+      scan: 'СКАН',
+      fullName: 'ФИО',
+      age: 'Возраст',
+      gender: 'Пол',
+      male: 'МУЖ',
+      female: 'ЖЕН',
+      clinicalPath: 'Клинический путь',
+      surgeryEye: 'Глаз операции',
+      createPatient: 'Создать карточку',
+      years: 'лет',
+      rightEye: 'Правый глаз (OD)',
+      leftEye: 'Левый глаз (OS)',
+
+      // Tabs
+      bio: 'Биометрия',
+      calc: 'Расчёт',
+      plan: 'План',
+      result: 'Результат',
+
+      // OCR
+      ocrTitle: 'OCR Распознавание',
+      selectFile: 'Выбрать фото / PDF',
+      multiSelectHint: 'можно выделить сразу несколько',
+      ocrHint: 'Автореф, Pentacam, Выписки',
+      dataRecognized: 'Данные распознаны',
+      recognizing: 'Распознавание...',
+      recognize: 'Распознать',
+      restart: 'Заново',
+      applyData: 'Применить данные',
+    }
+  };
+
+  return translations[lang];
+};

@@ -3,6 +3,8 @@ import { C, F, R } from '../../constants/design';
 import { useSessionStore } from '../../store/useSessionStore';
 import { useUIStore } from '../../store/useUIStore';
 import { useTelegram } from '../../hooks/useTelegram';
+import { useClinicStore } from '../../store/useClinicStore';
+import { T } from '../../constants/translations';
 import type { TabKey } from '../../types/patient';
 
 interface PatientHeaderProps {
@@ -21,6 +23,8 @@ const TAB_LABELS: Record<TabKey, { ref: string; cat: string }> = {
 export function PatientHeader({ onSave, isSaving }: PatientHeaderProps) {
   const { draft, setDraft } = useSessionStore();
   const { activeTab, setActiveTab, closePatient, openOCR, targetSection } = useUIStore();
+  const { language } = useClinicStore();
+  const t = T(language);
   const { haptic } = useTelegram();
 
   const [enhUnlocked, setEnhUnlocked] = React.useState(false);
@@ -34,7 +38,7 @@ export function PatientHeader({ onSave, isSaving }: PatientHeaderProps) {
     : ['bio', 'plan', 'enhancement', 'result'];
 
   const typeColor = isCat ? C.cat : C.ref;
-  const typeLabel = (isCat ? 'Cataract' : 'Refractive').toUpperCase();
+  const typeLabel = (isCat ? t.cataract : t.refraction).toUpperCase();
 
   const handleTabPress = (t: TabKey) => {
     if (t === 'enhancement' && !enhUnlocked) return;
@@ -88,7 +92,7 @@ export function PatientHeader({ onSave, isSaving }: PatientHeaderProps) {
           <input
             value={draft.name ?? ''}
             onChange={e => setDraft({ name: e.target.value })}
-            placeholder="Patient Name"
+            placeholder={t.fullName}
             style={{
               fontFamily: F.sans, fontSize: 17, fontWeight: 800,
               color: C.text, background: 'transparent',
@@ -161,7 +165,7 @@ export function PatientHeader({ onSave, isSaving }: PatientHeaderProps) {
               cursor: 'pointer', padding: 0, letterSpacing: '0.04em'
             }}
           >
-            {draft.sex === 'М' ? 'MALE' : draft.sex === 'Ж' ? 'FEMALE' : 'SEX?'}
+            {draft.sex === 'М' ? t.male : draft.sex === 'Ж' ? t.female : t.gender + '?'}
           </button>
         </div>
 
@@ -187,7 +191,7 @@ export function PatientHeader({ onSave, isSaving }: PatientHeaderProps) {
           ) : (
             <>
               <div style={{ width: 6, height: 6, borderRadius: '2px', background: '#FFF', flexShrink: 0 }} />
-              <span>SAVE</span>
+              <span>{t.save}</span>
             </>
           )}
         </button>

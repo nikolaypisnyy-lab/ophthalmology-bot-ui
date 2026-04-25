@@ -11,6 +11,7 @@ import { PatientCard } from './features/patient-card/PatientCard';
 import { OCRModal } from './features/ocr/OCRModal';
 import { SettingsModal } from './features/settings/SettingsModal';
 import { useClinicStore } from './store/useClinicStore';
+import { T } from './constants/translations';
 
 // При ошибке хуков (HMR mismatch) — авто-перезагрузка страницы (один раз)
 class HooksErrorBoundary extends React.Component<
@@ -94,30 +95,6 @@ function GlobalStyles() {
 }
 
 // ── Навигация ─────────────────────────────────────────────────────────────────
-
-const NAV_ITEMS = [
-  {
-    key: 'patients' as const,
-    label: 'Patients',
-    icon: (
-      <svg fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M17 20h5v-2a4 4 0 00-3-3.87M9 20H4v-2a4 4 0 013-3.87m6-5.13a4 4 0 110-8 4 4 0 010 8zM15 7a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
-    ),
-  },
-  {
-    key: 'operations' as const,
-    label: 'Surgery',
-    icon: (
-      <svg fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></svg>
-    ),
-  },
-  {
-    key: 'results' as const,
-    label: 'Results',
-    icon: (
-      <svg fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><rect x="4" y="3" width="16" height="18" rx="2"/><path d="M8 7h8M8 11h8M8 15h5"/></svg>
-    ),
-  },
-];
 
 function AppHeader({ title }: { title: string }) {
   const { openSettings } = useUIStore();
@@ -261,7 +238,7 @@ function CardSkeleton({ onBack }: { onBack: () => void }) {
           animation: 'spin 0.8s linear infinite',
         }} />
         <span style={{ fontFamily: F.sans, fontSize: 13, color: C.muted }}>
-          Loading...
+          {t.loading}
         </span>
       </div>
     </div>
@@ -276,7 +253,32 @@ export function App() {
   const { navTab, openPatientId, closePatient, setActiveEye, openSettings, settingsOpen, ocrOpen } = useUIStore();
   const { fetchPatients, fetchPatientFull, patients, fullData } = usePatientStore();
   const { openDraft, closeDraft, draft } = useSessionStore();
-  const { initClinics, initialized, error: clinicError } = useClinicStore();
+  const { initClinics, initialized, error: clinicError, language } = useClinicStore();
+  const t = T(language);
+
+  const NAV_ITEMS = [
+    {
+      key: 'patients' as const,
+      label: t.all,
+      icon: (
+        <svg fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M17 20h5v-2a4 4 0 00-3-3.87M9 20H4v-2a4 4 0 013-3.87m6-5.13a4 4 0 110-8 4 4 0 010 8zM15 7a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
+      ),
+    },
+    {
+      key: 'operations' as const,
+      label: 'Surgery',
+      icon: (
+        <svg fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></svg>
+      ),
+    },
+    {
+      key: 'results' as const,
+      label: t.resultsTitle,
+      icon: (
+        <svg fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 00-2-2zm0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/></svg>
+      ),
+    },
+  ];
   const [cardLoading, setCardLoading] = useState(false);
 
   const { tg, haptic } = useTelegram();
@@ -412,7 +414,7 @@ export function App() {
               animation: 'spin 0.8s linear infinite',
             }} />
             <span style={{ fontFamily: F.sans, fontSize: 13, color: C.muted }}>
-              Connecting to clinic...
+              {t.loading}
             </span>
           </div>
         ) : clinicError ? (
@@ -428,7 +430,7 @@ export function App() {
             </svg>
             <div style={{ textAlign: 'center' }}>
               <div style={{ fontFamily: F.sans, fontSize: 16, fontWeight: 700, color: C.text, marginBottom: 8 }}>
-                Access Denied
+                {t.accessDenied}
               </div>
               <div style={{ fontFamily: F.sans, fontSize: 13, color: C.muted, lineHeight: 1.5 }}>
                 {clinicError}
@@ -441,7 +443,7 @@ export function App() {
                   color: C.text, fontFamily: F.sans, fontSize: 13, fontWeight: 600
                 }}
               >
-                Retry
+                {t.retry}
               </button>
             </div>
           </div>

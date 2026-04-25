@@ -2,6 +2,8 @@ import React, { useState } from 'react';
 import { C, F, R, typeColors, eyeColors } from '../constants/design';
 import { usePatientStore } from '../store/usePatientStore';
 import { useUIStore } from '../store/useUIStore';
+import { useClinicStore } from '../store/useClinicStore';
+import { T } from '../constants/translations';
 
 // ── Мини-календарь ────────────────────────────────────────────────────────────
 
@@ -19,8 +21,14 @@ function MonthCalendar({
   const [year, setYear] = useState(initDate.getFullYear());
   const [month, setMonth] = useState(initDate.getMonth());
 
-  const MONTHS = ['January','February','March','April','May','June','July','August','September','October','November','December'];
-  const DOW = ['Mon','Tue','Wed','Thu','Fri','Sat','Sun'];
+  const { language } = useClinicStore();
+  const t = T(language);
+  const MONTHS = lang === 'ru' 
+    ? ['Январь','Февраль','Март','Апрель','Май','Июнь','Июль','Август','Сентябрь','Октябрь','Ноябрь','Декабрь']
+    : ['January','February','March','April','May','June','July','August','September','October','November','December'];
+  const DOW = lang === 'ru'
+    ? ['Пн','Вт','Ср','Чт','Пт','Сб','Вс']
+    : ['Mon','Tue','Wed','Thu','Fri','Sat','Sun'];
 
   const firstDay = new Date(year, month, 1);
   const startDow = (firstDay.getDay() + 6) % 7;
@@ -106,6 +114,8 @@ export function OperationsPage() {
   const [selDay, setSelDay] = useState(today);
   const { patients, reorderPatients } = usePatientStore();
   const { openPatient } = useUIStore();
+  const { language } = useClinicStore();
+  const t = T(language);
   
   // Состояние для управления порядком
   const [movingId, setMovingId] = useState<string | null>(null);
@@ -114,7 +124,9 @@ export function OperationsPage() {
   const fmtDate = (d: string) => {
     if (!d) return '—';
     const [y, m, day] = d.split('-');
-    const M = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+    const M = language === 'ru'
+      ? ['Янв','Фев','Мар','Апр','Май','Июн','Июл','Авг','Сен','Окт','Ноя','Дек']
+      : ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
     return `${+day} ${M[+m - 1]} ${y}`;
   };
 
@@ -167,7 +179,7 @@ export function OperationsPage() {
             fontFamily: F.mono, fontSize: 11, fontWeight: 700,
             padding: '4px 12px', borderRadius: 20, border: `1px solid ${C.accent}20`
           }}>
-            {dayPatients.length} PATIENTS
+            {dayPatients.length} {language === 'ru' ? 'ПАЦИЕНТОВ' : 'PATIENTS'}
           </span>
         </div>
       </div>
@@ -176,7 +188,7 @@ export function OperationsPage() {
       <div style={{ padding: '8px 16px 120px', width: '100%' }}>
           {dayPatients.length === 0 && (
             <div style={{ textAlign: 'center', padding: 48, color: C.muted, fontFamily: F.sans, fontSize: 14 }}>
-              No operations scheduled for this day
+              {language === 'ru' ? 'На этот день операций не запланировано' : 'No operations scheduled for this day'}
             </div>
           )}
           {dayPatients.map((p, i) => {
@@ -277,24 +289,22 @@ export function OperationsPage() {
                                     (p.sex?.startsWith('М') || p.sex?.toUpperCase().startsWith('M')) ? `${C.od}15` : C.surface,
                         color: (p.sex?.startsWith('Ж') || p.sex?.toUpperCase().startsWith('F')) ? '#f472b6' : 
                                (p.sex?.startsWith('М') || p.sex?.toUpperCase().startsWith('M')) ? C.od : C.tertiary,
-                        border: `1px solid ${(p.sex?.startsWith('Ж') || p.sex?.toUpperCase().startsWith('F')) ? '#f472b630' : 
-                                    (p.sex?.startsWith('М') || p.sex?.toUpperCase().startsWith('M')) ? `${C.od}30` : C.border}`,
+                        border: `1px solid ${(p.sex?.startsWith('Ж') || p.sex?.toUpperCase().startsWith('F') || p.sex?.toUpperCase().startsWith('Ж')) ? '#f472b630' : 
+                                    (p.sex?.startsWith('М') || p.sex?.toUpperCase().startsWith('M') || p.sex?.toUpperCase().startsWith('М')) ? `${C.od}30` : C.border}`,
                         flexShrink: 0
-                      }}>{(p.sex?.startsWith('Ж') || p.sex?.toUpperCase().startsWith('F')) ? 'F' : 
-                          (p.sex?.startsWith('М') || p.sex?.toUpperCase().startsWith('M')) ? 'M' : 'P'}</span>
+                      }}>{(p.sex?.startsWith('Ж') || p.sex?.toUpperCase().startsWith('F') || p.sex?.toUpperCase().startsWith('Ж')) ? 'F' : 
+                          (p.sex?.startsWith('М') || p.sex?.toUpperCase().startsWith('M') || p.sex?.toUpperCase().startsWith('М')) ? 'M' : 'P'}</span>
                       {p.isEnhancement && (
                         <span style={{
-                          background: 'rgba(236,72,153,.15)', color: '#ec4899',
-                          padding: '1px 6px', borderRadius: 6, flexShrink: 0,
                           fontSize: 8, fontWeight: 900, textTransform: 'uppercase', border: '1px solid rgba(236,72,153,.3)'
-                        }}>RE-SCAN</span>
+                        }}>{language === 'ru' ? 'ПОВТОР' : 'RE-SCAN'}</span>
                       )}
                     </div>
                     
                     <div style={{ fontFamily: F.mono, fontSize: 10, color: C.tertiary, marginTop: 4, display: 'flex', gap: 6, alignItems: 'center' }}>
                       <span style={{ opacity: 0.6 }}>ID {p.id}</span>
                       <span style={{ width: 2, height: 2, borderRadius: '50%', background: C.border2 }} />
-                      <span>{p.age || '—'}y</span>
+                      <span>{p.age || '—'}{t.years}</span>
                       <span style={{ width: 2, height: 2, borderRadius: '50%', background: C.border2 }} />
                       <span style={{ color: ec.color, fontWeight: 800 }}>{p.eye}</span>
                       {p.type === 'cataract' && (p.od?.al || p.os?.al) && (
@@ -312,9 +322,9 @@ export function OperationsPage() {
                         background: 'rgba(255,255,255,0.03)', border: `1px solid ${C.border}40`,
                         display: 'inline-flex', alignItems: 'center', gap: 6
                       }}>
-                        <span style={{ fontSize: 8, fontWeight: 800, color: C.tertiary, textTransform: 'uppercase' }}>PLAN:</span>
+                        <span style={{ fontSize: 8, fontWeight: 800, color: C.tertiary, textTransform: 'uppercase' }}>{language === 'ru' ? 'ПЛАН:' : 'PLAN:'}</span>
                         <span style={{ fontFamily: F.mono, fontSize: 10, fontWeight: 700, color: C.cat }}>
-                          {p.iolResult?.lens || 'No IOL Selected'}
+                          {p.iolResult?.lens || (language === 'ru' ? 'ИОЛ не выбрана' : 'No IOL Selected')}
                         </span>
                         <div style={{ width: 1, height: 8, background: C.border, opacity: 0.3 }} />
                         <span style={{ fontFamily: F.mono, fontSize: 11, fontWeight: 900, color: C.primary }}>
@@ -335,12 +345,12 @@ export function OperationsPage() {
                       <div style={{
                         background: tc.bg, color: tc.color, fontFamily: F.mono, fontSize: 9, fontWeight: 700,
                         padding: '2px 8px', borderRadius: 6, textTransform: 'uppercase', border: `1px solid ${tc.color}40`,
-                      }}>{p.type === 'cataract' ? 'Cataract' : 'Refraction'}</div>
+                      }}>{p.type === 'cataract' ? t.cataract : t.refraction}</div>
                       
                       {p.status === 'done' ? (
                         <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
                            <div style={{ width: 5, height: 5, borderRadius: '50%', background: C.success, boxShadow: `0 0 6px ${C.success}` }} />
-                           <span style={{ fontFamily: F.mono, fontSize: 9, color: C.success, fontWeight: 700, opacity: 0.8 }}>DONE</span>
+                           <span style={{ fontFamily: F.mono, fontSize: 9, color: C.success, fontWeight: 700, opacity: 0.8 }}>{language === 'ru' ? 'ГОТОВО' : 'DONE'}</span>
                         </div>
                       ) : (
                         <button
@@ -353,7 +363,7 @@ export function OperationsPage() {
                             boxShadow: `0 4px 12px ${C.indigoDim}`, letterSpacing: '0.02em'
                           }}
                         >
-                          OUTCOME
+                          {language === 'ru' ? 'РЕЗУЛЬТАТ' : 'OUTCOME'}
                         </button>
                       )}
                     </div>

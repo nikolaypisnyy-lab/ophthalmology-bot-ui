@@ -9,6 +9,8 @@ import { Btn } from '../ui/Btn';
 import type { PatientSummary } from '../types/patient';
 import { newEyeData } from '../types/refraction';
 import { newBiometryData } from '../types/iol';
+import { useClinicStore } from '../store/useClinicStore';
+import { T } from '../constants/translations';
 
 function PatientCard({
   patient,
@@ -22,6 +24,8 @@ function PatientCard({
   onDelete: (id: string) => void;
 }) {
   const { haptic } = useTelegram();
+  const { language } = useClinicStore();
+  const t = T(language);
   const [swiped, setSwiped] = useState(false);
   const [startX, setStartX] = useState(0);
 
@@ -57,7 +61,7 @@ function PatientCard({
           cursor: 'pointer'
         }}
       >
-        Delete
+        {t.delete}
       </div>
 
       {/* Main Card */}
@@ -104,13 +108,13 @@ function PatientCard({
               border: `1px solid ${(patient.sex?.startsWith('Ж') || patient.sex?.toUpperCase().startsWith('F')) ? '#f472b630' : 
                           (patient.sex?.startsWith('М') || patient.sex?.toUpperCase().startsWith('M')) ? `${C.od}30` : C.border}`,
               flexShrink: 0
-            }}>{(patient.sex?.startsWith('Ж') || patient.sex?.toUpperCase().startsWith('F')) ? 'F' : 
-                (patient.sex?.startsWith('М') || patient.sex?.toUpperCase().startsWith('M')) ? 'M' : 'P'}</span>
+            }}>{(patient.sex?.startsWith('Ж') || patient.sex?.toUpperCase().startsWith('F') || patient.sex?.toUpperCase().startsWith('Ж')) ? 'F' : 
+                (patient.sex?.startsWith('М') || patient.sex?.toUpperCase().startsWith('M') || patient.sex?.toUpperCase().startsWith('М')) ? 'M' : 'P'}</span>
           </div>
           <div style={{ fontFamily: F.mono, fontSize: 10, color: C.muted2, marginTop: 3, display: 'flex', gap: 6, alignItems: 'center' }}>
             <span style={{ opacity: 0.6 }}>ID {patient.id}</span>
             <span style={{ width: 2, height: 2, borderRadius: '50%', background: C.border2 }} />
-            <span>{patient.age || '—'}y</span>
+            <span>{patient.age || '—'}{t.years}</span>
             <span style={{ width: 2, height: 2, borderRadius: '50%', background: C.border2 }} />
             <span style={{ color: ec.color, fontWeight: 800 }}>{patient.eye}</span>
           </div>
@@ -124,7 +128,7 @@ function PatientCard({
           {patient.status === 'done' && (
             <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
                <div style={{ width: 5, height: 5, borderRadius: '50%', background: C.green, boxShadow: `0 0 6px ${C.green}` }} />
-               <span style={{ fontFamily: F.mono, fontSize: 9, color: C.green, fontWeight: 700, opacity: 0.8 }}>OPERATED</span>
+               <span style={{ fontFamily: F.mono, fontSize: 9, color: C.green, fontWeight: 700, opacity: 0.8 }}>{t.operated}</span>
             </div>
           )}
         </div>
@@ -140,6 +144,8 @@ function NewPatientModal({ onClose, onSave }: {
   onSave: (data: Partial<PatientSummary>, measurements?: any) => void;
 }) {
   const { openOCR } = useUIStore();
+  const { language } = useClinicStore();
+  const t = T(language);
   const [name, setName] = useState('');
   const [age, setAge] = useState('');
   const [sex, setSex] = useState<'М' | 'Ж' | ''>('');
@@ -186,10 +192,10 @@ function NewPatientModal({ onClose, onSave }: {
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 4 }}>
           <div>
             <h2 style={{ fontFamily: F.sans, fontSize: 20, fontWeight: 700, color: C.text, margin: 0 }}>
-              New Patient
+              {t.newPatient}
             </h2>
             <p style={{ fontFamily: F.sans, fontSize: 12, color: C.muted2, margin: '4px 0 0' }}>
-              Enter details or scan clinical records
+              {t.scanRecords}
             </p>
           </div>
           <button
@@ -205,12 +211,12 @@ function NewPatientModal({ onClose, onSave }: {
             <svg width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2.5">
               <path d="M3 7V5a2 2 0 012-2h2M17 3h2a2 2 0 012 2v2M21 17v2a2 2 0 01-2 2h-2M7 21H5a2 2 0 01-2-2v-2M12 12h.01" strokeLinecap="round" />
             </svg>
-            SCAN
+            {t.scan}
           </button>
         </div>
 
         <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-          <label style={{ fontFamily: F.mono, fontSize: 10, color: C.muted2, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.08em', marginLeft: 4 }}>Full Name</label>
+          <label style={{ fontFamily: F.mono, fontSize: 10, color: C.muted2, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.08em', marginLeft: 4 }}>{t.fullName}</label>
           <input
             value={name}
             onChange={e => setName(e.target.value)}
@@ -229,7 +235,7 @@ function NewPatientModal({ onClose, onSave }: {
 
         <div style={{ display: 'grid', gridTemplateColumns: '80px 1fr', gap: 12 }}>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-            <label style={{ fontFamily: F.mono, fontSize: 10, color: C.muted2, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.08em', marginLeft: 4 }}>Age</label>
+            <label style={{ fontFamily: F.mono, fontSize: 10, color: C.muted2, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.08em', marginLeft: 4 }}>{t.age}</label>
             <input
               type="number"
               value={age}
@@ -246,7 +252,7 @@ function NewPatientModal({ onClose, onSave }: {
           </div>
 
           <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-            <label style={{ fontFamily: F.mono, fontSize: 10, color: C.muted2, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.08em', marginLeft: 4 }}>Gender</label>
+            <label style={{ fontFamily: F.mono, fontSize: 10, color: C.muted2, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.08em', marginLeft: 4 }}>{t.gender}</label>
             <div style={{ display: 'flex', gap: 8 }}>
               {['М', 'Ж'].map(s => (
                 <button
@@ -261,7 +267,7 @@ function NewPatientModal({ onClose, onSave }: {
                     transition: 'all 0.2s',
                   }}
                 >
-                  {s === 'М' ? 'MALE' : 'FEMALE'}
+                  {s === 'М' ? t.male : t.female}
                 </button>
               ))}
             </div>
@@ -269,7 +275,7 @@ function NewPatientModal({ onClose, onSave }: {
         </div>
 
         <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-          <label style={{ fontFamily: F.mono, fontSize: 10, color: C.muted2, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.08em', marginLeft: 4 }}>Clinical Path</label>
+          <label style={{ fontFamily: F.mono, fontSize: 10, color: C.muted2, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.08em', marginLeft: 4 }}>{t.clinicalPath}</label>
           <div style={{ display: 'flex', gap: 8 }}>
             {(['refraction', 'cataract'] as const).map(t => (
               <button
@@ -284,14 +290,14 @@ function NewPatientModal({ onClose, onSave }: {
                   transition: 'all 0.2s',
                 }}
               >
-                {t === 'refraction' ? 'Refractive' : 'Cataract'}
+                {t[t as any] || (t === 'refraction' ? t.refraction : t.cataract)}
               </button>
             ))}
           </div>
         </div>
 
         <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-          <label style={{ fontFamily: F.mono, fontSize: 10, color: C.muted2, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.08em', marginLeft: 4 }}>Surgery Eye</label>
+          <label style={{ fontFamily: F.mono, fontSize: 10, color: C.muted2, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.08em', marginLeft: 4 }}>{t.surgeryEye}</label>
           <div style={{ display: 'flex', gap: 8 }}>
             {(['OU', 'OD', 'OS'] as const).map(e => (
               <button
@@ -325,7 +331,7 @@ function NewPatientModal({ onClose, onSave }: {
               fontWeight: 700, letterSpacing: '0.04em'
             }}
           >
-            Create Patient Entry
+            {t.createPatient}
           </Btn>
         </div>
       </div>
@@ -338,6 +344,8 @@ function NewPatientModal({ onClose, onSave }: {
 export function PatientsPage() {
   const { patients, loading, fetchPatients, savePatient, deletePatient } = usePatientStore();
   const { searchQuery, setSearchQuery, typeFilter, setTypeFilter, openPatient, openOCR } = useUIStore();
+  const { language } = useClinicStore();
+  const t = T(language);
   const { haptic } = useTelegram();
   const [showNew, setShowNew] = useState(false);
 
@@ -413,7 +421,7 @@ export function PatientsPage() {
       {/* Фильтры */}
       <div style={{ padding: '12px 16px 8px', display: 'flex', flexDirection: 'column', gap: 10 }}>
         <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-          <SearchBar value={searchQuery} onChange={setSearchQuery} />
+          <SearchBar value={searchQuery} onChange={setSearchQuery} placeholder={t.search} />
           <button
             onClick={() => setShowNew(true)}
             style={{
@@ -430,9 +438,9 @@ export function PatientsPage() {
           </button>
         </div>
         <div style={{ display: 'flex', gap: 8, overflowX: 'auto', paddingBottom: 2 }}>
-          <Chip label="All" active={typeFilter === 'all'} color={C.accent} onClick={() => setTypeFilter('all')} />
-          <Chip label="Refraction" active={typeFilter === 'refraction'} color={C.ref} onClick={() => setTypeFilter('refraction')} />
-          <Chip label="Cataract" active={typeFilter === 'cataract'} color={C.cat} onClick={() => setTypeFilter('cataract')} />
+          <Chip label={t.all} active={typeFilter === 'all'} color={C.accent} onClick={() => setTypeFilter('all')} />
+          <Chip label={t.refraction} active={typeFilter === 'refraction'} color={C.ref} onClick={() => setTypeFilter('refraction')} />
+          <Chip label={t.cataract} active={typeFilter === 'cataract'} color={C.cat} onClick={() => setTypeFilter('cataract')} />
         </div>
       </div>
 
@@ -449,12 +457,12 @@ export function PatientsPage() {
       }}>
         {loading && patients.length === 0 && (
           <div style={{ textAlign: 'center', padding: 40, color: C.muted, fontFamily: F.sans, fontSize: 14 }}>
-            Loading...
+            {t.loading}
           </div>
         )}
         {!loading && visible.length === 0 && (
           <div style={{ textAlign: 'center', padding: 40, color: C.muted, fontFamily: F.sans, fontSize: 14 }}>
-              {searchQuery ? 'Nothing found' : 'No patients'}
+              {searchQuery ? t.noResults : t.noPatients}
           </div>
         )}
         {visible.map((p, i) => (

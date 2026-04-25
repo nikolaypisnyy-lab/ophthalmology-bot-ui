@@ -4,12 +4,14 @@ import { useUIStore } from '../../store/useUIStore';
 import { useClinicStore } from '../../store/useClinicStore';
 import { API_BASE, TELEGRAM_ID, apiPost } from '../../api/client';
 import { LASERS } from '../../constants/lasers';
+import { T } from '../../constants/translations';
 
 export function SettingsModal() {
   const { settingsOpen, closeSettings } = useUIStore();
-  const { clinics, activeClinicId, activeName, activeLaser, switchClinic, setActiveLaser } = useClinicStore();
+  const { clinics, activeClinicId, activeName, activeLaser, switchClinic, setActiveLaser, language, setLanguage } = useClinicStore();
   const [loading, setLoading] = useState(false);
   const [msg, setMsg] = useState<{ text: string; type: 'info' | 'error' } | null>(null);
+  const t = T(language);
 
   const handleSwitchClinic = (id: string) => {
     if (id === activeClinicId) return;
@@ -29,7 +31,7 @@ export function SettingsModal() {
       const response: any = await apiPost('/database/export_telegram', {});
       if (response.status === 'error') throw new Error(response.detail || 'Sending error');
       
-      setMsg({ text: 'Database successfully sent to your Telegram!', type: 'info' });
+      setMsg({ text: t.dbSentTelegram, type: 'info' });
     } catch (e: any) {
       setMsg({ text: e.message, type: 'error' });
     } finally {
@@ -58,7 +60,7 @@ export function SettingsModal() {
     const file = e.target.files?.[0];
     if (!file) return;
 
-    if (!window.confirm('WARNING: Import will completely REPLACE the current database. Are you sure?')) {
+    if (!window.confirm(t.importWarning)) {
       return;
     }
 
@@ -77,7 +79,7 @@ export function SettingsModal() {
       
       if (!response.ok) throw new Error('Import error');
       
-      setMsg({ text: 'Database successfully imported! The app will be reloaded.', type: 'info' });
+      setMsg({ text: t.dbImported, type: 'info' });
       setTimeout(() => window.location.reload(), 2000);
     } catch (e: any) {
       setMsg({ text: e.message, type: 'error' });
@@ -109,7 +111,7 @@ export function SettingsModal() {
       >
         {/* Заголовок */}
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 24 }}>
-          <h2 style={{ margin: 0, fontFamily: F.sans, fontSize: 20, fontWeight: 700, color: C.text }}>Settings</h2>
+          <h2 style={{ margin: 0, fontFamily: F.sans, fontSize: 20, fontWeight: 700, color: C.text }}>{t.settings}</h2>
           <button 
             onClick={closeSettings}
             style={{ 
@@ -140,10 +142,10 @@ export function SettingsModal() {
           </div>
           <div style={{ minWidth: 0 }}>
             <div style={{ fontFamily: F.sans, fontSize: 11, fontWeight: 600, color: C.accent, letterSpacing: '.08em', textTransform: 'uppercase', marginBottom: 2 }}>
-              Current Database
+              {t.currentDb}
             </div>
             <div style={{ fontFamily: F.sans, fontSize: 15, fontWeight: 700, color: C.text, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-              {activeName ?? 'Loading...'}
+              {activeName ?? t.loading}
             </div>
           </div>
         </div>
@@ -163,7 +165,7 @@ export function SettingsModal() {
 
         <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
           <div style={{ paddingBottom: 8, borderBottom: `1px solid ${C.border}`, marginBottom: 4 }}>
-            <span style={{ fontSize: 11, fontWeight: 800, color: C.muted, textTransform: 'uppercase', letterSpacing: '.05em' }}>Data Management (SQLite)</span>
+            <span style={{ fontSize: 11, fontWeight: 800, color: C.muted, textTransform: 'uppercase', letterSpacing: '.05em' }}>{t.dataManagement}</span>
           </div>
 
           <button 
@@ -179,7 +181,7 @@ export function SettingsModal() {
             <div style={{ width: 36, height: 36, borderRadius: 10, background: C.accentLt, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke={C.accent} strokeWidth="2.5"><path d="M22 2L11 13M22 2l-7 20-4-9-9-4 20-7z"/></svg>
             </div>
-            Send to Telegram Bot
+            {t.sendTelegram}
           </button>
 
           <button 
@@ -194,7 +196,7 @@ export function SettingsModal() {
             <div style={{ width: 28, height: 28, borderRadius: 8, background: C.surface3, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke={C.muted2} strokeWidth="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M7 10l5 5 5-5M12 15V3"/></svg>
             </div>
-            Download to device (.db)
+            {t.downloadDevice}
           </button>
 
           <label style={{
@@ -206,14 +208,14 @@ export function SettingsModal() {
             <div style={{ width: 36, height: 36, borderRadius: 10, background: C.osLt, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke={C.os} strokeWidth="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M17 8l-5-5-5 5M12 3v12"/></svg>
             </div>
-            Upload patient database (.db)
+            {t.uploadDb}
           </label>
 
           {/* Переключатель клиник */}
           {clinics.length > 1 && (
             <div style={{ marginTop: 8 }}>
               <div style={{ paddingBottom: 8, borderBottom: `1px solid ${C.border}`, marginBottom: 8 }}>
-                <span style={{ fontSize: 11, fontWeight: 800, color: C.muted, textTransform: 'uppercase', letterSpacing: '.05em' }}>Clinic</span>
+                <span style={{ fontSize: 11, fontWeight: 800, color: C.muted, textTransform: 'uppercase', letterSpacing: '.05em' }}>{t.clinic}</span>
               </div>
               <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
                 {clinics.map(c => {
@@ -245,11 +247,39 @@ export function SettingsModal() {
             </div>
           )}
 
+          {/* Язык */}
+          <div style={{ marginTop: 8 }}>
+            <div style={{ paddingBottom: 8, borderBottom: `1px solid ${C.border}`, marginBottom: 8 }}>
+              <span style={{ fontSize: 11, fontWeight: 800, color: C.muted, textTransform: 'uppercase', letterSpacing: '.05em' }}>{t.language}</span>
+            </div>
+            <div style={{ display: 'flex', gap: 6 }}>
+              {(['en', 'ru'] as const).map(l => {
+                const active = l === language;
+                return (
+                  <button
+                    key={l}
+                    onClick={() => setLanguage(l)}
+                    style={{
+                      flex: 1, padding: '10px', borderRadius: 14,
+                      background: active ? C.accentLt : C.surface2,
+                      border: `1px solid ${active ? C.accent : C.border}`,
+                      color: active ? C.accent : C.text,
+                      fontFamily: F.sans, fontSize: 13, fontWeight: active ? 700 : 500,
+                      cursor: active ? 'default' : 'pointer'
+                    }}
+                  >
+                    {l === 'en' ? 'English' : 'Русский'}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+
           {/* Настройки лазера */}
           {activeClinicId && (
             <div style={{ marginTop: 12 }}>
               <div style={{ paddingBottom: 8, borderBottom: `1px solid ${C.border}`, marginBottom: 8 }}>
-                <span style={{ fontSize: 11, fontWeight: 800, color: C.muted, textTransform: 'uppercase', letterSpacing: '.05em' }}>Clinic Laser</span>
+                <span style={{ fontSize: 11, fontWeight: 800, color: C.muted, textTransform: 'uppercase', letterSpacing: '.05em' }}>{t.clinicLaser}</span>
               </div>
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 6 }}>
                 {LASERS.map(l => {

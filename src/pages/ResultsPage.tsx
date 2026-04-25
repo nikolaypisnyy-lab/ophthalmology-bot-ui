@@ -6,6 +6,8 @@ import { Chip } from '../ui/Chip';
 import { SearchBar } from '../ui/SearchBar';
 import { apiGet } from '../api/client';
 import { useClinicStore } from '../store/useClinicStore';
+import { T } from '../constants/translations';
+import { useTelegram } from '../hooks/useTelegram';
 import type { PatientSummary } from '../types/patient';
 
 // ── Стат-карточка ─────────────────────────────────────────────────────────────
@@ -198,7 +200,9 @@ function ResultCard({ patient, onOpen }: { patient: PatientSummary; onOpen: () =
 export function ResultsPage() {
   const { patients } = usePatientStore();
   const { openPatient } = useUIStore();
-  const { activeRefNomo, setRefNomo, activeRefNomoCyl, setRefNomoCyl } = useClinicStore();
+  const { activeRefNomo, setRefNomo, activeRefNomoCyl, setRefNomoCyl, language } = useClinicStore();
+  const { haptic } = useTelegram();
+  const t = T(language);
   const [filter, setFilter] = useState<'all' | 'refraction' | 'cataract'>('all');
   const [search, setSearch] = useState('');
   const [nomo, setNomo] = useState<any>(null);
@@ -227,6 +231,8 @@ export function ResultsPage() {
 
   // Статистика
   const stats = useMemo(() => {
+    const { language } = useClinicStore.getState();
+    const t = T(language);
     const filtered = filter === 'all' ? done : done.filter(p => p.type === filter);
     const catDone = filtered.filter(p => p.type === 'cataract' && (p as any).postSphOD !== undefined);
     const refDone = filtered.filter(p => p.type === 'refraction' && (p as any).postSphOD !== undefined);
@@ -242,20 +248,20 @@ export function ResultsPage() {
 
     if (filter === 'cataract') {
       return [
-        { label: 'Total Cases', val: filtered.length, color: C.text, sub: null },
+        { label: t.totalCases, val: filtered.length, color: C.text, sub: null },
         { label: 'Success ±0.5D', val: catDone.length ? `${Math.round(catHit / catDone.length * 100)}%` : '—', color: C.green, sub: `${catHit}/${catDone.length}` },
       ];
     }
     if (filter === 'refraction') {
       return [
-        { label: 'Total Cases', val: filtered.length, color: C.text, sub: null },
+        { label: t.totalCases, val: filtered.length, color: C.text, sub: null },
         { label: 'Success ±0.25D', val: refDone.length ? `${Math.round(refHit / refDone.length * 100)}%` : '—', color: C.ref, sub: `${refHit}/${refDone.length}` },
       ];
     }
     return [
-      { label: 'Total Cases', val: done.length, color: C.text, sub: null },
-      { label: 'IOL Success', val: catDone.length ? `${Math.round(catHit / catDone.length * 100)}%` : '—', color: C.green, sub: `${catHit}/${catDone.length}` },
-      { label: 'LASIK Success', val: refDone.length ? `${Math.round(refHit / refDone.length * 100)}%` : '—', color: C.ref, sub: `${refHit}/${refDone.length}` },
+      { label: t.totalCases, val: done.length, color: C.text, sub: null },
+      { label: t.iolSuccess, val: catDone.length ? `${Math.round(catHit / catDone.length * 100)}%` : '—', color: C.green, sub: `${catHit}/${catDone.length}` },
+      { label: t.lasikSuccess, val: refDone.length ? `${Math.round(refHit / refDone.length * 100)}%` : '—', color: C.ref, sub: `${refHit}/${refDone.length}` },
     ];
   }, [done, filter]);
 
@@ -276,7 +282,7 @@ export function ResultsPage() {
       }}>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
           <span style={{ fontFamily: F.sans, fontSize: 8, fontWeight: 900, color: C.muted2, textTransform: 'uppercase', letterSpacing: '0.04em' }}>
-            {label} Error
+            {label}
           </span>
           <span style={{ 
             fontFamily: F.mono, fontSize: 16, fontWeight: 900, 
@@ -288,7 +294,7 @@ export function ResultsPage() {
 
         <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
           <div style={{ textAlign: 'right' }}>
-            <div style={{ fontFamily: F.sans, fontSize: 7, fontWeight: 900, color: C.indigo, textTransform: 'uppercase', letterSpacing: '0.04em', marginBottom: 2 }}>Correction</div>
+            <div style={{ fontFamily: F.sans, fontSize: 7, fontWeight: 900, color: C.indigo, textTransform: 'uppercase', letterSpacing: '0.04em', marginBottom: 2 }}>{t.correction}</div>
             <div style={{ fontFamily: F.mono, fontSize: 14, color: C.text, fontWeight: 800 }}>
               {proposed > 0 ? '+' : ''}{proposed.toFixed(2)}D
             </div>
@@ -311,7 +317,7 @@ export function ResultsPage() {
               textTransform: 'uppercase', letterSpacing: '0.04em'
             }}
           >
-            {active === proposed ? 'ACTIVE' : 'APPLY'}
+            {active === proposed ? t.active : t.apply}
           </button>
         </div>
       </div>
@@ -356,13 +362,13 @@ export function ResultsPage() {
                   <span style={{ fontSize: 14 }}>🧠</span>
                 </div>
                 <div style={{ display: 'flex', flexDirection: 'column' }}>
-                  <span style={{ fontFamily: F.sans, fontSize: 11, fontWeight: 900, color: C.text, letterSpacing: '.06em', textTransform: 'uppercase' }}>LASER NOMOGRAM</span>
-                  <span style={{ fontFamily: F.sans, fontSize: 7, color: C.muted2, fontWeight: 800, textTransform: 'uppercase' }}>Pro Analytics</span>
+                  <span style={{ fontFamily: F.sans, fontSize: 11, fontWeight: 900, color: C.text, letterSpacing: '.06em', textTransform: 'uppercase' }}>{t.nomogramTitle}</span>
+                  <span style={{ fontFamily: F.sans, fontSize: 7, color: C.muted2, fontWeight: 800, textTransform: 'uppercase' }}>{t.proAnalytics}</span>
                 </div>
               </div>
               <div style={{ textAlign: 'right' }}>
                 <span style={{ fontFamily: F.mono, fontSize: 10, color: C.accent, fontWeight: 900 }}>{nomo.count}</span>
-                <span style={{ fontFamily: F.sans, fontSize: 7, color: C.muted2, fontWeight: 800, textTransform: 'uppercase', marginLeft: 4 }}>Eyes Analyzed</span>
+                <span style={{ fontFamily: F.sans, fontSize: 7, color: C.muted2, fontWeight: 800, textTransform: 'uppercase', marginLeft: 4 }}>{t.eyesAnalyzed}</span>
               </div>
             </div>
 
@@ -374,12 +380,12 @@ export function ResultsPage() {
         )}
 
         <div style={{ display: 'flex', gap: 8, overflowX: 'auto', scrollbarWidth: 'none' }}>
-          <Chip label="All" active={filter === 'all'} color={C.accent} onClick={() => setFilter('all')} />
-          <Chip label="Refraction" active={filter === 'refraction'} color={C.ref} onClick={() => setFilter('refraction')} />
-          <Chip label="Cataract" active={filter === 'cataract'} color={C.cat} onClick={() => setFilter('cataract')} />
+          <Chip label={t.all} active={filter === 'all'} color={C.accent} onClick={() => setFilter('all')} />
+          <Chip label={t.refraction} active={filter === 'refraction'} color={C.ref} onClick={() => setFilter('refraction')} />
+          <Chip label={t.cataract} active={filter === 'cataract'} color={C.cat} onClick={() => setFilter('cataract')} />
         </div>
 
-        <SearchBar value={search} onChange={setSearch} />
+        <SearchBar value={search} onChange={setSearch} placeholder={t.search} />
       </div>
 
       {/* Список с абсолютным позиционированием */}
@@ -393,7 +399,7 @@ export function ResultsPage() {
         }}>
           {visible.length === 0 && (
             <div style={{ textAlign: 'center', padding: 40, color: C.muted, fontFamily: F.sans, fontSize: 14 }}>
-              {search ? 'No results found' : 'No cases recorded yet'}
+              {search ? t.noResults : t.noCasesRecorded}
             </div>
           )}
           {visible.map(p => (
