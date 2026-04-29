@@ -4,46 +4,11 @@ import { useSessionStore } from '../../../store/useSessionStore';
 import { useUIStore } from '../../../store/useUIStore';
 import { useClinicStore } from '../../../store/useClinicStore';
 import { PERIOD_KEYS, PERIOD_LABELS } from '../../../types/results';
-import { EyeToggle, SectionLabel, AxisDial } from '../../../ui';
+import { EyeToggle, SectionLabel, AxisDial, AutoRepeatButton } from '../../../ui';
 import { useTelegram } from '../../../hooks/useTelegram';
 import { T } from '../../../constants/translations';
 
-const AutoRepeatButton = ({ onTrigger, children, style }: any) => {
-  const timerRef = useRef<any>(null);
-  const intervalRef = useRef<any>(null);
-
-  const start = (e: any) => {
-    if (e.button !== undefined && e.button !== 0) return;
-    if (e.target && e.target.setPointerCapture && e.pointerId !== undefined) {
-      try { e.target.setPointerCapture(e.pointerId); } catch(err){}
-    }
-    onTrigger();
-    if (timerRef.current) clearTimeout(timerRef.current);
-    if (intervalRef.current) clearInterval(intervalRef.current);
-    timerRef.current = setTimeout(() => {
-      intervalRef.current = setInterval(() => { onTrigger(); }, 100);
-    }, 400);
-  };
-
-  const stop = (e: any) => {
-    if (e && e.target && e.target.releasePointerCapture && e.pointerId !== undefined) {
-      try { e.target.releasePointerCapture(e.pointerId); } catch(err){}
-    }
-    if (timerRef.current) clearTimeout(timerRef.current);
-    if (intervalRef.current) clearInterval(intervalRef.current);
-  };
-
-  return (
-    <button
-      onPointerDown={start} onPointerUp={stop} onPointerCancel={stop} onPointerLeave={stop}
-      onClick={(e) => { e.stopPropagation(); e.preventDefault(); }}
-      onContextMenu={(e) => { e.preventDefault(); e.stopPropagation(); }}
-      style={{ ...style, userSelect: 'none', WebkitUserSelect: 'none', WebkitTouchCallout: 'none', touchAction: 'manipulation' }}
-    >
-      {children}
-    </button>
-  );
-};
+// EntryCell Component
 
 const EntryCell = ({ 
   field, label, color, val, isAx, unit, stepOverride, onStep, onStartEdit, isEditing, tempValue, onTempChange, onFinish, inputRef 
@@ -52,11 +17,11 @@ const EntryCell = ({
 
   return (
     <div onClick={() => onStartEdit(field, val)}
-      style={{ background: C.surface, borderRadius: 14, padding: '4px 4px 6px', border: `1px solid ${C.border}`, textAlign: 'center', cursor: 'text', boxShadow: '0 4px 12px rgba(0,0,0,0.05)' }}>
+      style={{ background: C.surface, borderRadius: 14, padding: '4px 4px 6px', border: `1px solid ${C.border}`, textAlign: 'center', cursor: 'text', boxShadow: '0 4px 12px rgba(0,0,0,0.05)', userSelect: 'none', WebkitUserSelect: 'none' }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '0 2px 3px', borderBottom: `1px solid ${C.border}30`, marginBottom: 3 }}>
-        <AutoRepeatButton onTrigger={() => onStep(field, -1, step)} style={{ background: 'none', border: 'none', color: C.muted3, fontSize: 18, padding: '4px 10px', margin: '-4px -6px', cursor: 'pointer' }}>−</AutoRepeatButton>
+        <AutoRepeatButton onTrigger={() => onStep(field, -1, step)} style={{ background: 'none', border: 'none', color: C.muted3, fontSize: 20, padding: '12px 18px', margin: '-12px -12px', cursor: 'pointer' }}>−</AutoRepeatButton>
         <div style={{ fontSize: 7, fontWeight: 900, color: C.muted2, textTransform: 'uppercase', letterSpacing: '0.04em' }}>{label}</div>
-        <AutoRepeatButton onTrigger={() => onStep(field, 1, step)} style={{ background: 'none', border: 'none', color: C.muted3, fontSize: 18, padding: '4px 10px', margin: '-4px -6px', cursor: 'pointer' }}>+</AutoRepeatButton>
+        <AutoRepeatButton onTrigger={() => onStep(field, 1, step)} style={{ background: 'none', border: 'none', color: C.muted3, fontSize: 20, padding: '12px 18px', margin: '-12px -12px', cursor: 'pointer' }}>+</AutoRepeatButton>
       </div>
       <div style={{ width: '100%', fontSize: 22, fontWeight: 900, color: color, fontFamily: F.mono }}>
         {isEditing ? (
@@ -89,8 +54,8 @@ const CompactInput = ({
   return (
     <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 2, width: '100%' }}>
       {label && <div style={{ fontSize: 7, fontWeight: 900, color: C.muted2, textTransform: 'uppercase' }}>{label}</div>}
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%', background: `${C.surface}80`, borderRadius: 10, padding: '2px 4px', border: `1px solid ${isEditing ? color : C.border}60` }}>
-        <AutoRepeatButton onTrigger={() => onStep(field, -1, step)} style={{ background: 'none', border: 'none', color: C.muted3, fontSize: 14, padding: '4px 6px', margin: '-4px -2px', cursor: 'pointer' }}>−</AutoRepeatButton>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%', background: `${C.surface}80`, borderRadius: 10, padding: '2px 4px', border: `1px solid ${isEditing ? color : C.border}60`, userSelect: 'none', WebkitUserSelect: 'none' }}>
+        <AutoRepeatButton onTrigger={() => onStep(field, -1, step)} style={{ background: 'none', border: 'none', color: C.muted3, fontSize: 16, padding: '10px 14px', margin: '-10px -8px', cursor: 'pointer' }}>−</AutoRepeatButton>
         <div onClick={() => onStartEdit(field, val)} style={{ flex: 1, textAlign: 'center', fontSize: 12, fontFamily: F.mono, fontWeight: 800, color: color, cursor: 'text' }}>
           {isEditing ? (
             <input ref={inputRef} value={tempValue} onChange={e => onTempChange(e.target.value)} onBlur={onFinish} onKeyDown={e => e.key === 'Enter' && onFinish()} inputMode="text"
@@ -106,7 +71,7 @@ const CompactInput = ({
               })()}{isAx && !isNaN(parseFloat(String(val))) && '°'}</>
           )}
         </div>
-        <AutoRepeatButton onTrigger={() => onStep(field, 1, step)} style={{ background: 'none', border: 'none', color: C.muted3, fontSize: 14, padding: '4px 6px', margin: '-4px -2px', cursor: 'pointer' }}>+</AutoRepeatButton>
+        <AutoRepeatButton onTrigger={() => onStep(field, 1, step)} style={{ background: 'none', border: 'none', color: C.muted3, fontSize: 16, padding: '10px 14px', margin: '-10px -8px', cursor: 'pointer' }}>+</AutoRepeatButton>
       </div>
     </div>
   );

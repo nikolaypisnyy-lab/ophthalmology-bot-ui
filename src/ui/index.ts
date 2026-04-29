@@ -9,3 +9,4 @@ export { SectionLabel, Divider } from './SectionLabel';
 export { EyeToggle } from './EyeToggle';
 export { SafetyBadge } from './SafetyBadge';
 export { AxisDial } from './AxisDial';
+export { AutoRepeatButton } from './AutoRepeatButton';

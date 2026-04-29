@@ -4,6 +4,8 @@ import { usePatientStore } from '../store/usePatientStore';
 import { useUIStore } from '../store/useUIStore';
 import { useClinicStore } from '../store/useClinicStore';
 import { T } from '../constants/translations';
+import { useTelegram } from '../hooks/useTelegram';
+import { apiPost } from '../api/client';
 
 // ── Мини-календарь ────────────────────────────────────────────────────────────
 
@@ -23,10 +25,10 @@ function MonthCalendar({
 
   const { language } = useClinicStore();
   const t = T(language);
-  const MONTHS = lang === 'ru' 
+  const MONTHS = language === 'ru' 
     ? ['Январь','Февраль','Март','Апрель','Май','Июнь','Июль','Август','Сентябрь','Октябрь','Ноябрь','Декабрь']
     : ['January','February','March','April','May','June','July','August','September','October','November','December'];
-  const DOW = lang === 'ru'
+  const DOW = language === 'ru'
     ? ['Пн','Вт','Ср','Чт','Пт','Сб','Вс']
     : ['Mon','Tue','Wed','Thu','Fri','Sat','Sun'];
 
@@ -115,11 +117,38 @@ export function OperationsPage() {
   const { patients, reorderPatients } = usePatientStore();
   const { openPatient } = useUIStore();
   const { language } = useClinicStore();
+  const { tg, haptic } = useTelegram();
   const t = T(language);
   
   // Состояние для управления порядком
   const [movingId, setMovingId] = useState<string | null>(null);
   const [pressTimer, setPressTimer] = useState<any>(null);
+
+  const handlePrint = async () => {
+    if (!tg) return;
+    haptic.impact('medium');
+    tg.showConfirm(language === 'ru' ? 'Отправить расписание в Telegram?' : 'Send schedule to Telegram?', async (ok: boolean) => {
+      if (!ok) return;
+      try {
+        const payload = {
+          date: selDay,
+          patients: dayPatients.map(p => ({
+            id: p.id,
+            name: p.name,
+            type: p.type,
+            eye: p.eye,
+            iol: p.iolResult?.lens,
+            power: (p.iolResult as any)?.[p.eye?.toLowerCase() === 'os' ? 'os' : 'od']?.selectedPower ?? (p.iolResult as any)?.power,
+            status: p.status
+          }))
+        };
+        await apiPost('/send_surgical_pdf', payload);
+        tg.showAlert(language === 'ru' ? 'PDF отправлен!' : 'PDF Sent!');
+      } catch (err: any) {
+        tg.showAlert(`Error: ${err.message}`);
+      }
+    });
+  };
 
   const fmtDate = (d: string) => {
     if (!d) return '—';
@@ -170,9 +199,26 @@ export function OperationsPage() {
 
         {/* Заголовок дня */}
         <div style={{ padding: '20px 16px 8px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-          <div style={{ fontFamily: F.sans, fontSize: 13, fontWeight: 700, color: C.text, display: 'flex', alignItems: 'center', gap: 6 }}>
-             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"/></svg>
-             {fmtDate(selDay)}
+          <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+            <div style={{ fontFamily: F.sans, fontSize: 13, fontWeight: 700, color: C.text, display: 'flex', alignItems: 'center', gap: 6 }}>
+               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"/></svg>
+               {fmtDate(selDay)}
+            </div>
+            {dayPatients.length > 0 && (
+              <button
+                onClick={handlePrint}
+                style={{
+                  background: C.surface2, border: `1px solid ${C.border}`,
+                  borderRadius: 20, padding: '4px 12px',
+                  display: 'flex', alignItems: 'center', gap: 6,
+                  color: C.accent, fontFamily: F.sans, fontSize: 11, fontWeight: 700,
+                  cursor: 'pointer'
+                }}
+              >
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M6 9V2h12v7M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2M6 14h12v8H6z"/></svg>
+                {language === 'ru' ? 'ПЕЧАТЬ' : 'PRINT'}
+              </button>
+            )}
           </div>
           <span style={{
             background: C.accentLt, color: C.accent,

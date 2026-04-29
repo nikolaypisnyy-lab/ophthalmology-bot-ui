@@ -2,9 +2,7 @@ import { useSessionStore } from '../../../store/useSessionStore';
 import { useUIStore } from '../../../store/useUIStore';
 import { useClinicStore } from '../../../store/useClinicStore';
 import { useTelegram } from '../../../hooks/useTelegram';
-import { C, F, eyeColors } from '../../../constants/design';
-import { EyeToggle } from '../../../ui';
-import { useRef } from 'react';
+import { EyeToggle, AutoRepeatButton } from '../../../ui';
 import { T } from '../../../constants/translations';
 
 export function CalcTab() {
@@ -61,41 +59,58 @@ export function CalcTab() {
     field: string; label: string; val: any; unit: string; isBio?: boolean;
   }) => {
     const isEd = editingField === field;
+    const step = field.includes('al') || field.includes('acd') || field.includes('lt') ? 0.01 : 0.25;
+
+    const onStep = (dir: number) => {
+      const cur = parseFloat(String(val || '0'));
+      const nv = (cur + dir * step).toFixed(2);
+      if (isBio) setBioField(activeEye, field.replace('bio_', ''), nv);
+      else setEyeField(activeEye, field, nv);
+      haptic.light();
+    };
+
     const displayVal = (() => {
       const n = parseFloat(String(val));
       if (isNaN(n)) return '—';
-      return n > 25 ? n.toFixed(2) : n.toFixed(2);
+      return n.toFixed(2);
     })();
+
     return (
       <div
-        onClick={() => { setTempValue(String(val || '')); setEditingField(field); }}
         style={{
           display: 'flex', flexDirection: 'column', alignItems: 'center',
           background: isEd ? `${ec.color}12` : C.surface,
-          borderRadius: 10, padding: '4px 8px', border: `1px solid ${isEd ? ec.color : C.border}50`,
-          cursor: 'text', minWidth: 44,
+          borderRadius: 14, padding: '4px 2px 6px', border: `1px solid ${isEd ? ec.color : C.border}60`,
+          minWidth: 50, boxShadow: '0 4px 12px rgba(0,0,0,0.05)', userSelect: 'none', WebkitUserSelect: 'none'
         }}
       >
-        <span style={{ fontSize: 6.5, fontWeight: 900, color: C.muted3, textTransform: 'uppercase', letterSpacing: '0.04em' }}>{label}</span>
-        {isEd ? (
-          <input
-            ref={inputRef}
-            value={tempValue}
-            onChange={e => setTempValue(e.target.value)}
-            onBlur={() => {
-              if (isBio) setBioField(activeEye, field.replace('bio_', ''), tempValue);
-              else setEyeField(activeEye, field, tempValue);
-              setEditingField(null);
-            }}
-            onKeyDown={e => e.key === 'Enter' && (inputRef.current as any)?.blur()}
-            style={{ width: 40, background: 'none', border: 'none', textAlign: 'center', fontSize: 11, fontWeight: 800, color: ec.color, fontFamily: F.mono, outline: 'none', padding: 0 }}
-            autoFocus
-          />
-        ) : (
-          <span style={{ fontSize: 12, fontWeight: 800, color: C.text, fontFamily: F.mono }}>
-            {displayVal}<span style={{ fontSize: 7, color: C.muted3, marginLeft: 1 }}>{unit}</span>
-          </span>
-        )}
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', width: '100%', padding: '0 2px 2px', borderBottom: `1px solid ${C.border}30`, marginBottom: 4 }}>
+          <AutoRepeatButton onTrigger={() => onStep(-1)} style={{ background: 'none', border: 'none', color: C.muted3, fontSize: 18, padding: '8px 12px', margin: '-8px -8px', cursor: 'pointer' }}>−</AutoRepeatButton>
+          <span style={{ fontSize: 6.5, fontWeight: 900, color: C.muted3, textTransform: 'uppercase', letterSpacing: '0.04em' }}>{label}</span>
+          <AutoRepeatButton onTrigger={() => onStep(1)} style={{ background: 'none', border: 'none', color: C.muted3, fontSize: 18, padding: '8px 12px', margin: '-8px -8px', cursor: 'pointer' }}>+</AutoRepeatButton>
+        </div>
+        
+        <div onClick={() => { setTempValue(String(val || '')); setEditingField(field); }} style={{ cursor: 'text', width: '100%', textAlign: 'center' }}>
+          {isEd ? (
+            <input
+              ref={inputRef}
+              value={tempValue}
+              onChange={e => setTempValue(e.target.value)}
+              onBlur={() => {
+                if (isBio) setBioField(activeEye, field.replace('bio_', ''), tempValue);
+                else setEyeField(activeEye, field, tempValue);
+                setEditingField(null);
+              }}
+              onKeyDown={e => e.key === 'Enter' && (inputRef.current as any)?.blur()}
+              style={{ width: '100%', background: 'none', border: 'none', textAlign: 'center', fontSize: 12, fontWeight: 900, color: ec.color, fontFamily: F.mono, outline: 'none', padding: 0 }}
+              autoFocus
+            />
+          ) : (
+            <span style={{ fontSize: 13, fontWeight: 900, color: C.text, fontFamily: F.mono }}>
+              {displayVal}<span style={{ fontSize: 7, color: C.muted3, marginLeft: 1 }}>{unit}</span>
+            </span>
+          )}
+        </div>
       </div>
     );
   };

@@ -2,11 +2,13 @@ import React, { useState, useRef, useEffect } from 'react';
 import { C, F, R, eyeColors } from '../../../constants/design';
 import { useSessionStore } from '../../../store/useSessionStore';
 import { useUIStore } from '../../../store/useUIStore';
-import { EyeToggle, SectionLabel, AxisDial, WheelField } from '../../../ui';
+import { EyeToggle, SectionLabel, AxisDial, WheelField, AutoRepeatButton } from '../../../ui';
 import { useTelegram } from '../../../hooks/useTelegram';
 import { LensModal } from '../LensModal';
 import { calculateIOL } from '../../../api/calculate';
 import { sumCylinders } from '../../../calculators/astigmatism';
+
+// ВЫНОСИМ КОМПОНЕНТЫ НАРУЖУ
 
 // ВЫНОСИМ КОМПОНЕНТЫ НАРУЖУ, чтобы React не пересоздавал их при каждом рендере стейта!
 const EntryCell = ({ 
@@ -17,12 +19,12 @@ const EntryCell = ({
   return (
     <div 
       onClick={() => onStartEdit(field, val)}
-      style={{ background: C.surface, borderRadius: 12, padding: '6px 4px 8px', border: `1px solid ${C.border}`, textAlign: 'center', cursor: 'text' }}
+      style={{ background: C.surface, borderRadius: 14, padding: '4px 4px 6px', border: `1px solid ${C.border}`, textAlign: 'center', cursor: 'text', boxShadow: '0 4px 12px rgba(0,0,0,0.05)', userSelect: 'none', WebkitUserSelect: 'none' }}
     >
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '0 4px 4px', borderBottom: `1px solid ${C.border}40`, marginBottom: 6 }}>
-        <button onClick={(e) => { e.stopPropagation(); onStep(field, -1, step); }} style={{ background: 'none', border: 'none', color: C.muted3, fontSize: 12, padding: '0 2px', cursor: 'pointer' }}>−</button>
-        <div style={{ fontSize: 6.5, fontWeight: 900, color: C.muted3, textTransform: 'uppercase' }}>{label}</div>
-        <button onClick={(e) => { e.stopPropagation(); onStep(field, 1, step); }} style={{ background: 'none', border: 'none', color: C.muted3, fontSize: 12, padding: '0 2px', cursor: 'pointer' }}>+</button>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '0 2px 3px', borderBottom: `1px solid ${C.border}30`, marginBottom: 3 }}>
+        <AutoRepeatButton onTrigger={() => onStep(field, -1, step)} style={{ background: 'none', border: 'none', color: C.muted3, fontSize: 20, padding: '12px 18px', margin: '-12px -12px', cursor: 'pointer' }}>−</AutoRepeatButton>
+        <div style={{ fontSize: 7, fontWeight: 900, color: C.muted2, textTransform: 'uppercase', letterSpacing: '0.04em' }}>{label}</div>
+        <AutoRepeatButton onTrigger={() => onStep(field, 1, step)} style={{ background: 'none', border: 'none', color: C.muted3, fontSize: 20, padding: '12px 18px', margin: '-12px -12px', cursor: 'pointer' }}>+</AutoRepeatButton>
       </div>
       <div style={{ width: '100%', fontSize: 20, fontWeight: 800, color: color, fontFamily: F.mono }}>
         {isEditing ? (
@@ -62,22 +64,12 @@ const CompactInput = ({
   return (
     <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 2 }}>
       {label && <div style={{ fontSize: 6, fontWeight: 900, color: C.muted3, textTransform: 'uppercase' }}>{label}</div>}
-      <div style={{ display: 'flex', alignItems: 'center', gap: 2, background: 'rgba(255,255,255,0.03)', borderRadius: 8, padding: '2px 4px', border: `1px solid ${isEditing ? color : C.border}40` }}>
-        <button onClick={(e) => { e.stopPropagation(); onStep(field, -1, step); }} style={{ background: 'none', border: 'none', color: C.muted3, fontSize: 10, padding: '0 2px', cursor: 'pointer' }}>−</button>
-        <div 
-          onClick={() => onStartEdit(field, val)}
-          style={{ minWidth: 32, textAlign: 'center', fontSize: 10, fontFamily: F.mono, fontWeight: 700, color: color, cursor: 'text' }}
-        >
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%', background: `${C.surface}80`, borderRadius: 10, padding: '2px 4px', border: `1px solid ${isEditing ? color : C.border}60`, userSelect: 'none', WebkitUserSelect: 'none' }}>
+        <AutoRepeatButton onTrigger={() => onStep(field, -1, step)} style={{ background: 'none', border: 'none', color: C.muted3, fontSize: 16, padding: '10px 14px', margin: '-10px -8px', cursor: 'pointer' }}>−</AutoRepeatButton>
+        <div onClick={() => onStartEdit(field, val)} style={{ flex: 1, textAlign: 'center', fontSize: 12, fontFamily: F.mono, fontWeight: 800, color: color, cursor: 'text' }}>
           {isEditing ? (
-            <input 
-              ref={inputRef}
-              value={tempValue} 
-              onChange={e => onTempChange(e.target.value)} 
-              onBlur={onFinish}
-              onKeyDown={e => e.key === 'Enter' && onFinish()}
-              inputMode="text"
-              style={{ width: '100%', background: 'none', border: 'none', textAlign: 'center', color: color, fontSize: 10, fontWeight: 700, fontFamily: F.mono, outline: 'none', padding: 0 }}
-            />
+            <input ref={inputRef} value={tempValue} onChange={e => onTempChange(e.target.value)} onBlur={onFinish} onKeyDown={e => e.key === 'Enter' && onFinish()} inputMode="text"
+              style={{ width: '100%', background: 'none', border: 'none', textAlign: 'center', color: color, fontSize: 12, fontWeight: 800, fontFamily: F.mono, outline: 'none', padding: 0 }} />
           ) : (
             <>
               {(() => {
@@ -85,7 +77,6 @@ const CompactInput = ({
                 if (isNaN(n)) return '—';
                 if (isAx) return Math.round(n).toString();
                 if (n > 25) return n.toFixed(2); 
-                // No plus for visual acuity or k
                 const showPlus = !field.includes('va') && !field.includes('k') && n >= 0;
                 return (showPlus ? '+' : '') + n.toFixed(2);
               })()}
@@ -93,43 +84,13 @@ const CompactInput = ({
             </>
           )}
         </div>
-        <button onClick={(e) => { e.stopPropagation(); onStep(field, 1, step); }} style={{ background: 'none', border: 'none', color: C.muted3, fontSize: 10, padding: '0 2px', cursor: 'pointer' }}>+</button>
+        <AutoRepeatButton onTrigger={() => onStep(field, 1, step)} style={{ background: 'none', border: 'none', color: C.muted3, fontSize: 16, padding: '10px 14px', margin: '-10px -8px', cursor: 'pointer' }}>+</AutoRepeatButton>
       </div>
     </div>
   );
 };
 
-const FlatInput = ({ 
-  field, color, val, isAx, onStartEdit, isEditing, tempValue, onTempChange, onFinish, inputRef 
-}: any) => {
-  return (
-    <div onClick={() => onStartEdit(field, val)} style={{ minWidth: 32, textAlign: 'center', fontSize: 13, fontFamily: F.mono, fontWeight: 700, color: color, cursor: 'text' }}>
-      {isEditing ? (
-        <input 
-          ref={inputRef}
-          value={tempValue} 
-          onChange={e => onTempChange(e.target.value)} 
-          onBlur={onFinish}
-          onKeyDown={e => e.key === 'Enter' && onFinish()}
-          inputMode="text"
-          style={{ width: '100%', background: 'none', border: 'none', textAlign: 'center', color: color, fontSize: 13, fontWeight: 700, fontFamily: F.mono, outline: 'none', padding: 0 }}
-        />
-      ) : (
-        <>
-          {(() => {
-            const n = parseFloat(String(val));
-            if (isNaN(n)) return '—';
-            if (isAx) return Math.round(n).toString();
-            if (n > 25) return n.toFixed(2); 
-            const showPlus = !field.includes('va') && !field.includes('k') && n >= 0;
-            return (showPlus ? '+' : '') + n.toFixed(2);
-          })()}
-          {isAx && !isNaN(parseFloat(String(val))) && '°'}
-        </>
-      )}
-    </div>
-  );
-};
+// CompactInput Component
 
 export function BioTab() {
   const { 
@@ -366,8 +327,9 @@ export function BioTab() {
       </div>
       
       {draft.type === 'cataract' ? (
-        <div style={{ background: C.card, borderRadius: 24, padding: '16px 14px 12px', border: `1px solid ${C.border}`, boxShadow: '0 12px 40px rgba(0,0,0,0.1)' }}>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 4 }}>
+        <div style={{ background: C.card, borderRadius: 24, padding: '10px 10px 12px', border: `1px solid ${C.border}`, boxShadow: '0 12px 40px rgba(0,0,0,0.1)' }}>
+          <div style={{ display: 'grid', gridTemplateColumns: 'minmax(40px, auto) 1fr 1fr 1fr 1fr', columnGap: 6, rowGap: 8, alignItems: 'center' }}>
+            <div style={{ fontSize: 8, fontWeight: 900, color: ec.color, textTransform: 'uppercase', writingMode: 'vertical-rl', transform: 'rotate(180deg)', textAlign: 'center', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', borderRight: `1px solid ${C.border}20` }}>BIOMETRY</div>
             {[
               { label: 'AL', field: 'al', unit: 'mm', color: C.text, step: 0.01 },
               { label: 'ACD', field: 'acd', unit: 'mm', color: C.text, step: 0.01 },
@@ -385,7 +347,9 @@ export function BioTab() {
                   val={bio[f.field]}
                   stepOverride={f.step}
                   onStep={(field: string, dir: number, step: number) => {
-                    const cur = parseFloat(bio[f.field] || '0');
+                    const latestDraft = useSessionStore.getState().draft as any;
+                    const b = latestDraft[`bio_${activeEye}`] || {};
+                    const cur = parseFloat(b[f.field] || '0');
                     setBioField(activeEye, f.field, (cur + dir * step).toFixed(2));
                     haptic.light();
                   }}
@@ -403,21 +367,15 @@ export function BioTab() {
             })}
           </div>
           
-          <div style={{ marginTop: 16, borderTop: `1px solid ${C.border}40`, paddingTop: 12 }}>
-            <div style={{ display: 'grid', gridTemplateColumns: '50px 1fr 1fr 1fr 54px', gap: 4, alignItems: 'center' }}>
-              <div style={{ fontSize: 8, fontWeight: 900, color: C.amber, textTransform: 'uppercase' }}>K-METRY</div>
-              <div style={{ fontSize: 6.5, color: C.muted3, textAlign: 'center', fontWeight: 900 }}>K1</div>
-              <div style={{ fontSize: 6.5, color: C.muted3, textAlign: 'center', fontWeight: 900 }}>K2</div>
-              <div style={{ fontSize: 6.5, color: C.muted3, textAlign: 'center', fontWeight: 900 }}>AXIS</div>
-              <div />
-              
-              <div style={{ height: 1 }} />
-              <EntryCell field="k1" label="O-K1" color={C.amber} val={data.k1} onStep={handleStep} onStartEdit={handleStartEdit} isEditing={editingField === 'k1'} tempValue={tempValue} onTempChange={setTempValue} onFinish={handleFinishEdit} inputRef={inputRef} />
-              <EntryCell field="k2" label="O-K2" color={C.amber} val={data.k2} onStep={handleStep} onStartEdit={handleStartEdit} isEditing={editingField === 'k2'} tempValue={tempValue} onTempChange={setTempValue} onFinish={handleFinishEdit} inputRef={inputRef} />
-              <EntryCell field="k_ax" label="O-KAX" color={C.amber} val={data.k_ax} isAx onStep={handleStep} onStartEdit={handleStartEdit} isEditing={editingField === 'k_ax'} tempValue={tempValue} onTempChange={setTempValue} onFinish={handleFinishEdit} inputRef={inputRef} />
+          <div style={{ marginTop: 12, borderTop: `1px solid ${C.border}30`, paddingTop: 10 }}>
+            <div style={{ display: 'grid', gridTemplateColumns: 'minmax(40px, auto) 1fr 1fr 1fr 54px', columnGap: 6, rowGap: 8, alignItems: 'center' }}>
+              <div style={{ fontSize: 8, fontWeight: 900, color: C.amber, textTransform: 'uppercase', writingMode: 'vertical-rl', transform: 'rotate(180deg)', textAlign: 'center', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', borderRight: `1px solid ${C.border}20` }}>KERAT.</div>
+              <EntryCell field="k1" label="K1" color={C.amber} val={data.k1} onStep={handleStep} onStartEdit={handleStartEdit} isEditing={editingField === 'k1'} tempValue={tempValue} onTempChange={setTempValue} onFinish={handleFinishEdit} inputRef={inputRef} />
+              <EntryCell field="k2" label="K2" color={C.amber} val={data.k2} onStep={handleStep} onStartEdit={handleStartEdit} isEditing={editingField === 'k2'} tempValue={tempValue} onTempChange={setTempValue} onFinish={handleFinishEdit} inputRef={inputRef} />
+              <EntryCell field="k_ax" label="AXIS" color={C.amber} val={data.k_ax} isAx onStep={handleStep} onStartEdit={handleStartEdit} isEditing={editingField === 'k_ax'} tempValue={tempValue} onTempChange={setTempValue} onFinish={handleFinishEdit} inputRef={inputRef} />
               <div style={{ display: 'flex', justifyContent: 'center' }}>
-                <div style={{ width: 54, height: 54, borderRadius: '50%', background: C.surface, border: `1px solid ${C.border}`, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                  <AxisDial axis={parseInt(data.k_ax || '0')} kAxis={parseInt(data.k_ax || '0')} size={48} color={C.amber} tickWidth={2} />
+                <div style={{ width: 64, height: 64, borderRadius: '50%', background: `${C.surface}80`, border: `1px solid ${C.border}`, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                  <AxisDial axis={parseInt(data.k_ax || '0')} size={54} color={C.amber} tickWidth={2} />
                 </div>
               </div>
             </div>
@@ -630,44 +588,35 @@ export function BioTab() {
             </div>
           </div>
 
-          <div style={{ display: 'grid', gridTemplateColumns: 'minmax(40px, auto) 1fr 1fr 1fr 50px', columnGap: 4, rowGap: 8, alignItems: 'center' }}>
-            <div style={{ fontSize: 9, fontWeight: 900, color: ec.color, textTransform: 'uppercase', letterSpacing: '0.04em' }}>Manifest</div>
-            <div style={{ fontSize: 6.5, color: C.muted3, textAlign: 'center', fontWeight: 900 }}>SPH</div>
-            <div style={{ fontSize: 6.5, color: C.muted3, textAlign: 'center', fontWeight: 900 }}>CYL</div>
-            <div style={{ fontSize: 6.5, color: C.muted3, textAlign: 'center', fontWeight: 900 }}>AXIS</div>
-            <div />
+          <div style={{ display: 'grid', gridTemplateColumns: 'minmax(40px, auto) 1fr 1fr 1fr 60px', columnGap: 6, rowGap: 8, alignItems: 'center' }}>
+            <div style={{ fontSize: 8, fontWeight: 900, color: ec.color, textTransform: 'uppercase', writingMode: 'vertical-rl', transform: 'rotate(180deg)', textAlign: 'center', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', borderRight: `1px solid ${C.border}20` }}>MANIFEST</div>
 
             <div style={{ height: 1 }} />
             <EntryCell field="man_sph" label="M-SPH" color={ec.color} val={data.man_sph} onStep={handleStep} onStartEdit={handleStartEdit} isEditing={editingField === 'man_sph'} tempValue={tempValue} onTempChange={setTempValue} onFinish={handleFinishEdit} inputRef={inputRef} />
             <EntryCell field="man_cyl" label="M-CYL" color={ec.color} val={data.man_cyl} onStep={handleStep} onStartEdit={handleStartEdit} isEditing={editingField === 'man_cyl'} tempValue={tempValue} onTempChange={setTempValue} onFinish={handleFinishEdit} inputRef={inputRef} />
             <EntryCell field="man_ax" label="M-AX" color={ec.color} val={data.man_ax} isAx onStep={handleStep} onStartEdit={handleStartEdit} isEditing={editingField === 'man_ax'} tempValue={tempValue} onTempChange={setTempValue} onFinish={handleFinishEdit} inputRef={inputRef} />
             <div style={{ display: 'flex', justifyContent: 'center' }}>
-              <div style={{ width: 50, height: 50, borderRadius: '50%', background: C.surface, border: `1px solid ${C.border}`, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                <AxisDial 
-                  axis={parseInt(data.man_ax || '0')} 
-                  kAxis={parseInt(data.k_ax || '0')} 
-                  pAxis={parseInt(data.k1_ax || '0')}
-                  size={44} color={ec.color} tickWidth={1.0} 
-                />
+              <div style={{ width: 64, height: 64, borderRadius: '50%', background: `${C.surface}80`, border: `1px solid ${C.border}`, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                <AxisDial axis={parseInt(data.man_ax || '0')} kAxis={parseInt(data.k_ax || '0')} pAxis={parseInt(data.k1_ax || '0')} size={56} color={ec.color} tickWidth={2} />
               </div>
             </div>
 
-            <div style={{ fontSize: 9, fontWeight: 900, color: C.amber, textTransform: 'uppercase', letterSpacing: '0.04em' }}>Corneal K</div>
+            <div style={{ fontSize: 8, fontWeight: 900, color: C.amber, textTransform: 'uppercase', writingMode: 'vertical-rl', transform: 'rotate(180deg)', textAlign: 'center', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', borderRight: `1px solid ${C.border}20` }}>CORNEAL K</div>
             <div style={{ textAlign: 'center' }}><CompactInput field="k1" label="K1" color={C.amber} val={data.k1} onStartEdit={handleStartEdit} isEditing={editingField === 'k1'} tempValue={tempValue} onTempChange={setTempValue} onFinish={handleFinishEdit} inputRef={inputRef} onStep={handleStep} /></div>
             <div style={{ textAlign: 'center' }}><CompactInput field="k2" label="K2" color={C.amber} val={data.k2} onStartEdit={handleStartEdit} isEditing={editingField === 'k2'} tempValue={tempValue} onTempChange={setTempValue} onFinish={handleFinishEdit} inputRef={inputRef} onStep={handleStep} /></div>
             <div style={{ textAlign: 'center' }}><CompactInput field="k_ax" label="KAX" color={C.amber} val={data.k_ax} isAx onStartEdit={handleStartEdit} isEditing={editingField === 'k_ax'} tempValue={tempValue} onTempChange={setTempValue} onFinish={handleFinishEdit} inputRef={inputRef} onStep={handleStep} /></div>
             <div />
 
-            <div style={{ fontSize: 8, color: C.indigo, fontWeight: 900, letterSpacing: '0.04em' }}>NARROW</div>
-            <div style={{ textAlign: 'center' }}><FlatInput field="n_sph" color={C.text} val={data.n_sph} onStartEdit={handleStartEdit} isEditing={editingField === 'n_sph'} tempValue={tempValue} onTempChange={setTempValue} onFinish={handleFinishEdit} inputRef={inputRef} /></div>
-            <div style={{ textAlign: 'center' }}><FlatInput field="n_cyl" color={C.text} val={data.n_cyl} onStartEdit={handleStartEdit} isEditing={editingField === 'n_cyl'} tempValue={tempValue} onTempChange={setTempValue} onFinish={handleFinishEdit} inputRef={inputRef} /></div>
-            <div style={{ textAlign: 'center' }}><FlatInput field="n_ax" color={C.text} val={data.n_ax} isAx onStartEdit={handleStartEdit} isEditing={editingField === 'n_ax'} tempValue={tempValue} onTempChange={setTempValue} onFinish={handleFinishEdit} inputRef={inputRef} /></div>
+            <div style={{ fontSize: 8, fontWeight: 900, color: C.indigo, textTransform: 'uppercase', writingMode: 'vertical-rl', transform: 'rotate(180deg)', textAlign: 'center', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', borderRight: `1px solid ${C.border}20` }}>NARROW</div>
+            <div style={{ textAlign: 'center' }}><CompactInput field="n_sph" label="SPH" color={C.indigo} val={data.n_sph} onStartEdit={handleStartEdit} isEditing={editingField === 'n_sph'} tempValue={tempValue} onTempChange={setTempValue} onFinish={handleFinishEdit} inputRef={inputRef} onStep={handleStep} /></div>
+            <div style={{ textAlign: 'center' }}><CompactInput field="n_cyl" label="CYL" color={C.indigo} val={data.n_cyl} onStartEdit={handleStartEdit} isEditing={editingField === 'n_cyl'} tempValue={tempValue} onTempChange={setTempValue} onFinish={handleFinishEdit} inputRef={inputRef} onStep={handleStep} /></div>
+            <div style={{ textAlign: 'center' }}><CompactInput field="n_ax" label="AXIS" color={C.indigo} val={data.n_ax} isAx onStartEdit={handleStartEdit} isEditing={editingField === 'n_ax'} tempValue={tempValue} onTempChange={setTempValue} onFinish={handleFinishEdit} inputRef={inputRef} onStep={handleStep} /></div>
             <div />
 
-            <div style={{ fontSize: 8, color: C.muted2, fontWeight: 900, letterSpacing: '0.04em' }}>WIDE</div>
-            <div style={{ textAlign: 'center' }}><FlatInput field="c_sph" color={C.text} val={data.c_sph} onStartEdit={handleStartEdit} isEditing={editingField === 'c_sph'} tempValue={tempValue} onTempChange={setTempValue} onFinish={handleFinishEdit} inputRef={inputRef} /></div>
-            <div style={{ textAlign: 'center' }}><FlatInput field="c_cyl" color={C.text} val={data.c_cyl} onStartEdit={handleStartEdit} isEditing={editingField === 'c_cyl'} tempValue={tempValue} onTempChange={setTempValue} onFinish={handleFinishEdit} inputRef={inputRef} /></div>
-            <div style={{ textAlign: 'center' }}><FlatInput field="c_ax" color={C.text} val={data.c_ax} isAx onStartEdit={handleStartEdit} isEditing={editingField === 'c_ax'} tempValue={tempValue} onTempChange={setTempValue} onFinish={handleFinishEdit} inputRef={inputRef} /></div>
+            <div style={{ fontSize: 8, fontWeight: 900, color: C.muted2, textTransform: 'uppercase', writingMode: 'vertical-rl', transform: 'rotate(180deg)', textAlign: 'center', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', borderRight: `1px solid ${C.border}20` }}>WIDE</div>
+            <div style={{ textAlign: 'center' }}><CompactInput field="c_sph" label="SPH" color={C.muted2} val={data.c_sph} onStartEdit={handleStartEdit} isEditing={editingField === 'c_sph'} tempValue={tempValue} onTempChange={setTempValue} onFinish={handleFinishEdit} inputRef={inputRef} onStep={handleStep} /></div>
+            <div style={{ textAlign: 'center' }}><CompactInput field="c_cyl" label="CYL" color={C.muted2} val={data.c_cyl} onStartEdit={handleStartEdit} isEditing={editingField === 'c_cyl'} tempValue={tempValue} onTempChange={setTempValue} onFinish={handleFinishEdit} inputRef={inputRef} onStep={handleStep} /></div>
+            <div style={{ textAlign: 'center' }}><CompactInput field="c_ax" label="AXIS" color={C.muted2} val={data.c_ax} isAx onStartEdit={handleStartEdit} isEditing={editingField === 'c_ax'} tempValue={tempValue} onTempChange={setTempValue} onFinish={handleFinishEdit} inputRef={inputRef} onStep={handleStep} /></div>
             <div />
           </div>
         </div>
@@ -723,7 +672,7 @@ export function BioTab() {
               <div style={{ background: C.surface, borderRadius: 12, padding: '8px 10px', border: `1px solid ${C.border}`, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
                 <span style={{ fontSize: 7, fontWeight: 900, color: C.muted3, textTransform: 'uppercase' }}>PACHY (CCT)</span>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-                  <FlatInput field="cct" color={C.amber} val={data.cct} onStartEdit={handleStartEdit} isEditing={editingField === 'cct'} tempValue={tempValue} onTempChange={setTempValue} onFinish={handleFinishEdit} inputRef={inputRef} />
+                  <CompactInput field="cct" color={C.amber} val={data.cct} onStartEdit={handleStartEdit} isEditing={editingField === 'cct'} tempValue={tempValue} onTempChange={setTempValue} onFinish={handleFinishEdit} inputRef={inputRef} onStep={handleStep} />
                   <span style={{ fontSize: 9, color: C.muted3, fontWeight: 700 }}>µm</span>
                 </div>
               </div>

@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { C, F, eyeColors } from '../../../constants/design';
 import { useSessionStore } from '../../../store/useSessionStore';
 import { useUIStore } from '../../../store/useUIStore';
-import { EyeToggle } from '../../../ui/EyeToggle';
+import { EyeToggle, AutoRepeatButton } from '../../../ui';
 import { CorneaSafetyCard } from '../../ablation/CorneaSafetyCard';
 import { computeRefStats, rsbLevel } from '../../../calculators/refStats';
 
@@ -103,9 +103,9 @@ function EnhancementResult({ eye, laser, onReset }: any) {
             ].map((f:any) => (
               <div key={f.label} style={{ background: C.surface, borderRadius: 12, padding: '8px 4px', border: `1px solid ${C.border}`, textAlign: 'center' }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '0 6px 4px', borderBottom: `1px solid ${C.border}40`, marginBottom: 6 }}>
-                  <button onClick={() => updateEnhPower(f.field, false, f.step)} style={{ background: 'none', border: 'none', color: C.tertiary, fontSize: 16, width: 20, height: 20, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 0, cursor: 'pointer', outline: 'none' }}>−</button>
+                  <AutoRepeatButton onTrigger={() => updateEnhPower(f.field, false, f.step)} style={{ background: 'none', border: 'none', color: C.tertiary, fontSize: 18, padding: '10px 14px', margin: '-10px -8px', cursor: 'pointer', outline: 'none' }}>−</AutoRepeatButton>
                   <div style={{ fontSize: 8, color: C.tertiary, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em' }}>{f.label}</div>
-                  <button onClick={() => updateEnhPower(f.field, true, f.step)} style={{ background: 'none', border: 'none', color: C.tertiary, fontSize: 16, width: 20, height: 20, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 0, cursor: 'pointer', outline: 'none' }}>+</button>
+                  <AutoRepeatButton onTrigger={() => updateEnhPower(f.field, true, f.step)} style={{ background: 'none', border: 'none', color: C.tertiary, fontSize: 18, padding: '10px 14px', margin: '-10px -8px', cursor: 'pointer', outline: 'none' }}>+</AutoRepeatButton>
                 </div>
                 <div style={{ fontSize: 18, fontWeight: 700, color: f.color, fontFamily: F.mono, lineHeight: 1 }}>{f.fmt(f.val)}</div>
               </div>
@@ -199,9 +199,9 @@ export function EnhancementTab() {
               return (
                 <div key={f.label} style={{ background: C.surface, borderRadius: 12, padding: '8px 4px', border: `1px solid ${C.border}`, textAlign: 'center' }}>
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '0 6px 6px', borderBottom: `1px solid ${C.border}40`, marginBottom: 8 }}>
-                    <button onClick={() => update(-f.step)} style={{ background: 'none', border: 'none', color: C.muted2, fontSize: 16, width: 20, height: 20, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 0, cursor: 'pointer', outline: 'none' }}>−</button>
+                    <AutoRepeatButton onTrigger={() => update(-f.step)} style={{ background: 'none', border: 'none', color: C.muted2, fontSize: 18, padding: '10px 14px', margin: '-10px -8px', cursor: 'pointer', outline: 'none' }}>−</AutoRepeatButton>
                     <div style={{ fontSize: 7, color: C.muted2, fontWeight: 900, textTransform: 'uppercase', letterSpacing: '0.05em' }}>{f.label}</div>
-                    <button onClick={() => update(f.step)} style={{ background: 'none', border: 'none', color: C.muted2, fontSize: 16, width: 20, height: 20, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 0, cursor: 'pointer', outline: 'none' }}>+</button>
+                    <AutoRepeatButton onTrigger={() => update(f.step)} style={{ background: 'none', border: 'none', color: C.muted2, fontSize: 18, padding: '10px 14px', margin: '-10px -8px', cursor: 'pointer', outline: 'none' }}>+</AutoRepeatButton>
                   </div>
                   <div style={{ fontSize: 20, fontWeight: 900, color: f.label === 'AXIS' ? C.text : ec.color, fontFamily: F.mono, lineHeight: 1 }}>{f.fmt(curVal)}</div>
                 </div>

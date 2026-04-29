@@ -4,8 +4,7 @@ import { Calendar } from '../../../ui/Calendar';
 import { useSessionStore } from '../../../store/useSessionStore';
 import { useUIStore } from '../../../store/useUIStore';
 import { useClinicStore } from '../../../store/useClinicStore';
-import { EyeToggle } from '../../../ui/EyeToggle';
-import { SectionLabel, Divider, AxisDial } from '../../../ui';
+import { EyeToggle, SectionLabel, Divider, AxisDial, AutoRepeatButton } from '../../../ui';
 import { ToricSchematic } from '../../../ui/ToricSchematic';
 import { newEyeData } from '../../../types/refraction';
 import { CorneaSafetyCard } from '../../ablation/CorneaSafetyCard';
@@ -378,9 +377,9 @@ function RefractionPlanTab() {
       <SectionHeader title="Diagnostics" />
       <div style={{ background: C.card, borderRadius: 24, padding: '6px 8px 10px', border: `1px solid ${C.border}`, boxShadow: '0 8px 30px rgba(0,0,0,0.12)' }}>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0 4px 4px', borderBottom: `1px solid ${C.border}20`, marginBottom: 2 }}>
-          <div style={{ display: 'flex', alignItems: 'baseline', gap: 4 }}><span style={{ fontSize: 7, fontWeight: 900, color: C.muted2 }}>BCVA</span><span style={{ fontSize: 16, fontWeight: 700, color: C.green, fontFamily: F.mono }}>{data.bcva || '1.0'}</span></div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-            <div style={{ fontSize: 12, fontWeight: 900, color: ec.color, fontFamily: F.mono }}>{fmt(data.man_sph)} / {fmt(data.man_cyl)} × {data.man_ax || '0'}°</div>
+          <div style={{ display: 'flex', alignItems: 'baseline', gap: 4 }}><span style={{ fontSize: 8, fontWeight: 900, color: C.muted2 }}>BCVA</span><span style={{ fontSize: 18, fontWeight: 800, color: C.green, fontFamily: F.mono }}>{data.bcva || '1.0'}</span></div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+            <div style={{ fontSize: 15, fontWeight: 900, color: ec.color, fontFamily: F.mono }}>{fmt(data.man_sph)} / {fmt(data.man_cyl)} × {data.man_ax || '0'}°</div>
             <div style={{ width: 28, height: 28, borderRadius: '50%', background: C.surface, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
               <AxisDial 
                 axis={safeAx(data.man_ax)} 
@@ -390,26 +389,35 @@ function RefractionPlanTab() {
             </div>
           </div>
         </div>
-        <div style={{ display: 'grid', gridTemplateColumns: '60px 1fr 1fr 1fr', columnGap: 4, rowGap: 2, alignItems: 'center', padding: '0 2px 0 12px' }}>
-          <div /><div style={{ fontSize: 7, color: C.muted2, textAlign: 'center', fontWeight: 900, opacity: 0.6 }}>SPH</div><div style={{ fontSize: 7, color: C.muted2, textAlign: 'center', fontWeight: 900, opacity: 0.6 }}>CYL</div><div style={{ fontSize: 7, color: C.muted2, textAlign: 'center', fontWeight: 900, opacity: 0.6 }}>AXIS</div>
-          <div style={{ fontSize: 8, color: C.indigo, fontWeight: 900, letterSpacing: '0.04em' }}>NARROW</div><div style={{ textAlign: 'center', fontSize: 10, fontFamily: F.mono, fontWeight: 600 }}>{fmt(data.n_sph)}</div><div style={{ textAlign: 'center', fontSize: 10, fontFamily: F.mono, fontWeight: 600 }}>{fmt(data.n_cyl)}</div><div style={{ textAlign: 'center', fontSize: 10, fontFamily: F.mono, fontWeight: 600 }}>{data.n_ax || '0'}°</div>
-          <div style={{ fontSize: 8, color: C.muted2, fontWeight: 900, letterSpacing: '0.04em' }}>WIDE</div><div style={{ textAlign: 'center', fontSize: 10, fontFamily: F.mono, color: C.muted2 }}>{fmt(data.c_sph)}</div><div style={{ textAlign: 'center', fontSize: 10, fontFamily: F.mono, color: C.muted2 }}>{fmt(data.c_cyl)}</div><div style={{ textAlign: 'center', fontSize: 10, fontFamily: F.mono, color: C.muted2 }}>{data.c_ax || '0'}°</div>
+        <div style={{ display: 'grid', gridTemplateColumns: 'minmax(40px, auto) 1fr 1fr 1fr 40px', columnGap: 6, rowGap: 4, alignItems: 'center', padding: '0 4px' }}>
+          <div style={{ fontSize: 8, fontWeight: 900, color: C.muted2, textTransform: 'uppercase', writingMode: 'vertical-rl', transform: 'rotate(180deg)', textAlign: 'center', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', borderRight: `1px solid ${C.border}20` }}>DIAGNOSTICS</div>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+            <div style={{ fontSize: 6, color: C.indigo, fontWeight: 900, textAlign: 'center' }}>NARROW</div>
+            <div style={{ background: C.surface, borderRadius: 10, padding: '4px', border: `1px solid ${C.border}`, textAlign: 'center', fontFamily: F.mono, fontSize: 11, fontWeight: 700, color: C.indigo }}>{fmt(data.n_sph)}</div>
+            <div style={{ background: C.surface, borderRadius: 10, padding: '4px', border: `1px solid ${C.border}`, textAlign: 'center', fontFamily: F.mono, fontSize: 11, fontWeight: 700, color: C.indigo }}>{fmt(data.n_cyl)}</div>
+            <div style={{ background: C.surface, borderRadius: 10, padding: '4px', border: `1px solid ${C.border}`, textAlign: 'center', fontFamily: F.mono, fontSize: 11, fontWeight: 700, color: C.indigo }}>{data.n_ax || '0'}°</div>
+          </div>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+            <div style={{ fontSize: 6, color: C.muted2, fontWeight: 900, textAlign: 'center' }}>WIDE</div>
+            <div style={{ background: C.surface, borderRadius: 10, padding: '4px', border: `1px solid ${C.border}`, textAlign: 'center', fontFamily: F.mono, fontSize: 11, color: C.muted2 }}>{fmt(data.c_sph)}</div>
+            <div style={{ background: C.surface, borderRadius: 10, padding: '4px', border: `1px solid ${C.border}`, textAlign: 'center', fontFamily: F.mono, fontSize: 11, color: C.muted2 }}>{fmt(data.c_cyl)}</div>
+            <div style={{ background: C.surface, borderRadius: 10, padding: '4px', border: `1px solid ${C.border}`, textAlign: 'center', fontFamily: F.mono, fontSize: 11, color: C.muted2 }}>{data.c_ax || '0'}°</div>
+          </div>
           {(() => {
               const hasP = !!(data.p_tot_c || data.p_tot_k);
               const kavg = hasP ? data.p_tot_k : data.kavg;
               const cyl = hasP ? data.p_tot_c : ((parseFloat(data.k1) && parseFloat(data.k2)) ? '-' + Math.abs(parseFloat(data.k2) - parseFloat(data.k1)).toFixed(2) : '0.00');
               const ax = hasP ? data.p_tot_a : (data.k1_ax || data.k_ax || '0');
               return (
-                <>
-                  <div style={{ fontSize: 8, color: C.amber, fontWeight: 900, letterSpacing: '0.04em' }}>
-                    {hasP ? 'PENTACAM' : 'CORNEAL K'}
-                  </div>
-                  <div style={{ textAlign: 'center', fontSize: 10, fontFamily: F.mono, color: C.amber, fontWeight: 600 }}>{kavg || '—'}</div>
-                  <div style={{ textAlign: 'center', fontSize: 10, fontFamily: F.mono, color: C.amber, fontWeight: 600 }}>{cyl}</div>
-                  <div style={{ textAlign: 'center', fontSize: 10, fontFamily: F.mono, color: C.amber, fontWeight: 600 }}>{ax}°</div>
-                </>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+                  <div style={{ fontSize: 6, color: C.amber, fontWeight: 900, textAlign: 'center' }}>{hasP ? 'PENTA' : 'KERAT'}</div>
+                  <div style={{ background: C.surface, borderRadius: 10, padding: '4px', border: `1px solid ${C.border}`, textAlign: 'center', fontFamily: F.mono, fontSize: 11, color: C.amber, fontWeight: 700 }}>{kavg || '—'}</div>
+                  <div style={{ background: C.surface, borderRadius: 10, padding: '4px', border: `1px solid ${C.border}`, textAlign: 'center', fontFamily: F.mono, fontSize: 11, color: C.amber, fontWeight: 700 }}>{cyl}</div>
+                  <div style={{ background: C.surface, borderRadius: 10, padding: '4px', border: `1px solid ${C.border}`, textAlign: 'center', fontFamily: F.mono, fontSize: 11, color: C.amber, fontWeight: 700 }}>{ax}°</div>
+                </div>
               );
           })()}
+          <div />
         </div>
       </div>
 
@@ -461,15 +469,15 @@ function RefractionPlanTab() {
               { label: 'AXIS', val: plan.ax, step: 5, field: 'ax', fmt: (v:any)=> (v||0), color: ec.color, isAx: true },
               { label: 'OZ', val: plan.oz, step: 0.1, field: 'oz', fmt: (v:any)=> v.toFixed(1), color: C.indigo },
             ].map(f => (
-              <div key={f.label} style={{ background: C.surface, borderRadius: 12, padding: '8px 0', border: `1px solid ${C.border}`, textAlign: 'center', position: 'relative' }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '0 1px', marginBottom: 2 }}>
-                  <button onClick={() => { haptic.light(); updatePower(f.field, false, f.step); }} style={{ background: 'none', border: 'none', color: C.tertiary, fontSize: 18, width: 28, height: 28, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', opacity: 0.5 }}>−</button>
-                  <div style={{ fontSize: 7, color: C.tertiary, fontWeight: 800, textTransform: 'uppercase', opacity: 0.4 }}>{f.label}</div>
-                  <button onClick={() => { haptic.light(); updatePower(f.field, true, f.step); }} style={{ background: 'none', border: 'none', color: C.tertiary, fontSize: 18, width: 28, height: 28, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', opacity: 0.5 }}>+</button>
+              <div key={f.label} style={{ background: C.surface, borderRadius: 14, padding: '6px 0 10px', border: `1px solid ${C.border}`, textAlign: 'center', position: 'relative', boxShadow: '0 4px 12px rgba(0,0,0,0.05)' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '0 2px 4px', borderBottom: `1px solid ${C.border}30`, marginBottom: 6 }}>
+                  <AutoRepeatButton onTrigger={() => { haptic.light(); updatePower(f.field, false, f.step); }} style={{ background: 'none', border: 'none', color: C.muted3, fontSize: 20, padding: '12px 18px', margin: '-12px -12px', cursor: 'pointer' }}>−</AutoRepeatButton>
+                  <div style={{ fontSize: 7, color: C.muted2, fontWeight: 900, textTransform: 'uppercase', letterSpacing: '0.04em' }}>{f.label}</div>
+                  <AutoRepeatButton onTrigger={() => { haptic.light(); updatePower(f.field, true, f.step); }} style={{ background: 'none', border: 'none', color: C.muted3, fontSize: 20, padding: '12px 18px', margin: '-12px -12px', cursor: 'pointer' }}>+</AutoRepeatButton>
                 </div>
                 <div 
                   onClick={() => handleStartEdit(f.field, f.val)}
-                  style={{ fontSize: 15, fontWeight: 800, color: f.color, fontFamily: F.mono, cursor: 'text', minHeight: 18, display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+                  style={{ fontSize: 22, fontWeight: 900, color: f.color, fontFamily: F.mono, cursor: 'text', minHeight: 24, display: 'flex', alignItems: 'center', justifyContent: 'center', userSelect: 'none', WebkitUserSelect: 'none' }}
                 >
                   {editingField === f.field ? (
                     <input 
@@ -478,13 +486,13 @@ function RefractionPlanTab() {
                       onChange={e => setTempValue(e.target.value)}
                       onBlur={handleFinishEdit}
                       onKeyDown={e => e.key === 'Enter' && handleFinishEdit()}
-                      style={{ width: '100%', background: 'none', border: 'none', textAlign: 'center', color: f.color, fontSize: 15, fontWeight: 800, fontFamily: F.mono, outline: 'none', padding: 0 }}
+                      style={{ width: '100%', background: 'none', border: 'none', textAlign: 'center', color: f.color, fontSize: 20, fontWeight: 900, fontFamily: F.mono, outline: 'none', padding: 0 }}
                     />
                   ) : (
-                    <>
+                    <div style={{ display: 'flex', alignItems: 'baseline', gap: 1 }}>
                       {f.fmt(f.val)}
-                      {f.isAx && '°'}
-                    </>
+                      {f.isAx && <span style={{ fontSize: 12 }}>°</span>}
+                    </div>
                   )}
                 </div>
               </div>
@@ -525,8 +533,21 @@ function RefractionPlanTab() {
               { label: 'POS', val: parseFloat(draft.flapPos || '90'), step: 5, field: 'flapPos', unit: '°' },
             ].map(f => (
               <div key={f.label} style={{ background: C.surface, borderRadius: 10, padding: '6px 4px', border: `1px solid ${C.border}`, textAlign: 'center' }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4 }}><button onClick={() => !isPRK && setDraft({ [f.field]: String(Math.max(0, f.val - f.step)) })} style={{ background: 'none', border: 'none', color: C.tertiary, fontSize: 14, cursor: isPRK ? 'default' : 'pointer' }}>−</button><div style={{ fontSize: 7, color: C.tertiary, fontWeight: 700 }}>{f.label}</div><button onClick={() => !isPRK && setDraft({ [f.field]: String(f.val + f.step) })} style={{ background: 'none', border: 'none', color: C.tertiary, fontSize: 14, cursor: isPRK ? 'default' : 'pointer' }}>+</button></div>
-                <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'center', gap: 1 }}><span style={{ fontSize: 16, fontWeight: 700, color: C.text, fontFamily: F.mono }}>{f.val.toFixed(f.label === 'DIAM' ? 1 : 0)}</span><span style={{ fontSize: 8, color: C.muted3 }}>{f.unit}</span></div>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4 }}>
+                  <AutoRepeatButton 
+                    onTrigger={() => !isPRK && setDraft({ [f.field]: String(Math.max(0, f.val - f.step)) })} 
+                    style={{ background: 'none', border: 'none', color: C.tertiary, fontSize: 18, padding: '10px 14px', margin: '-10px -8px', cursor: isPRK ? 'default' : 'pointer' }}
+                  >−</AutoRepeatButton>
+                  <div style={{ fontSize: 7, color: C.tertiary, fontWeight: 700 }}>{f.label}</div>
+                  <AutoRepeatButton 
+                    onTrigger={() => !isPRK && setDraft({ [f.field]: String(f.val + f.step) })} 
+                    style={{ background: 'none', border: 'none', color: C.tertiary, fontSize: 18, padding: '10px 14px', margin: '-10px -8px', cursor: isPRK ? 'default' : 'pointer' }}
+                  >+</AutoRepeatButton>
+                </div>
+                <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'center', gap: 1 }}>
+                  <span style={{ fontSize: 16, fontWeight: 700, color: C.text, fontFamily: F.mono }}>{f.val.toFixed(f.label === 'DIAM' ? 1 : 0)}</span>
+                  <span style={{ fontSize: 8, color: C.muted3 }}>{f.unit}</span>
+                </div>
               </div>
             ))}
           </div>

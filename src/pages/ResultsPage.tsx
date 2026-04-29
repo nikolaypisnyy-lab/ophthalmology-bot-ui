@@ -347,32 +347,39 @@ export function ResultsPage() {
           <div style={{
             background: `linear-gradient(135deg, ${C.indigo}25 0%, ${C.bg} 40%, ${C.accent}15 100%)`,
             border: `1px solid ${C.indigo}40`,
-            borderRadius: 24, padding: '18px 16px',
-            display: 'flex', flexDirection: 'column', gap: 10,
-            boxShadow: `0 12px 48px rgba(0,0,0,0.3)`,
+            borderRadius: 20, padding: '12px 14px',
+            display: 'flex', flexDirection: 'column', gap: 6,
+            boxShadow: `0 8px 32px rgba(0,0,0,0.3)`,
             position: 'relative',
             overflow: 'hidden'
           }}>
+            <button 
+              onClick={() => { haptic.selection(); setNomo(null); }}
+              style={{ position: 'absolute', top: 8, right: 8, background: 'none', border: 'none', color: C.muted2, fontSize: 18, cursor: 'pointer', zIndex: 10, padding: 4 }}
+            >
+              ×
+            </button>
+            
             {/* Mesh-like subtle overlay */}
             <div style={{ position: 'absolute', inset: 0, background: `radial-gradient(circle at 20% 20%, ${C.indigo}15 0%, transparent 50%), radial-gradient(circle at 80% 80%, ${C.accent}10 0%, transparent 50%)`, pointerEvents: 'none' }} />
             
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6, position: 'relative' }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                <div style={{ width: 28, height: 28, borderRadius: 10, background: `${C.accent}20`, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                  <span style={{ fontSize: 14 }}>🧠</span>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 2, position: 'relative' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                <div style={{ width: 22, height: 22, borderRadius: 8, background: `${C.accent}20`, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                  <span style={{ fontSize: 12 }}>🧠</span>
                 </div>
                 <div style={{ display: 'flex', flexDirection: 'column' }}>
-                  <span style={{ fontFamily: F.sans, fontSize: 11, fontWeight: 900, color: C.text, letterSpacing: '.06em', textTransform: 'uppercase' }}>{t.nomogramTitle}</span>
-                  <span style={{ fontFamily: F.sans, fontSize: 7, color: C.muted2, fontWeight: 800, textTransform: 'uppercase' }}>{t.proAnalytics}</span>
+                  <span style={{ fontFamily: F.sans, fontSize: 10, fontWeight: 900, color: C.text, letterSpacing: '.06em', textTransform: 'uppercase' }}>{t.nomogramTitle}</span>
+                  <span style={{ fontFamily: F.sans, fontSize: 6.5, color: C.muted2, fontWeight: 800, textTransform: 'uppercase' }}>{t.proAnalytics}</span>
                 </div>
               </div>
-              <div style={{ textAlign: 'right' }}>
-                <span style={{ fontFamily: F.mono, fontSize: 10, color: C.accent, fontWeight: 900 }}>{nomo.count}</span>
-                <span style={{ fontFamily: F.sans, fontSize: 7, color: C.muted2, fontWeight: 800, textTransform: 'uppercase', marginLeft: 4 }}>{t.eyesAnalyzed}</span>
+              <div style={{ textAlign: 'right', marginRight: 24 }}>
+                <span style={{ fontFamily: F.mono, fontSize: 9, color: C.accent, fontWeight: 900 }}>{nomo.count}</span>
+                <span style={{ fontFamily: F.sans, fontSize: 6.5, color: C.muted2, fontWeight: 800, textTransform: 'uppercase', marginLeft: 4 }}>{t.eyesAnalyzed}</span>
               </div>
             </div>
 
-            <div style={{ position: 'relative', display: 'flex', flexDirection: 'column', gap: 8 }}>
+            <div style={{ position: 'relative', display: 'flex', flexDirection: 'column', gap: 6 }}>
               {renderNomoRow('Sphere (SE)', 'sph')}
               {renderNomoRow('Cylinder', 'cyl')}
             </div>
