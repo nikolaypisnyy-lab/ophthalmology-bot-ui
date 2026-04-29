@@ -6,6 +6,8 @@ const LS_CLINIC_NAME = 'rm_clinic_name';
 const LS_PATIENTS    = 'rm_patients';
 const LS_PDATA       = 'rm_pdata';
 
+export type Language = 'en' | 'ru';
+
 export interface Clinic {
   clinic_id:   string;
   clinic_name: string;
@@ -21,11 +23,11 @@ interface ClinicStore {
   activeRefNomoCyl: number | null;
   recommendedNomo: number | null;
   recommendedNomoCyl: number | null;
-  language:        'ru' | 'en';
+  language:        Language;
+  setLanguage:     (lang: Language) => void;
   initClinics:     () => Promise<void>;
   switchClinic:    (id: string) => void;
   setActiveLaser:  (id: string) => void;
-  setLanguage:     (lang: 'en' | 'ru') => void;
   setRefNomo:      (val: number | null) => void;
   setRefNomoCyl:   (val: number | null) => void;
   fetchRecommendedNomo: () => Promise<void>;
@@ -40,9 +42,9 @@ export const useClinicStore = create<ClinicStore>((set, get) => ({
   activeRefNomoCyl: null,
   recommendedNomo: null,
   recommendedNomoCyl: null,
+  language:       'en',
   initialized:    false,
   error:          null,
-  language:       (localStorage.getItem('rm_lang') as any) || 'ru',
 
   initClinics: async () => {
     try {
@@ -80,6 +82,7 @@ export const useClinicStore = create<ClinicStore>((set, get) => ({
       const laser = localStorage.getItem(`rm_laser_${target}`) || 'ex500';
       const nomo  = localStorage.getItem(`rm_ref_nomo_${target}`);
       const nomoCyl = localStorage.getItem(`rm_ref_nomo_cyl_${target}`);
+      const lang  = (localStorage.getItem('rm_lang') as Language) || 'en';
       set({ 
         clinics, 
         activeClinicId: target, 
@@ -87,6 +90,7 @@ export const useClinicStore = create<ClinicStore>((set, get) => ({
         activeLaser: laser, 
         activeRefNomo: nomo ? parseFloat(nomo) : null,
         activeRefNomoCyl: nomoCyl ? parseFloat(nomoCyl) : null,
+        language: lang,
         initialized: true, 
         error: null 
       });
@@ -146,10 +150,6 @@ export const useClinicStore = create<ClinicStore>((set, get) => ({
       set({ activeRefNomoCyl: val });
     }
   },
-  setLanguage: (lang) => {
-    localStorage.setItem('rm_lang', lang);
-    set({ language: lang });
-  },
   fetchRecommendedNomo: async () => {
     try {
       const data = await apiGet<any>('/nomogram');
@@ -160,5 +160,9 @@ export const useClinicStore = create<ClinicStore>((set, get) => ({
         });
       }
     } catch (e) {}
+  },
+  setLanguage: (lang) => {
+    localStorage.setItem('rm_lang', lang);
+    set({ language: lang });
   },
 }));

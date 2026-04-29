@@ -10,7 +10,7 @@ interface SearchBarProps {
 export function SearchBar({
   value,
   onChange,
-  placeholder = 'Поиск пациента',
+  placeholder = 'Search patient',
 }: SearchBarProps) {
   return (
     <div

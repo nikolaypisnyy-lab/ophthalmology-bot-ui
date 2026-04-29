@@ -16,11 +16,13 @@ export function Calendar({ selectedDate, onSelect }: CalendarProps) {
   const daysInMonth = new Date(year, month + 1, 0).getDate();
   const firstDayIndex = new Date(year, month, 1).getDay(); // 0 is Sunday
   
+  const containerRef = React.useRef<HTMLDivElement>(null);
+
   // Shift to start week on Monday
   const startDay = firstDayIndex === 0 ? 6 : firstDayIndex - 1;
 
-  const monthNames = ['Январь', 'Февраль', 'Март', 'Апрель', 'Май', 'Июнь', 'Июль', 'Август', 'Сентябрь', 'Октябрь', 'Ноябрь', 'Декабрь'];
-  const dayNames = ['Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб', 'Вс'];
+  const monthNames = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
+  const dayNames = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
 
   const handlePrevMonth = (e: React.MouseEvent) => {
     e.stopPropagation();
@@ -57,7 +59,6 @@ export function Calendar({ selectedDate, onSelect }: CalendarProps) {
       <button
         key={day}
         onClick={(e) => { e.stopPropagation(); handleDayClick(day); }}
-        onTouchEnd={(e) => { e.stopPropagation(); handleDayClick(day); }}
         style={{
           height: 36,
           borderRadius: 18,
@@ -87,13 +88,27 @@ export function Calendar({ selectedDate, onSelect }: CalendarProps) {
     }
   }, [selectedDate]);
 
+  useEffect(() => {
+    // Auto-scroll to make calendar visible
+    if (containerRef.current) {
+      containerRef.current.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+  }, []);
+
   return (
-    <div style={{
-      background: C.surface3, border: `1px solid ${C.border}`,
-      borderRadius: 20, padding: '16px', display: 'flex', flexDirection: 'column', gap: 16,
-      boxShadow: '0 8px 24px rgba(0,0,0,0.15)',
-      marginTop: 8
-    }}>
+    <div 
+      ref={containerRef}
+      style={{
+        background: C.surface3, border: `1px solid ${C.border}`,
+        borderRadius: 20, padding: '16px', display: 'flex', flexDirection: 'column', gap: 16,
+        boxShadow: '0 8px 24px rgba(0,0,0,0.15)',
+        marginTop: 8,
+        position: 'relative',
+        zIndex: 2000, // Higher than PatientCard z-index
+        pointerEvents: 'auto'
+      }}
+      onClick={(e) => e.stopPropagation()} // Prevent closing/swiping from parent handlers
+    >
       {/* Шапка календаря */}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '0 8px' }}>
         <button onClick={handlePrevMonth} style={{ background: 'none', border: 'none', color: C.muted, cursor: 'pointer', padding: 4 }}>
