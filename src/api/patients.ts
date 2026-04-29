@@ -20,6 +20,7 @@ export async function getPatients(): Promise<PatientSummary[]> {
       id: String(p.id || p.patient_id || ''),
       type: p.type || p.patient_type || 'refraction',
       date: p.op_date || p.date, 
+      eye: p.op_eye || p.eye || 'OU',
       isEnhancement: p.isEnhancement, 
     }))
     .filter((p: any) => p.id && p.id !== 'undefined') as PatientSummary[];

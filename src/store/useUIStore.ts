@@ -66,6 +66,11 @@ interface UIStore {
   openSettings: () => void;
   closeSettings: () => void;
 
+  // ── Модалка нового пациента ──────────────────────────────────────────────────
+  showNewPatientModal: boolean;
+  openNewPatient: () => void;
+  closeNewPatient: () => void;
+
   // ── Инлайн редактирование полей ──────────────────────────────────────────────
   editingField: string | null;
   setEditingField: (f: string | null) => void;
@@ -136,6 +141,11 @@ export const useUIStore = create<UIStore>((set) => ({
   settingsOpen: false,
   openSettings: () => set({ settingsOpen: true }),
   closeSettings: () => set({ settingsOpen: false }),
+
+  // Новый пациент
+  showNewPatientModal: false,
+  openNewPatient: () => set({ showNewPatientModal: true }),
+  closeNewPatient: () => set({ showNewPatientModal: false }),
 
   // Инлайн редактирование
   editingField: null,

@@ -9,9 +9,12 @@ export function useTelegram() {
     if (tg) {
       tg.ready();
       tg.expand();
-      // Отключаем встроенный Telegram swipe-to-close — слишком чувствительный.
-      // Вместо него используем свой обработчик с порогом 120px (см. App.tsx useSwipeToClose).
-      try { tg.disableVerticalSwipes?.(); } catch {}
+
+      // disableVerticalSwipes is available since 7.7
+      if (tg.isVersionAtLeast('7.7')) {
+        try { tg.disableVerticalSwipes(); } catch (e) {}
+      }
+
       // Повторный вызов через задержку для надежности на некоторых устройствах
       const t1 = setTimeout(() => tg.expand(), 500);
       const t2 = setTimeout(() => tg.expand(), 1500);
@@ -20,6 +23,9 @@ export function useTelegram() {
   }, []);
 
   const haptic = {
+    selection: () => tg?.HapticFeedback?.selectionChanged(),
+    impact: (style: 'light' | 'medium' | 'heavy' | 'rigid' | 'soft') => tg?.HapticFeedback?.impactOccurred(style),
+    notification: (type: 'error' | 'success' | 'warning') => tg?.HapticFeedback?.notificationOccurred(type),
     light:   () => tg?.HapticFeedback?.impactOccurred('light'),
     medium:  () => tg?.HapticFeedback?.impactOccurred('medium'),
     success: () => tg?.HapticFeedback?.notificationOccurred('success'),

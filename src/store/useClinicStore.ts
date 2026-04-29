@@ -21,11 +21,11 @@ interface ClinicStore {
   activeRefNomoCyl: number | null;
   recommendedNomo: number | null;
   recommendedNomoCyl: number | null;
-  initialized:     boolean;
-  error:           string | null;
+  language:        'ru' | 'en';
   initClinics:     () => Promise<void>;
   switchClinic:    (id: string) => void;
   setActiveLaser:  (id: string) => void;
+  setLanguage:     (lang: 'en' | 'ru') => void;
   setRefNomo:      (val: number | null) => void;
   setRefNomoCyl:   (val: number | null) => void;
   fetchRecommendedNomo: () => Promise<void>;
@@ -42,6 +42,7 @@ export const useClinicStore = create<ClinicStore>((set, get) => ({
   recommendedNomoCyl: null,
   initialized:    false,
   error:          null,
+  language:       (localStorage.getItem('rm_lang') as any) || 'ru',
 
   initClinics: async () => {
     try {
@@ -144,6 +145,10 @@ export const useClinicStore = create<ClinicStore>((set, get) => ({
       else localStorage.setItem(`rm_ref_nomo_cyl_${activeClinicId}`, String(val));
       set({ activeRefNomoCyl: val });
     }
+  },
+  setLanguage: (lang) => {
+    localStorage.setItem('rm_lang', lang);
+    set({ language: lang });
   },
   fetchRecommendedNomo: async () => {
     try {

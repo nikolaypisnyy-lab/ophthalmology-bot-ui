@@ -33,9 +33,12 @@ export function setActiveClinicId(id: string | null) {
 
 /** Общие заголовки для всех запросов */
 function baseHeaders(extra?: Record<string, string>): Record<string, string> {
+  const currentTg = typeof window !== 'undefined' ? (window as any).Telegram?.WebApp : null;
+  const currentId = currentTg?.initDataUnsafe?.user?.id ? String(currentTg.initDataUnsafe.user.id) : TELEGRAM_ID;
+
   const headers: Record<string, string> = {
     'Content-Type': 'application/json',
-    'telegram-id': TELEGRAM_ID,
+    'telegram-id': currentId,
     ...extra,
   };
 

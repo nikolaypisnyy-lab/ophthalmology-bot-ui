@@ -279,7 +279,7 @@ PROMPT_REFRACTION = """Ты — медицинский OCR-экстрактор 
 
 ### ПОЛЕ: manifest
 Это строка/секция с надписью ЛЮБОГО из вариантов:
-"Манифест. рефракция" / "Манифест рефракция" / "Манифестная рефракция" / "MANIFEST" / "Manifest refr."
+"Манифест. рефракция" / "Манифест рефракция" / "Манифестная рефракция" / "Regular" / "MANIFEST" / "Manifest refr."
 
 Структура данных в строке:
   OD = [UVA]  с коррекцией: [Sph] D cyl [Cyl] D ax [Axis]° = [BVA]
@@ -301,30 +301,31 @@ PROMPT_REFRACTION = """Ты — медицинский OCR-экстрактор 
 На ЧЕКЕ АВТОРЕФРАКТОМЕТРА (TOPCON/NIDEK/HUVITZ/CANON): бери ПОСЛЕДНЮЮ (итоговую/жирную) строку для каждого глаза.
   Пример: "R  -2.75  -0.75  165" → OD sph:-2.75, cyl:-0.75, axis:165
 
-На КАРТЕ РЕФРАКЦИИ:
-  Структура: Ref OD sph [±Sph] D ~ cyl [Cyl] D ax [Axis]°
-  "+" перед sph → положительное, "-" → отрицательное.
-
 ### ПОЛЕ: keratometry
-ИЩИ В ЛЮБОМ МЕСТЕ ДОКУМЕНТА. Кератометрия может быть:
-1. На рефракционной карте — в той же строке, что авторефрактометр узкий
-2. На чеке авторефрактометра — отдельная секция "KER" внизу чека
+ИЩИ В ЛЮБОМ МЕСТЕ ДОКУМЕНТА.
 
-ПАТТЕРНЫ (все варианты):
+ПАТТЕРНЫ:
   "KER AVG D [X]" или "K avg D [X]"  → KER_mean (диапазон 38–48 D)
   "Kavg: [X]D"  → KER_mean
   "KER cyl [X]" или "KER cyl: [X]D"  → KER_cyl (обычно отрицательное, -0.1 до -4.0)
   "@ [XX]°" или "ax [XX]°" после KER cyl  → KER_axis
 
-ВАЖНО — ИГНОРИРУЙ радиусы в мм:
   "KER AVG R 7.82" или "R1/R2 X.XXmm" — это мм, не нужны
   "D1: XX.X" / "D2: XX.X" — это отдельные меридианы, не kavg
 
 Пример с карты: "KER AVG D 42,7  KER cyl -1,1 D ax 155°" → KER_mean:42.7, KER_cyl:-1.1, KER_axis:155
 Пример с чека:  "Kavg: 43.89D   KER cyl: -1.50D @ 82°"  → KER_mean:43.89, KER_cyl:-1.5, KER_axis:82
 
+### ПОЛЕ: biometry
+  "APL" / "Axial Length" / "ПЗО" → al (мм)
+  "CCT" / "Толщина роговицы" → cct (мкм)
+  "WTW" / "Д роговицы" → wtw (мм)
+
+### ПОЛЕ: planned
+  Строка "Planned values" / "План" → sph, cyl, axis
+
 ### ПОЛЕ: autoref_wide
-Строка/секция: "Автореф (циклоплегия)" / "Авторефр широкий" / "Цикло" / "Ref цикло".
+Строка/секция: "Автореф (циклоплегия)" / "Авторефр широкий" / "Mydriasis" / "Цикло" / "Ref цикло".
 На чеке: итоговая строка чека с пометкой "широкий"/"цикло"/"шир"/"мидр".
 Аналогично autoref_narrow. Sph обычно выше (циклоплегия расширяет).
 
@@ -349,13 +350,17 @@ PROMPT_REFRACTION = """Ты — медицинский OCR-экстрактор 
     "manifest": { "UVA": null, "sph": null, "cyl": null, "axis": null, "BVA": null },
     "autoref_narrow": { "sph": null, "cyl": null, "axis": null },
     "keratometry": { "KER_mean": null, "KER_cyl": null, "KER_axis": null },
-    "autoref_wide": { "sph": null, "cyl": null, "axis": null }
+    "autoref_wide": { "sph": null, "cyl": null, "axis": null },
+    "biometry": { "al": null, "cct": null, "wtw": null },
+    "planned": { "sph": null, "cyl": null, "axis": null }
   },
   "OS": {
     "manifest": { "UVA": null, "sph": null, "cyl": null, "axis": null, "BVA": null },
     "autoref_narrow": { "sph": null, "cyl": null, "axis": null },
     "keratometry": { "KER_mean": null, "KER_cyl": null, "KER_axis": null },
-    "autoref_wide": { "sph": null, "cyl": null, "axis": null }
+    "autoref_wide": { "sph": null, "cyl": null, "axis": null },
+    "biometry": { "al": null, "cct": null, "wtw": null },
+    "planned": { "sph": null, "cyl": null, "axis": null }
   }
 }
 
@@ -409,6 +414,8 @@ def _flatten_refraction_ocr(raw: dict) -> dict:
         n = eye_data.get('autoref_narrow') or {}
         k = eye_data.get('keratometry') or {}
         w = eye_data.get('autoref_wide') or {}
+        b = eye_data.get('biometry') or {}
+        p = eye_data.get('planned') or {}
 
         kavg = fv(k.get('KER_mean'))
         kcyl = fv(k.get('KER_cyl'))
@@ -427,6 +434,10 @@ def _flatten_refraction_ocr(raw: dict) -> dict:
             'n_ax':  fi(n.get('axis')),
             'c_sph': fv(w.get('sph')),  'c_cyl': fv(w.get('cyl')),
             'c_ax':  fi(w.get('axis')),
+            'al':    fv(b.get('al')),   'cct':   fv(b.get('cct')),
+            'wtw':   fv(b.get('wtw')),
+            'p_sph': fv(p.get('sph')),  'p_cyl': fv(p.get('cyl')),
+            'p_ax':  fi(p.get('axis')),
             'kavg':  kavg, 'k1': k1, 'k2': k2, 'k1_ax': k1_ax,
             'kercyl': kcyl,
         }
@@ -619,6 +630,10 @@ def normalize_ocr_draft(raw_json: dict, is_ocr=False) -> dict:
             'lt':       val(data, 'lt'),
             'wtw':      val(data, 'wtw'),
             'cct':      val_int(data, 'cct'),
+            # Planned values
+            'plan_sph': val(data, 'p_sph'),
+            'plan_cyl': val(data, 'p_cyl'),
+            'plan_ax':  val_int(data, 'p_ax'),
         }
 
     res = {

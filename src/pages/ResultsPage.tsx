@@ -15,6 +15,7 @@ const StatCard = ({ label, value, color, sub }: { label: string; value: string |
     background: C.surface2, border: `1px solid ${C.border}`,
     borderRadius: 12, padding: '8px 10px', flex: 1,
     display: 'flex', flexDirection: 'column', gap: 2,
+    alignItems: 'center', textAlign: 'center',
     boxShadow: '0 4px 12px rgba(0,0,0,0.05)'
   }}>
     <span style={{ fontFamily: F.sans, fontSize: 8, fontWeight: 800, color: C.muted, letterSpacing: '.05em', textTransform: 'uppercase' }}>{label}</span>
@@ -120,7 +121,7 @@ function ResultCard({ patient, onOpen }: { patient: PatientSummary; onOpen: () =
         <VisionShift eye="OS" pre={preOS} post={resOS} color={C.os} type={patient.type} isWF={resOS.isWF} />
       </div>
 
-      {patient.type === 'cataract' && p.iolResult && (
+      {patient.type === 'cataract' && (p.iolResult || p.savedPlan) && (
         <div style={{ 
           marginTop: 6, padding: '6px 10px', background: `${C.surface}80`, borderRadius: 10, 
           border: `1px solid ${C.border}40`, display: 'flex', alignItems: 'center', gap: 8,
@@ -132,27 +133,54 @@ function ResultCard({ patient, onOpen }: { patient: PatientSummary; onOpen: () =
             </svg>
           </div>
           <span style={{ fontSize: 9, fontWeight: 800, color: C.text, opacity: 0.9, flex: 1, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-            {p.iolResult.lens || 'IOL'}
+            {p.iolResult?.lens || p.savedPlan?.od?.iolModel || p.savedPlan?.os?.iolModel || 'IOL'}
           </span>
-          <div style={{ display: 'flex', gap: 10 }}>
-            {(patient.eye === 'OD' || patient.eye === 'OU') && p.iolResult.od?.selectedPower !== undefined && (
-              <div style={{ display: 'flex', alignItems: 'center', gap: 3 }}>
-                <span style={{ fontSize: 6, fontWeight: 900, color: C.od }}>OD</span>
-                <span style={{ fontSize: 10, fontWeight: 900, color: C.text, fontFamily: F.mono }}>
-                  {typeof p.iolResult.od.selectedPower === 'number' ? p.iolResult.od.selectedPower.toFixed(2) : parseFloat(String(p.iolResult.od.selectedPower)).toFixed(2)}
-                  {p.toricResults?.od?.best_model && <span style={{ color: C.indigo, marginLeft: 2, fontSize: 8 }}>{p.toricResults.od.best_model}</span>}
-                </span>
-              </div>
-            )}
-            {(patient.eye === 'OS' || patient.eye === 'OU') && p.iolResult.os?.selectedPower !== undefined && (
-              <div style={{ display: 'flex', alignItems: 'center', gap: 3 }}>
-                <span style={{ fontSize: 6, fontWeight: 900, color: C.os }}>OS</span>
-                <span style={{ fontSize: 10, fontWeight: 900, color: C.text, fontFamily: F.mono }}>
-                  {typeof p.iolResult.os.selectedPower === 'number' ? p.iolResult.os.selectedPower.toFixed(2) : parseFloat(String(p.iolResult.os.selectedPower)).toFixed(2)}
-                  {p.toricResults?.os?.best_model && <span style={{ color: C.indigo, marginLeft: 2, fontSize: 8 }}>{p.toricResults.os.best_model}</span>}
-                </span>
-              </div>
-            )}
+          <div style={{ display: 'flex', gap: 12 }}>
+            {(() => {
+              const eye = String(patient.eye || '').toUpperCase();
+              const hasOD = eye === 'OD' || eye === 'OU' || eye === 'R';
+              const hasOS = eye === 'OS' || eye === 'OU' || eye === 'L';
+              
+              // Приоритет: 1. Точный глаз из расчета, 2. План операции, 3. Общий результат (только если один глаз или нет других данных)
+              const pOD = p.iolResult?.od?.selectedPower ?? p.savedPlan?.od?.iolPower ?? 
+                          ((hasOD && !p.iolResult?.os?.selectedPower && !p.savedPlan?.os?.iolPower) ? p.iolResult?.power : undefined);
+              
+              if (!hasOD || pOD === undefined || pOD === null) return null;
+              
+              const num = typeof pOD === 'number' ? pOD : parseFloat(String(pOD));
+              if (isNaN(num)) return null;
+
+              return (
+                <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+                  <span style={{ fontSize: 7, fontWeight: 900, color: C.od }}>OD</span>
+                  <span style={{ fontSize: 12, fontWeight: 900, color: C.text, fontFamily: F.mono }}>
+                    {(num > 0 ? '+' : '') + num.toFixed(2)}
+                  </span>
+                </div>
+              );
+            })()}
+            {(() => {
+              const eye = String(patient.eye || '').toUpperCase();
+              const hasOD = eye === 'OD' || eye === 'OU' || eye === 'R';
+              const hasOS = eye === 'OS' || eye === 'OU' || eye === 'L';
+              
+              const pOS = p.iolResult?.os?.selectedPower ?? p.savedPlan?.os?.iolPower ?? 
+                          ((hasOS && !p.iolResult?.od?.selectedPower && !p.savedPlan?.od?.iolPower) ? p.iolResult?.power : undefined);
+              
+              if (!hasOS || pOS === undefined || pOS === null) return null;
+              
+              const num = typeof pOS === 'number' ? pOS : parseFloat(String(pOS));
+              if (isNaN(num)) return null;
+
+              return (
+                <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+                  <span style={{ fontSize: 7, fontWeight: 900, color: C.os }}>OS</span>
+                  <span style={{ fontSize: 12, fontWeight: 900, color: C.text, fontFamily: F.mono }}>
+                    {(num > 0 ? '+' : '') + num.toFixed(2)}
+                  </span>
+                </div>
+              );
+            })()}
           </div>
         </div>
       )}
@@ -169,6 +197,7 @@ export function ResultsPage() {
   const [filter, setFilter] = useState<'all' | 'refraction' | 'cataract'>('all');
   const [search, setSearch] = useState('');
   const [nomo, setNomo] = useState<any>(null);
+  const [showNomo, setShowNomo] = useState(true);
 
   // Fetch Nomogram stats
   const fetchNomo = async () => {
@@ -262,7 +291,8 @@ export function ResultsPage() {
               border: 'none', borderRadius: 8, padding: '4px 10px',
               color: '#fff', fontFamily: F.sans, fontSize: 10, fontWeight: 800,
               cursor: 'pointer', boxShadow: '0 4px 12px rgba(0,0,0,0.15)',
-              transition: 'all 0.2s', width: 80, height: 26
+              transition: 'all 0.2s', width: 80, height: 26,
+              display: 'flex', alignItems: 'center', justifyContent: 'center'
             }}
           >
             {active === proposed ? 'АКТИВНО' : 'ПРИМЕНИТЬ'}
@@ -291,13 +321,24 @@ export function ResultsPage() {
         </div>
 
         {/* Nomogram Recommendation Card */}
-        {nomo && (
+        {nomo && showNomo && (
           <div style={{
             background: 'linear-gradient(135deg,rgba(99,102,241,0.08) 0%,rgba(168,85,247,0.08) 100%)',
             border: `1px solid rgba(168,85,247,0.15)`,
             borderRadius: 12, padding: '8px 12px',
-            display: 'flex', flexDirection: 'column', gap: 4
+            display: 'flex', flexDirection: 'column', gap: 4,
+            position: 'relative'
           }}>
+            <button 
+              onClick={() => setShowNomo(false)}
+              style={{
+                position: 'absolute', top: 6, right: 6,
+                background: 'none', border: 'none', color: C.muted2,
+                fontSize: 16, cursor: 'pointer', padding: '4px'
+              }}
+            >
+              ×
+            </button>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 2 }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
                 <span style={{ fontSize: 12 }}>🧠</span>

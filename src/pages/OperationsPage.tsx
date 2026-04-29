@@ -2,6 +2,10 @@ import React, { useState } from 'react';
 import { C, F, R, typeColors, eyeColors } from '../constants/design';
 import { usePatientStore } from '../store/usePatientStore';
 import { useUIStore } from '../store/useUIStore';
+import { useClinicStore } from '../store/useClinicStore';
+import { useTelegram } from '../hooks/useTelegram';
+import { T } from '../constants/translations';
+import { apiPost } from '../api/client';
 
 // ── Мини-календарь ────────────────────────────────────────────────────────────
 
@@ -102,6 +106,8 @@ function MonthCalendar({
 // ── Страница ──────────────────────────────────────────────────────────────────
 
 export function OperationsPage() {
+  const { language } = useClinicStore();
+  const t = T(language);
   const today = new Date().toISOString().slice(0, 10);
   const [selDay, setSelDay] = useState(today);
   const { patients, reorderPatients } = usePatientStore();
@@ -147,10 +153,114 @@ export function OperationsPage() {
     });
   };
 
+  const { userId: hookId, haptic } = useTelegram();
+  const userId = hookId || window.Telegram?.WebApp?.initDataUnsafe?.user?.id;
+
+  const handlePrint = async () => {
+    const startPrint = async () => {
+      const { activeName } = useClinicStore.getState();
+
+      const tg = window.Telegram?.WebApp;
+      const currentId = userId || tg?.initDataUnsafe?.user?.id;
+
+      if (!currentId) {
+        const raw = JSON.stringify(tg?.initDataUnsafe || {});
+        window.Telegram?.WebApp?.showAlert(`DEBUG: ID не найден. WebApp Data: ${raw.slice(0, 150)}`);
+      }
+
+      let pdfPatients = [];
+      try {
+        pdfPatients = dayPatients.map(p => {
+          const eye = (p.eye || 'OU').toUpperCase();
+          const plan = p.savedPlan || {};
+          
+          let details = '';
+          if (p.type === 'cataract') {
+            const iolModel = p.iolResult?.lens || plan.od?.iolModel || plan.os?.iolModel || '—';
+            const powers = [];
+            
+            const processEye = (side: 'od' | 'os') => {
+              const pow = p.iolResult?.[side]?.selectedPower ?? plan[side]?.iolPower;
+              const tgt = p.iolResult?.[side]?.target ?? plan[side]?.targetRefr;
+              if (pow !== undefined && pow !== null && !isNaN(Number(pow))) {
+                powers.push(`${side.toUpperCase()}: ${Number(pow).toFixed(2)} (Tgt: ${Number(tgt || 0).toFixed(2)})`);
+              }
+            };
+            
+            if (eye === 'OD' || eye === 'OU') processEye('od');
+            if (eye === 'OS' || eye === 'OU') processEye('os');
+            details = `IOL: ${iolModel}\n${powers.join(' | ')}`;
+          } else {
+            const refr = [];
+            const flaps = [];
+            const processRefEye = (side: 'od' | 'os') => {
+              const sp = plan[side];
+              if (sp) {
+                const sph = Number(sp.sph || 0);
+                const cyl = Number(sp.cyl || 0);
+                const ax = Number(sp.ax || 0);
+                refr.push(`${side.toUpperCase()}: ${sph > 0 ? '+' : ''}${sph.toFixed(2)} ${cyl > 0 ? '+' : ''}${cyl.toFixed(2)} ax ${ax}°`);
+                if (sp.flap) flaps.push(`${side.toUpperCase()}: ${sp.flap}μm`);
+              }
+            };
+            if (eye === 'OD' || eye === 'OU') processRefEye('od');
+            if (eye === 'OS' || eye === 'OU') processRefEye('os');
+            details = `FLAP: ${flaps.join(' | ') || '—'}\nLASER: ${refr.join(' | ') || '—'}`;
+          }
+
+          return {
+            id: String(p.id),
+            name: p.name,
+            age: String(p.age || ''),
+            sex: p.sex,
+            eye: eye,
+            type: p.type,
+            details: details
+          };
+        });
+      } catch (e: any) {
+        window.Telegram?.WebApp?.showAlert(`Ошибка обработки данных: ${e.message}`);
+        return;
+      }
+
+      try {
+        const resp: any = await apiPost('/send_surgical_pdf', {
+          clinic_name: activeName || 'MedEye Surgical',
+          date: selDay,
+          patients: pdfPatients
+        });
+        
+        if (resp.status === 'ok') {
+          haptic.notification('success');
+          if (window.Telegram?.WebApp) {
+            window.Telegram.WebApp.showAlert('PDF успешно отправлен в Telegram!');
+          }
+        } else {
+          throw new Error(resp.detail || 'Ошибка при отправке');
+        }
+      } catch (err: any) {
+        console.error(err);
+        if (window.Telegram?.WebApp) {
+          window.Telegram.WebApp.showAlert(`Ошибка сети/сервера: ${err.message}`);
+        }
+      }
+    };
+
+    if (window.Telegram?.WebApp?.showConfirm) {
+      window.Telegram.WebApp.showConfirm('Распечатать операционный день (отправить PDF в Telegram)?', (ok: boolean) => {
+        if (ok) startPrint();
+      });
+    } else {
+      if (window.confirm('Распечатать операционный день (отправить PDF в Telegram)?')) {
+        startPrint();
+      }
+    }
+  };
+
   return (
-    <div style={{ background: C.bg, minHeight: '100vh', width: '100%', position: 'relative' }}>
-      {/* Шапка (Календарь + Заголовок) - Сделаем её просто частью потока, если липкость ломает рендер */}
-      <div style={{ background: C.bg, paddingBottom: 8 }}>
+    <div style={{ display: 'flex', flexDirection: 'column', height: '100%', overflow: 'hidden', position: 'relative', width: '100%', background: C.bg }}>
+      {/* Шапка (Календарь + Заголовок) */}
+      <div style={{ background: C.bg, paddingBottom: 8, flexShrink: 0 }}>
         {/* Календарь */}
         <div style={{ padding: '12px 16px 0' }}>
           <MonthCalendar selected={selDay} onChange={setSelDay} markedDates={markedDates} />
@@ -158,9 +268,24 @@ export function OperationsPage() {
 
         {/* Заголовок дня */}
         <div style={{ padding: '20px 16px 8px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-          <div style={{ fontFamily: F.sans, fontSize: 13, fontWeight: 700, color: C.text, display: 'flex', alignItems: 'center', gap: 6 }}>
-             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"/></svg>
-             {fmtDate(selDay)}
+          <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+            <div style={{ fontFamily: F.sans, fontSize: 13, fontWeight: 700, color: C.text, display: 'flex', alignItems: 'center', gap: 6 }}>
+               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"/></svg>
+               {fmtDate(selDay)}
+            </div>
+            {dayPatients.length > 0 && (
+              <button 
+                onClick={handlePrint}
+                style={{
+                  background: `${C.indigo}15`, color: C.indigo, border: `1px solid ${C.indigo}30`,
+                  padding: '4px 14px', borderRadius: 20, display: 'flex', alignItems: 'center', gap: 5,
+                  cursor: 'pointer', fontSize: 10, fontWeight: 800, textTransform: 'uppercase'
+                }}
+              >
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M6 9V2h12v7M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2m-2-1v5H8v-5M8 14h8"/></svg>
+                PRINT
+              </button>
+            )}
           </div>
           <span style={{
             background: C.accentLt, color: C.accent,
@@ -173,7 +298,8 @@ export function OperationsPage() {
       </div>
 
       {/* Список операций */}
-      <div style={{ padding: '8px 16px 120px', width: '100%' }}>
+      <div style={{ flex: 1, position: 'relative', minHeight: 100 }}>
+        <div style={{ position: 'absolute', inset: 0, overflowY: 'scroll', padding: '8px 16px 120px', display: 'block', WebkitOverflowScrolling: 'touch' }}>
           {dayPatients.length === 0 && (
             <div style={{ textAlign: 'center', padding: 48, color: C.muted, fontFamily: F.sans, fontSize: 14 }}>
               Нет операций на этот день
@@ -282,6 +408,20 @@ export function OperationsPage() {
                         flexShrink: 0
                       }}>{(p.sex?.startsWith('Ж') || p.sex?.toUpperCase().startsWith('F')) ? 'F' : 
                           (p.sex?.startsWith('М') || p.sex?.toUpperCase().startsWith('M')) ? 'M' : 'P'}</span>
+                      {/* Eye badge — OD/OS/OU */}
+                      {(() => {
+                        const eyeVal = (p.eye || 'OU').toUpperCase();
+                        const eyeBg  = eyeVal === 'OD' ? `${C.od}18`    : eyeVal === 'OS' ? `${C.os}18`    : `${C.indigo}15`;
+                        const eyeClr = eyeVal === 'OD' ? C.od            : eyeVal === 'OS' ? C.os            : C.indigo;
+                        const eyeBrd = eyeVal === 'OD' ? `${C.od}40`    : eyeVal === 'OS' ? `${C.os}40`    : `${C.indigo}35`;
+                        return (
+                          <span style={{
+                            fontFamily: F.mono, fontSize: 9, fontWeight: 900,
+                            padding: '2px 7px', borderRadius: 5, flexShrink: 0,
+                            background: eyeBg, color: eyeClr, border: `1px solid ${eyeBrd}`,
+                          }}>{eyeVal}</span>
+                        );
+                      })()}
                       {p.isEnhancement && (
                         <span style={{
                           background: 'rgba(236,72,153,.15)', color: '#ec4899',
@@ -307,19 +447,89 @@ export function OperationsPage() {
 
                     {/* IOL Details for Cataract */}
                     {p.type === 'cataract' && (
-                      <div style={{ 
-                        marginTop: 4, padding: '2px 8px', borderRadius: 6, 
-                        background: 'rgba(255,255,255,0.03)', border: `1px solid ${C.border}40`,
-                        display: 'inline-flex', alignItems: 'center', gap: 6
-                      }}>
-                        <span style={{ fontSize: 8, fontWeight: 800, color: C.tertiary, textTransform: 'uppercase' }}>PLAN:</span>
-                        <span style={{ fontFamily: F.mono, fontSize: 10, fontWeight: 700, color: C.cat }}>
-                          {(p.savedPlan?.od?.iolModel || p.savedPlan?.os?.iolModel || 'No IOL Selected')}
+                      <div style={{ marginTop: 6, display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 8 }}>
+                        <span style={{ fontSize: 8, fontWeight: 900, color: C.muted3 }}>{t.planColon}</span>
+                        <span style={{ fontSize: 10, fontWeight: 700, color: C.cat }}>
+                          {p.iolResult?.lens || p.savedPlan?.od?.iolModel || p.savedPlan?.os?.iolModel || t.noIolSelected}
                         </span>
-                        <div style={{ width: 1, height: 8, background: C.border, opacity: 0.3 }} />
-                        <span style={{ fontFamily: F.mono, fontSize: 11, fontWeight: 900, color: C.primary }}>
-                          {(p.savedPlan?.od?.iolPower || p.savedPlan?.os?.iolPower || '0.0')} D
-                        </span>
+                        <div style={{ display: 'flex', gap: 8 }}>
+                          {(() => {
+                            const eye = String(p.eye || '').toUpperCase();
+                            const results = [];
+                            // Check OD
+                            if (eye === 'OD' || eye === 'OU' || eye === 'R') {
+                               const p_od = p.iolResult?.od;
+                               const power = p_od?.selectedPower ?? p_od?.p_emmetropia ?? p.savedPlan?.od?.iolPower ?? (p.iolResult as any)?.power;
+                               if (power !== undefined && power !== null) {
+                                  const num = typeof power === 'number' ? power : parseFloat(String(power));
+                                  if (!isNaN(num)) results.push({ side: 'OD', val: (num > 0 ? '+' : '') + num.toFixed(2), color: C.od });
+                               }
+                            }
+                            // Check OS
+                            if (eye === 'OS' || eye === 'OU' || eye === 'L') {
+                               const p_os = p.iolResult?.os;
+                               const power = p_os?.selectedPower ?? p_os?.p_emmetropia ?? p.savedPlan?.os?.iolPower ?? (p.iolResult as any)?.power;
+                               if (power !== undefined && power !== null) {
+                                  const num = typeof power === 'number' ? power : parseFloat(String(power));
+                                  if (!isNaN(num)) results.push({ side: 'OS', val: (num > 0 ? '+' : '') + num.toFixed(2), color: C.os });
+                               }
+                            }
+                            
+                            if (results.length === 0) return <span style={{ fontSize: 11, fontWeight: 900, color: C.text }}>— D</span>;
+                            
+                            return results.map(r => (
+                              <div key={r.side} style={{ display: 'flex', alignItems: 'center', gap: 3 }}>
+                                <span style={{ fontSize: 7, fontWeight: 900, color: r.color }}>{r.side}</span>
+                                <span style={{ fontSize: 11, fontWeight: 900, color: C.text }}>{r.val}D</span>
+                              </div>
+                            ));
+                          })()}
+                        </div>
+                      </div>
+                    )}
+
+                    {p.type === 'refraction' && (
+                      <div style={{ marginTop: 6, display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 8 }}>
+                        <span style={{ fontSize: 8, fontWeight: 900, color: C.muted3 }}>{t.planColon}</span>
+                        <div style={{ display: 'flex', gap: 8 }}>
+                          {(() => {
+                            const eye = String(p.eye || '').toUpperCase();
+                            const results = [];
+                            if ((eye === 'OD' || eye === 'OU' || eye === 'R') && p.savedPlan?.od) {
+                              const s = p.savedPlan.od.sph;
+                              const c = p.savedPlan.od.cyl;
+                              const a = p.savedPlan.od.ax;
+                              if (s !== undefined || c !== undefined) {
+                                results.push({ 
+                                  side: 'OD', 
+                                  val: `${s > 0 ? '+' : ''}${s.toFixed(2)} ${c > 0 ? '+' : ''}${c.toFixed(2)} × ${a}°`, 
+                                  color: C.od 
+                                });
+                              }
+                            }
+                            if ((eye === 'OS' || eye === 'OU' || eye === 'L') && p.savedPlan?.os) {
+                              const s = p.savedPlan.os.sph;
+                              const c = p.savedPlan.os.cyl;
+                              const a = p.savedPlan.os.ax;
+                              if (s !== undefined || c !== undefined) {
+                                results.push({ 
+                                  side: 'OS', 
+                                  val: `${s > 0 ? '+' : ''}${s.toFixed(2)} ${c > 0 ? '+' : ''}${c.toFixed(2)} × ${a}°`, 
+                                  color: C.os 
+                                });
+                              }
+                            }
+                            
+                            if (results.length === 0) return <span style={{ fontSize: 11, fontWeight: 900, color: C.text }}>—</span>;
+                            
+                            return results.map(r => (
+                              <div key={r.side} style={{ display: 'flex', alignItems: 'center', gap: 3 }}>
+                                <span style={{ fontSize: 7, fontWeight: 900, color: r.color }}>{r.side}</span>
+                                <span style={{ fontSize: 10, fontWeight: 900, color: C.text }}>{r.val}</span>
+                              </div>
+                            ));
+                          })()}
+                        </div>
                       </div>
                     )}
                   </div>
@@ -357,6 +567,7 @@ export function OperationsPage() {
               </div>
             );
           })}
+        </div>
       </div>
     </div>
   );

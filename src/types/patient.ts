@@ -37,6 +37,10 @@ export interface PatientSummary {
   isCustomViewOS?: boolean;
   iolResult?: import('./iol').IOLResult;
   toricResults?: Record<'od' | 'os', any>;
+  savedPlan?: {
+    od?: import('./refraction').RefractionPlan;
+    os?: import('./refraction').RefractionPlan;
+  };
 }
 
 export interface Patient extends PatientSummary {
@@ -51,11 +55,7 @@ export interface Patient extends PatientSummary {
   // Результаты ИОЛ-расчёта
   iolResult?: import('./iol').IOLResult;
 
-  // Сохранённый план ЛКЗ
-  savedPlan?: {
-    od?: import('./refraction').RefractionPlan;
-    os?: import('./refraction').RefractionPlan;
-  };
+  // Сохранённый план ЛКЗ (inherited from PatientSummary)
   savedEnhancement?: {
     od?: import('./refraction').RefractionPlan;
     os?: import('./refraction').RefractionPlan;
@@ -76,7 +76,8 @@ export interface Patient extends PatientSummary {
   flapDiam?: string;       // диаметр флэпа, мм
   minTh?: string;          // min толщина лентикулы (SMILE)
   useCorneal?: boolean;    // использовать роговичный астигматизм (legacy, заменяется astigStrategy)
-  astigStrategy?: 'manifest' | 'corneal' | 'vector'; // стратегия астигматизма
+  astigStrategy?: 'manifest' | 'corneal' | 'vector' | 'wavefront'; // стратегия астигматизма
+  pentaStrategy?: 'station' | 'anterior' | 'posterior' | 'total'; // стратегия Pentacam
   noNomogram?: boolean;    // не применять номограммы (только манифест)
   doRound?: boolean;       // округлять до 0.25
   isPRK?: boolean;

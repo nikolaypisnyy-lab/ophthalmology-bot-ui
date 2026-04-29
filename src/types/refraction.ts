@@ -65,6 +65,10 @@ export interface EyeData {
   wtw: string;  // white-to-white, мм
   iop: string;  // ВГД
   acd: string;  // передняя камера (для ref пациентов)
+  al: string;   // длина оси глаза
+  plan_sph: string;
+  plan_cyl: string;
+  plan_ax: string;
 }
 
 /** Результат расчёта плана ЛКЗ для одного глаза */
@@ -134,6 +138,7 @@ export function newEyeData(): EyeData {
     c_sph: '0.00', c_cyl: '0.00', c_ax: '',
     k1: '', k2: '', k_ax: '',
     p_ant_c: '', p_ant_a: '', p_post_c: '', p_post_a: '', p_tot_c: '', p_tot_a: '',
-    cct: '', wtw: '', iop: '', acd: '',
+    cct: '', wtw: '', iop: '', acd: '', al: '',
+    plan_sph: '', plan_cyl: '', plan_ax: '',
   };
 }

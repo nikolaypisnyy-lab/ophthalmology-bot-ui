@@ -157,6 +157,8 @@ export const usePatientStore = create<PatientStore>((set, get) => ({
           postCylOS: ex?.postCylOS ?? compOS?.cyl   ?? p.postCylOS,
           postAxOS:  ex?.postAxOS  ?? compOS?.ax    ?? p.postAxOS,
           postVaOS:  ex?.postVaOS  ?? compOS?.va    ?? p.postVaOS,
+          iolResult: ex?.iolResult ?? fd?.iolResult ?? p.iolResult,
+          periods:   ex?.periods   ?? fd?.periods   ?? p.periods,
           surgicalOrder: ex?.surgicalOrder ?? p.surgicalOrder,
           flapDiam:  ex?.flapDiam  ?? p.flapDiam,
           capOrFlap: ex?.capOrFlap ?? p.capOrFlap,
@@ -164,8 +166,8 @@ export const usePatientStore = create<PatientStore>((set, get) => ({
           isCustomViewOS: ex?.isCustomViewOS ?? p.isCustomViewOS,
           astigStrategyOD: ex?.astigStrategyOD ?? fd?.od?.astigStrategy ?? p.astigStrategyOD,
           astigStrategyOS: ex?.astigStrategyOS ?? fd?.os?.astigStrategy ?? p.astigStrategyOS,
-          iolResult: ex?.iolResult ?? fd?.iolResult ?? p.iolResult,
           toricResults: (ex as any)?.toricResults ?? (fd as any)?.toricResults ?? (p as any)?.toricResults,
+          savedPlan: ex?.savedPlan ?? fd?.savedPlan ?? p.savedPlan,
         };
       });
 
@@ -223,15 +225,18 @@ export const usePatientStore = create<PatientStore>((set, get) => ({
             // Загружаем результаты расчётов
             const fr = mapFormulaResults(m);
             (loaded as any).formulaResults = { od: fr.od, os: fr.os };
-            if (fr.active) loaded.activeFormula = fr.active;
+            if (fr.active) loaded.activeFormula = fr.active as 'Haigis' | 'Barrett' | 'Kane';
 
             // Загружаем выбранную линзу
             if (m.iol_calc?.selected_iol) {
-              const si = m.iol_calc.selected_iol.od || m.iol_calc.selected_iol.os;
-              if (si) {
-                loaded.iolResult = {
-                  lens: si.model || '',
-                  power: (si.power > 0 ? '+' : '') + si.power.toFixed(2)
+              const { od, os } = m.iol_calc.selected_iol as any;
+              const anyEye = od || os;
+              if (anyEye) {
+                (loaded as any).iolResult = {
+                  lens: anyEye.model || '',
+                  od: od ? { selectedPower: od.power, expectedRefr: od.expected_refr } : undefined,
+                  os: os ? { selectedPower: os.power, expectedRefr: os.expected_refr } : undefined,
+                  power: (anyEye.power > 0 ? '+' : '') + anyEye.power.toFixed(2),
                 };
               }
             }
@@ -381,7 +386,10 @@ export const usePatientStore = create<PatientStore>((set, get) => ({
       isCustomViewOS: patient.isCustomViewOS,
       astigStrategyOD: patient.od?.astigStrategy,
       astigStrategyOS: patient.os?.astigStrategy,
-    };
+      // Сохраняем iolResult и savedPlan в summary
+      iolResult: patient.iolResult,
+      savedPlan: patient.savedPlan,
+    } as PatientSummary;
 
     const plist = lsGetPatients();
     const idx = plist.findIndex(x => String(x.id) === String(localId));

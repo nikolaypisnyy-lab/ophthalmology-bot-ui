@@ -138,7 +138,9 @@ export function mapEyeData(m: RawMeasurements, side: 'od' | 'os'): Partial<EyeDa
     eye.k2     = sf(ker.k2);
     eye.kavg   = sf(ker.kavg ?? ((parseFloat(String(ker.k1)) + parseFloat(String(ker.k2))) / 2).toFixed(2));
     eye.kercyl = sf(ker.kercyl ?? (eye.kercyl || ''));
-    eye.kerax  = sf((ker as any).axis ?? (ker as any).kerax ?? eye.kerax);
+    const axVal = sf((ker as any).axis ?? (ker as any).kerax ?? eye.kerax);
+    eye.k_ax   = axVal;
+    eye.kerax  = axVal;
   }
 
   // Pentacam
@@ -240,10 +242,25 @@ export async function saveMeasurements(
         kane: patient.formulaResults?.od?.Kane ? { od: patient.formulaResults.od.Kane, os: patient.formulaResults.os.Kane } : undefined,
         haigis: patient.formulaResults?.od?.Haigis ? { od: patient.formulaResults.od.Haigis, os: patient.formulaResults.os.Haigis } : undefined,
         active_formula: patient.activeFormula,
-        selected_iol: patient.iolResult ? {
-          od: { model: patient.iolResult.lens, power: pF(patient.iolResult.power) ?? 0, target: patient.targetRefr || '0.00' },
-          os: { model: patient.iolResult.lens, power: pF(patient.iolResult.power) ?? 0, target: patient.targetRefr || '0.00' },
-        } : undefined
+        selected_iol: patient.iolResult ? (() => {
+          const lens = patient.iolResult!.lens || '';
+          const target = patient.targetRefr || '0.00';
+          // Плоское power из BioTab (строка "+21.00") — fallback если не кликали строку в CalcTab
+          const flatNum = (patient.iolResult as any).power
+            ? parseFloat(String((patient.iolResult as any).power))
+            : undefined;
+          const eye = (patient.eye || 'OU').toUpperCase();
+          const activeF = patient.activeFormula || 'Haigis';
+          const odEmmetropia = patient.formulaResults?.od?.[activeF]?.p_emmetropia;
+          const osEmmetropia = patient.formulaResults?.os?.[activeF]?.p_emmetropia;
+          
+          const odPow = patient.iolResult!.od?.selectedPower ?? patient.iolResult!.od?.p_emmetropia ?? odEmmetropia ?? (eye !== 'OS' ? flatNum : undefined);
+          const osPow = patient.iolResult!.os?.selectedPower ?? patient.iolResult!.os?.p_emmetropia ?? osEmmetropia ?? (eye !== 'OD' ? flatNum : undefined);
+          return {
+            od: odPow !== undefined && odPow !== null && !isNaN(odPow) ? { model: lens, power: odPow, expected_refr: patient.iolResult!.od?.expectedRefr, target } : undefined,
+            os: osPow !== undefined && osPow !== null && !isNaN(osPow) ? { model: lens, power: osPow, expected_refr: patient.iolResult!.os?.expectedRefr, target } : undefined,
+          };
+        })() : undefined
       } as any;
     }
 

@@ -14,6 +14,21 @@ from fastapi.staticfiles import StaticFiles
 from fastapi.middleware.cors import CORSMiddleware
 from typing import List, Optional, Dict, Any
 from pydantic import BaseModel
+from fpdf import FPDF
+
+class PdfPatient(BaseModel):
+    id: str
+    name: str
+    age: Optional[str] = None
+    sex: Optional[str] = None
+    eye: str
+    type: str
+    details: str
+
+class PdfRequest(BaseModel):
+    clinic_name: str
+    date: str
+    patients: List[PdfPatient]
 
 try:
     from dotenv import load_dotenv
@@ -207,7 +222,9 @@ def get_patients(telegram_id: str = Header(None), db: MedEyeDB = Depends(get_cli
             pr = form["primary"]
             if not p.get("age"): p["age"] = pr.get("age")
             if not p.get("sex"): p["sex"] = pr.get("sex")
-            if not p.get("op_eye"): p["op_eye"] = pr.get("op_eye")
+            # Форма имеет приоритет над таблицей — update_patient пишет op_eye в форму
+            if pr.get("op_eye"): p["op_eye"] = pr.get("op_eye")
+            elif not p.get("op_eye"): p["op_eye"] = pr.get("op_eye")
             if not p.get("patient_type"): p["patient_type"] = pr.get("patient_type")
             if p.get("isEnhancement") is None: p["isEnhancement"] = pr.get("isEnhancement")
             if not p.get("flapDiam"): p["flapDiam"] = pr.get("flapDiam")
@@ -242,6 +259,19 @@ def get_patients(telegram_id: str = Header(None), db: MedEyeDB = Depends(get_cli
                     if p.get("isCustomView") is None: p["isCustomView"] = plan.get("isCustomView")
                     if p.get("isCustomViewOD") is None: p["isCustomViewOD"] = plan.get("isCustomViewOD")
                     if p.get("isCustomViewOS") is None: p["isCustomViewOS"] = plan.get("isCustomViewOS")
+                    
+                    # Добавляем сохранённый план в суммари
+                    if plan and ("od" in plan or "os" in plan):
+                        p["savedPlan"] = {}
+                        for side in ["od", "os"]:
+                            if side in plan:
+                                sp = plan[side]
+                                p["savedPlan"][side] = {
+                                    "sph": sp.get("sph", 0),
+                                    "cyl": sp.get("cyl", 0),
+                                    "ax":  sp.get("axis", 0),
+                                    "flap": sp.get("flap")
+                                }
                 except: continue
                 if p.get("flapDiam") and p.get("capOrFlap"): break
 
@@ -283,7 +313,8 @@ def get_patient(patient_id: str, db: MedEyeDB = Depends(get_clinic_db)):
         pr = form["primary"]
         if not patient.get("age"): patient["age"] = pr.get("age")
         if not patient.get("sex"): patient["sex"] = pr.get("sex")
-        if not patient.get("op_eye"): patient["op_eye"] = pr.get("op_eye")
+        if pr.get("op_eye"): patient["op_eye"] = pr.get("op_eye")
+        elif not patient.get("op_eye"): patient["op_eye"] = pr.get("op_eye")
         if not patient.get("patient_type"): patient["patient_type"] = pr.get("patient_type")
         if not patient.get("flapDiam"): patient["flapDiam"] = pr.get("flapDiam")
     return {"status": "ok", "patient": patient, "visit": visit, "form": form}
@@ -436,15 +467,22 @@ def calculate_iol(payload: IolCalcRequest):
         toric_data = None
         if d.get("toricMode"):
             try:
+                from toric_engine import REFRACTIVE_INDICES
+                n_label = d.get("n_aq_label", "Standard (1.336)")
+                n_aq    = REFRACTIVE_INDICES.get(n_label, 1.336)
                 toric_data = calculate_autonomous_toric(
                     k1=float(d.get("k1") or 0),
                     k2=float(d.get("k2") or 0),
                     k1_axis=float(d.get("k_ax") or 0),
                     sia=float(d.get("sia") or 0.1),
                     inc_axis=float(d.get("incAx") or 90),
-                    al=float(d.get("al") or 23.5)
+                    al=float(d.get("al") or 23.5),
+                    acd=float(d.get("acd") or 3.2),
+                    n_aq=n_aq,
+                    iol_db=d.get("iol_db", "Alcon SN6AT"),
+                    k_ax_is_steep=bool(d.get("k_ax_is_steep", False)),
                 )
-                print(f"[CALC] Toric calculated: {toric_data['best_model']}", flush=True)
+                print(f"[CALC] Toric: best={toric_data['best_model']} bvr={toric_data['bvr']} elp={toric_data['elp_mm']}mm", flush=True)
             except Exception as te:
                 print(f"[CALC] Toric engine error: {te}")
 
@@ -508,6 +546,91 @@ def calculate_iol(payload: IolCalcRequest):
         "toric": toric_data,
         "detail": detail
     }
+
+@app.post("/api/send_surgical_pdf")
+async def send_surgical_pdf(payload: PdfRequest, telegram_id: str = Header(None)):
+    print(f"[PDF] Request: Clinic={payload.clinic_name}, Date={payload.date}, Patients={len(payload.patients)}, User={telegram_id}", flush=True)
+    if not telegram_id: raise HTTPException(401)
+    
+    pdf = FPDF()
+    pdf.add_page()
+    
+    # Пытаемся найти кириллический шрифт
+    font_path = None
+    for p in [
+        "/usr/share/fonts/truetype/liberation/LiberationSans-Regular.ttf",
+        "/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf",
+        "/usr/share/fonts/truetype/freefont/FreeSans.ttf",
+        "DejaVuSans.ttf"
+    ]:
+        if os.path.exists(p):
+            font_path = p
+            break
+            
+    if font_path:
+        pdf.add_font("Custom", "", font_path)
+        pdf.set_font("Custom", size=10)
+    else:
+        pdf.set_font("Helvetica", size=10)
+
+    # Header
+    pdf.set_font(pdf.font_family, style="B" if not font_path else "", size=16)
+    pdf.cell(0, 10, payload.clinic_name, ln=True, align="L")
+    pdf.set_font(pdf.font_family, size=10)
+    pdf.cell(0, 8, f"Surgical Day: {payload.date}", ln=True, align="L")
+    pdf.ln(10)
+
+    # Table Header
+    pdf.set_fill_color(240, 240, 240)
+    pdf.set_font(pdf.font_family, style="B" if not font_path else "", size=9)
+    pdf.cell(10, 10, "#", border=1, align="C", fill=True)
+    pdf.cell(60, 10, "Patient", border=1, align="L", fill=True)
+    pdf.cell(20, 10, "Eye", border=1, align="C", fill=True)
+    pdf.cell(100, 10, "Surgical Details", border=1, align="L", fill=True)
+    pdf.ln()
+
+    # Table Rows
+    pdf.set_font(pdf.font_family, size=9)
+    for idx, p in enumerate(payload.patients):
+        # Очищаем детали от HTML тегов (<b> и т.д.)
+        clean_details = p.details.replace("<b>", "").replace("</b>", "").replace("<br>", " ").replace("<div class='detail-row'>", "").replace("</div>", "\n").strip()
+        
+        # Вычисляем высоту ячейки по контенту
+        row_height = 8
+        if "\n" in clean_details: row_height = 12
+        
+        # Сохраняем текущую позицию
+        x, y = pdf.get_x(), pdf.get_y()
+        
+        pdf.cell(10, row_height, str(idx + 1), border=1, align="C")
+        
+        # Patient Info (Multi-line)
+        pdf.set_font(pdf.font_family, style="B" if not font_path else "", size=10)
+        pdf.cell(60, row_height, p.name[:30], border=1) # Упрощенно
+        pdf.set_font(pdf.font_family, size=9)
+        
+        pdf.cell(20, row_height, p.eye, border=1, align="C")
+        
+        # Details (Multi-line)
+        pdf.multi_cell(100, row_height/2 if "\n" in clean_details else row_height, clean_details, border=1, align="L")
+        
+    # Save PDF to buffer
+    out_path = TMP_DIR / f"surgical_{telegram_id}_{int(time.time())}.pdf"
+    pdf.output(str(out_path))
+
+    # Send to Telegram
+    url = f"https://api.telegram.org/bot{TOKEN}/sendDocument"
+    with open(out_path, "rb") as f:
+        r = requests.post(url, data={"chat_id": telegram_id, "caption": f"Surgical Day {payload.date}"}, files={"document": f})
+    
+    # Cleanup
+    try: os.remove(out_path)
+    except: pass
+
+    if r.status_code != 200:
+        raise HTTPException(status_code=500, detail=f"Telegram error: {r.text}")
+
+    return {"status": "ok"}
 
 if __name__ == "__main__":
     import uvicorn
