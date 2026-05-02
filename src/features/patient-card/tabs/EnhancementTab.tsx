@@ -22,7 +22,8 @@ function EnhancementResult({ eye, laser, onReset }: any) {
   const safePlan = plan || { sph: 0, cyl: 0, ax: 0 };
 
   const updateEnhPower = (field: 'sph' | 'cyl' | 'ax', isPlus: boolean, step: number) => {
-    const cur = (safePlan as any)[field] || 0;
+    const latestPlan = (useSessionStore.getState().enhancementPlan as any)?.[eye] || { sph: 0, cyl: 0, ax: 0 };
+    const cur = parseFloat(String((latestPlan as any)[field])) || 0;
     let next = cur;
 
     if (field === 'sph' || field === 'cyl') {
@@ -42,6 +43,7 @@ function EnhancementResult({ eye, laser, onReset }: any) {
     }
     
     setEnhancementField(eye, field as any, next);
+    haptic.light();
   };
 
   try {

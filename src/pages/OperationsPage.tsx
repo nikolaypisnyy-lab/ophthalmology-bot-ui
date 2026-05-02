@@ -109,6 +109,32 @@ function MonthCalendar({
   );
 }
 
+// ── Хелпер: детали катарактального пациента ──────────────────────────────────
+function buildCatDetails(p: any): { short: string; full: string } {
+  const eye = (p.eye || 'OU').toUpperCase();
+  const eyeKey = eye === 'OS' ? 'os' : 'od';
+
+  const lens: string = p.iolResult?.lens || '';
+  const pow = p.iolResult?.[eyeKey]?.selectedPower ?? p.iolResult?.power;
+  const powStr = pow != null ? `${Number(pow).toFixed(2)} D` : '';
+
+  const toric = p.toricResults?.[eyeKey];
+  const toricModel: string = toric?.best_model ?? p.iolResult?.[eyeKey]?.selectedToricModel ?? '';
+  const toricAxis = toric?.total_steep_axis ?? p.iolResult?.[eyeKey]?.toricAxis;
+  const toricCyl = toric?.table?.find((r: any) => r.model === toricModel)?.cyl_iol;
+
+  if (toricModel) {
+    // Формат: SN6AT 22.5D T3 +2.25D @163°
+    const cylStr = toricCyl != null ? ` +${Number(toricCyl).toFixed(2)}D` : '';
+    const axStr  = toricAxis != null ? ` @${Math.round(toricAxis)}°` : '';
+    const short  = `${lens} ${powStr} ${toricModel}${cylStr}${axStr}`.trim();
+    return { short, full: short };
+  }
+
+  const short = [lens, powStr].filter(Boolean).join(' ');
+  return { short, full: short };
+}
+
 // ── Страница ──────────────────────────────────────────────────────────────────
 
 export function OperationsPage() {
@@ -116,7 +142,7 @@ export function OperationsPage() {
   const [selDay, setSelDay] = useState(today);
   const { patients, reorderPatients } = usePatientStore();
   const { openPatient } = useUIStore();
-  const { language } = useClinicStore();
+  const { language, activeName } = useClinicStore();
   const { tg, haptic } = useTelegram();
   const t = T(language);
   
@@ -131,21 +157,46 @@ export function OperationsPage() {
       if (!ok) return;
       try {
         const payload = {
+          clinic_name: activeName || 'Clinic',
           date: selDay,
-          patients: dayPatients.map(p => ({
-            id: p.id,
-            name: p.name,
-            type: p.type,
-            eye: p.eye,
-            iol: p.iolResult?.lens,
-            power: (p.iolResult as any)?.[p.eye?.toLowerCase() === 'os' ? 'os' : 'od']?.selectedPower ?? (p.iolResult as any)?.power,
-            status: p.status
-          }))
+          patients: dayPatients.map((p) => {
+            const eye = (p.eye || 'OU').toUpperCase();
+            let details = '';
+            if (p.type === 'cataract') {
+              details = buildCatDetails(p).full || '—';
+            } else {
+              const plan = (p as any).savedPlan;
+              const odPlan = plan?.od;
+              const osPlan = plan?.os;
+              const flapDepth = (p as any).capOrFlap;
+              const isPRK = (p as any).isPRK;
+              const flapSuffix = !isPRK && flapDepth ? ` flap ${flapDepth}µm` : '';
+              const parts: string[] = [];
+              const fmtPlan = (side: string, pl: any) =>
+                `${side}: ${Number(pl.sph) >= 0 ? '+' : ''}${Number(pl.sph).toFixed(2)} ${Number(pl.cyl).toFixed(2)} x${pl.ax}°${flapSuffix}`;
+              if ((eye === 'OD' || eye === 'OU') && odPlan?.sph != null && (Number(odPlan.sph) !== 0 || Number(odPlan.cyl) !== 0))
+                parts.push(fmtPlan('OD', odPlan));
+              if ((eye === 'OS' || eye === 'OU') && osPlan?.sph != null && (Number(osPlan.sph) !== 0 || Number(osPlan.cyl) !== 0))
+                parts.push(fmtPlan('OS', osPlan));
+              details = parts.join('  ');
+            }
+
+            return {
+              id: String(p.id),
+              name: p.name || '—',
+              age: p.age || '',
+              sex: p.sex || '',
+              eye,
+              type: p.type,
+              details: details || '—',
+            };
+          }),
         };
         await apiPost('/send_surgical_pdf', payload);
-        tg.showAlert(language === 'ru' ? 'PDF отправлен!' : 'PDF Sent!');
+        tg.showAlert(language === 'ru' ? 'PDF отправлен в Telegram!' : 'PDF sent to Telegram!');
       } catch (err: any) {
-        tg.showAlert(`Error: ${err.message}`);
+        const msg = typeof err.message === 'string' ? err.message : 'Request failed';
+        tg.showAlert(`Error: ${msg}`);
       }
     });
   };
@@ -189,16 +240,10 @@ export function OperationsPage() {
   };
 
   return (
-    <div style={{ background: C.bg, minHeight: '100vh', width: '100%', position: 'relative' }}>
-      {/* Шапка (Календарь + Заголовок) - Сделаем её просто частью потока, если липкость ломает рендер */}
-      <div style={{ background: C.bg, paddingBottom: 8 }}>
-        {/* Календарь */}
-        <div style={{ padding: '12px 16px 0' }}>
-          <MonthCalendar selected={selDay} onChange={setSelDay} markedDates={markedDates} />
-        </div>
-
-        {/* Заголовок дня */}
-        <div style={{ padding: '20px 16px 8px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+    <div style={{ display: 'flex', flexDirection: 'column', height: '100dvh', background: C.bg, overflow: 'hidden' }}>
+      {/* ФИКСИРОВАННЫЙ заголовок дня */}
+      <div style={{ background: C.bg, paddingBottom: 8, borderBottom: `1px solid ${C.border}30`, zIndex: 100 }}>
+        <div style={{ padding: '14px 16px 8px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
             <div style={{ fontFamily: F.sans, fontSize: 13, fontWeight: 700, color: C.text, display: 'flex', alignItems: 'center', gap: 6 }}>
                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"/></svg>
@@ -216,7 +261,7 @@ export function OperationsPage() {
                 }}
               >
                 <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M6 9V2h12v7M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2M6 14h12v8H6z"/></svg>
-                {language === 'ru' ? 'ПЕЧАТЬ' : 'PRINT'}
+                {language === 'ru' ? 'ПЛАН' : 'PRINT'}
               </button>
             )}
           </div>
@@ -225,16 +270,21 @@ export function OperationsPage() {
             fontFamily: F.mono, fontSize: 11, fontWeight: 700,
             padding: '4px 12px', borderRadius: 20, border: `1px solid ${C.accent}20`
           }}>
-            {dayPatients.length} {language === 'ru' ? 'ПАЦИЕНТОВ' : 'PATIENTS'}
+            {dayPatients.length} {language === 'ru' ? 'ПАЦ' : 'PTS'}
           </span>
         </div>
       </div>
 
-      {/* Список операций */}
-      <div style={{ padding: '8px 16px 120px', width: '100%' }}>
+      {/* Список операций - СКРОЛЛИРУЕМЫЙ */}
+      <div style={{ flex: 1, overflowY: 'auto', WebkitOverflowScrolling: 'touch', padding: '0 16px 120px' }}>
+          {/* Календарь - теперь внутри скролла (скрывается при свайпе вверх) */}
+          <div style={{ padding: '12px 0 20px', borderBottom: `1px solid ${C.border}20`, marginBottom: 12 }}>
+            <MonthCalendar selected={selDay} onChange={setSelDay} markedDates={markedDates} />
+          </div>
+
           {dayPatients.length === 0 && (
             <div style={{ textAlign: 'center', padding: 48, color: C.muted, fontFamily: F.sans, fontSize: 14 }}>
-              {language === 'ru' ? 'На этот день операций не запланировано' : 'No operations scheduled for this day'}
+              {language === 'ru' ? 'На этот день нет операций' : 'No operations today'}
             </div>
           )}
           {dayPatients.map((p, i) => {
@@ -362,27 +412,24 @@ export function OperationsPage() {
                     </div>
 
                     {/* IOL Details for Cataract */}
-                    {p.type === 'cataract' && (
-                      <div style={{ 
-                        marginTop: 4, padding: '2px 8px', borderRadius: 6, 
-                        background: 'rgba(255,255,255,0.03)', border: `1px solid ${C.border}40`,
-                        display: 'inline-flex', alignItems: 'center', gap: 6
-                      }}>
-                        <span style={{ fontSize: 8, fontWeight: 800, color: C.tertiary, textTransform: 'uppercase' }}>{language === 'ru' ? 'ПЛАН:' : 'PLAN:'}</span>
-                        <span style={{ fontFamily: F.mono, fontSize: 10, fontWeight: 700, color: C.cat }}>
-                          {p.iolResult?.lens || (language === 'ru' ? 'ИОЛ не выбрана' : 'No IOL Selected')}
-                        </span>
-                        <div style={{ width: 1, height: 8, background: C.border, opacity: 0.3 }} />
-                        <span style={{ fontFamily: F.mono, fontSize: 11, fontWeight: 900, color: C.primary }}>
-                          {(() => {
-                            const eye = p.eye?.toLowerCase() === 'os' ? 'os' : 'od';
-                            const pwr = p.iolResult?.[eye]?.selectedPower ?? (p.iolResult as any)?.power;
-                            if (pwr === undefined || pwr === null || pwr === '—') return '0.0';
-                            return typeof pwr === 'number' ? pwr.toFixed(2) : pwr;
-                          })()} D
-                        </span>
-                      </div>
-                    )}
+                    {p.type === 'cataract' && (() => {
+                      const det = buildCatDetails(p);
+                      if (!det.short) return null;
+                      return (
+                        <div style={{
+                          marginTop: 4, padding: '3px 8px', borderRadius: 6,
+                          background: C.surface2, border: `1px solid ${C.border}40`,
+                          display: 'inline-flex', alignItems: 'center', gap: 6
+                        }}>
+                          <span style={{ fontSize: 8, fontWeight: 800, color: C.tertiary, textTransform: 'uppercase' }}>
+                            {language === 'ru' ? 'ПЛАН:' : 'PLAN:'}
+                          </span>
+                          <span style={{ fontFamily: F.mono, fontSize: 10, fontWeight: 700, color: C.cat }}>
+                            {det.short || (language === 'ru' ? 'ИОЛ не выбрана' : 'No IOL')}
+                          </span>
+                        </div>
+                      );
+                    })()}
                   </div>
 
                   {/* Статус / Действие */}
@@ -418,7 +465,7 @@ export function OperationsPage() {
               </div>
             );
           })}
+        </div>
       </div>
-    </div>
-  );
+    );
 }

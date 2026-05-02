@@ -13,6 +13,7 @@ import { SettingsModal } from './features/settings/SettingsModal';
 import { NewPatientModal } from './features/patient-card/NewPatientModal';
 import { useClinicStore } from './store/useClinicStore';
 import { T } from './constants/translations';
+import { DisclaimerModal, useDisclaimerAccepted } from './features/disclaimer/DisclaimerModal';
 
 // При ошибке хуков (HMR mismatch) — авто-перезагрузка страницы (один раз)
 class HooksErrorBoundary extends React.Component<
@@ -45,6 +46,7 @@ class HooksErrorBoundary extends React.Component<
 // ── Глобальные стили ──────────────────────────────────────────────────────────
 
 function GlobalStyles() {
+  useClinicStore(s => s.theme); // подписка на смену темы → ре-рендер
   return (
     <style>{`
       @import url('https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500;700&display=swap');
@@ -191,16 +193,17 @@ function AppHeader({ title }: { title: string }) {
 
 function BottomNav() {
   const { navTab, setNavTab } = useUIStore();
-  const { language } = useClinicStore();
+  const { language, theme } = useClinicStore();
   const { haptic } = useTelegram();
   const t = T(language);
   const items = getNavItems(t);
-  
+  const navBg = theme === 'light' ? 'rgba(240,242,248,0.97)' : 'rgba(5,6,12,0.95)';
+
   return (
     <div style={{
-      display: 'grid', 
+      display: 'grid',
       gridTemplateColumns: 'repeat(3, 1fr)',
-      background: 'rgba(5, 6, 12, 0.95)',
+      background: navBg,
       backdropFilter: 'blur(25px)',
       WebkitBackdropFilter: 'blur(25px)',
       borderTop: `1px solid ${C.border}`,
@@ -266,7 +269,7 @@ function CardSkeleton({ onBack, t }: { onBack: () => void; t: any }) {
       background: C.bg, display: 'flex', flexDirection: 'column',
     }}>
       <div style={{
-        background: `linear-gradient(to bottom, #111425 0%, #0a0d16 100%)`,
+        background: `linear-gradient(to bottom, ${C.surface} 0%, ${C.bg} 100%)`,
         padding: 'max(16px, env(safe-area-inset-top, 0px)) 16px 12px',
         borderBottom: `1px solid ${C.border}`,
       }}>
@@ -314,6 +317,7 @@ export function App() {
   const { openDraft, closeDraft, draft } = useSessionStore();
   const { initClinics, initialized, error: clinicError, language } = useClinicStore();
   const [cardLoading, setCardLoading] = useState(false);
+  const [disclaimerAccepted, setDisclaimerAccepted] = useState(useDisclaimerAccepted);
   const { tg, haptic } = useTelegram();
   const t = T(language);
 
@@ -439,7 +443,7 @@ export function App() {
           <>
             {(ocrOpen || settingsOpen || !!openPatientId || showNewPatientModal) && (
               <div 
-                style={{ position: 'fixed', top: 0, left: 0, width: 40, height: '100%', zIndex: 99999, touchAction: 'none' }} 
+                style={{ position: 'fixed', top: 100, left: 0, width: 30, height: 'calc(100% - 100px)', zIndex: 99999, touchAction: 'none' }} 
                 onTouchStart={handleEdgeTouchStart} 
                 onTouchMove={handleEdgeTouchMove} 
                 onTouchEnd={handleEdgeTouchEnd}
@@ -463,6 +467,7 @@ export function App() {
 
             {openPatientId && <PatientCard />}
             {settingsOpen && <SettingsModal />}
+            {!disclaimerAccepted && <DisclaimerModal onAccept={() => setDisclaimerAccepted(true)} />}
             {showNewPatientModal && <NewPatientModal />}
             {ocrOpen && <OCRModal />}
             {cardLoading && <CardSkeleton onBack={handleBack} t={t} />}

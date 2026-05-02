@@ -68,6 +68,8 @@ export interface EyeData {
   wtw: string;  // white-to-white, мм
   iop: string;  // ВГД
   acd: string;  // передняя камера (для ref пациентов)
+  al: string;   // axial length (ПЗО)
+  lt: string;   // lens thickness
 }
 
 /** Результат расчёта плана ЛКЗ для одного глаза */
@@ -139,6 +141,6 @@ export function newEyeData(): EyeData {
     p_ant_k: '', p_ant_c: '', p_ant_a: '', 
     p_post_k: '', p_post_c: '', p_post_a: '', 
     p_tot_k: '', p_tot_c: '', p_tot_a: '',
-    cct: '', wtw: '', iop: '', acd: '',
+    cct: '', wtw: '', iop: '', acd: '', al: '', lt: '',
   };
 }

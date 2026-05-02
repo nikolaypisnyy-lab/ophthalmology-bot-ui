@@ -1,5 +1,6 @@
 import React, { useRef } from 'react';
 import { C } from '../../constants/design';
+import { useClinicStore } from '../../store/useClinicStore';
 
 // Запретить HMR для этого файла — любое изменение вызывает полный перезапуск страницы
 if ((import.meta as any).hot) (import.meta as any).hot.decline();
@@ -20,6 +21,7 @@ export function PatientCard() {
   const { activeTab, activeEye, closePatient, setActiveEye, setPlanEye, setResultEye } = useUIStore();
   const { savePatient } = usePatientStore();
   const { haptic } = useTelegram();
+  void useClinicStore(s => s.theme); // подписка → ре-рендер при смене темы
   const [isSaving, setIsSaving] = React.useState(false);
   const bodyRef = useRef<HTMLDivElement>(null);
   const touchStartX = useRef(0);
@@ -60,20 +62,21 @@ export function PatientCard() {
 
   // Solid Ocular Background (Non-transparent)
   const bgGradient = activeEye === 'od'
-    ? `linear-gradient(160deg, #0a0d1a 0%, ${C.bg} 100%)`
-    : `linear-gradient(160deg, #091a14 0%, ${C.bg} 100%)`;
+    ? `linear-gradient(160deg, ${C.odLt}, transparent), ${C.bg}`
+    : `linear-gradient(160deg, ${C.osLt}, transparent), ${C.bg}`;
 
   const handleSave = async () => {
     if (isSaving || !draft) return;
     setIsSaving(true);
     try {
       // Собираем финальные данные
-      const { 
-        iolResult, 
+      const {
+        iolResult,
         formulaResults,
-        enhancementPlan, 
-        refPlan, 
-        planTweaked 
+        toricResults,
+        enhancementPlan,
+        refPlan,
+        planTweaked
       } = useSessionStore.getState();
 
       const updated = { ...draft } as any;
@@ -88,9 +91,12 @@ export function PatientCard() {
         updated.formulaResults = formulaResults;
       }
 
-      // Сохраняем результаты ИОЛ (если есть)
+      // Сохраняем результаты ИОЛ и торика (если есть)
       if (iolResult) {
         updated.iolResult = iolResult;
+      }
+      if (toricResults) {
+        updated.toricResults = toricResults;
       }
 
       // Если план ЛКЗ — сохраняем savedPlan

@@ -94,5 +94,15 @@ export function calcEx500(
     final_sph = final_sph * 1.10;
   }
 
+  // Цилиндровая поправка к сфере
+  const absCyl = Math.abs(cylinder);
+  if (absCyl > 2.0) {
+    final_sph = final_sph * 1.15;
+  } else if (absCyl > 1.5) {
+    final_sph = final_sph * 1.12;
+  } else if (absCyl > 0.5) {
+    final_sph = final_sph * 1.07;
+  }
+
   return { sph: final_sph, cyl: cylinder + c_corr };
 }

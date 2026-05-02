@@ -23,6 +23,7 @@ export interface BiometryData {
   tk1?: string;   // Total Keratometry K1
   tk2?: string;   // Total Keratometry K2
   tk_ax?: string; // Total Keratometry Axis
+  k2_ax?: string; // Axis K2, °
 }
 
 /** Дефолтная биометрия */

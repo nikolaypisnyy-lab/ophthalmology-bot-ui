@@ -76,6 +76,10 @@ interface UIStore {
   setEditingField: (f: string | null) => void;
   tempValue: string;
   setTempValue: (v: string) => void;
+
+  // ── Сравнение формул ИОЛ ─────────────────────────────────────────────────────
+  comparisonFormulas: string[];
+  toggleComparisonFormula: (f: string) => void;
 }
 
 export const useUIStore = create<UIStore>((set) => ({
@@ -152,4 +156,17 @@ export const useUIStore = create<UIStore>((set) => ({
   setEditingField: (f) => set({ editingField: f }),
   tempValue: '',
   setTempValue: (v) => set({ tempValue: v }),
+
+  // Сравнение формул
+  comparisonFormulas: [],
+  toggleComparisonFormula: (f) => set(state => {
+    const exists = state.comparisonFormulas.includes(f);
+    if (exists) {
+      return { comparisonFormulas: state.comparisonFormulas.filter(x => x !== f) };
+    } else {
+      // Максимум 3 для адекватного отображения на мобилке
+      if (state.comparisonFormulas.length >= 2) return state; 
+      return { comparisonFormulas: [...state.comparisonFormulas, f] };
+    }
+  }),
 }));

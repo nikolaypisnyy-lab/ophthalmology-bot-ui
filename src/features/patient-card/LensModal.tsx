@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { C, F } from '../../constants/design';
 import { useSessionStore } from '../../store/useSessionStore';
 import { useTelegram } from '../../hooks/useTelegram';
+import { IOL_DB } from '../../constants/iol-db';
 
 interface IOLModel {
   id: string;
@@ -11,17 +12,38 @@ interface IOLModel {
   const: number;
 }
 
-const IOL_DATABASE: IOLModel[] = [
-  { id: 'sn60wf', brand: 'Alcon', model: 'AcrySof IQ (SN60WF)', type: 'Monofocal', const: 119.1 },
-  { id: 'clareon', brand: 'Alcon', model: 'Clareon (CNA0T0)', type: 'Monofocal', const: 119.4 },
-  { id: 'zcb00', brand: 'J&J', model: 'Tecnis (ZCB00)', type: 'Monofocal', const: 119.3 },
-  { id: 'eyhance', brand: 'J&J', model: 'Tecnis Eyhance (ICB00)', type: 'EDOF', const: 119.3 },
-  { id: 'at_lisa', brand: 'Zeiss', model: 'AT LISA tri 839MP', type: 'Multifocal', const: 118.6 },
-  { id: 'at_lara', brand: 'Zeiss', model: 'AT LARA 829MP', type: 'EDOF', const: 118.4 },
-  { id: 'vivity', brand: 'Alcon', model: 'AcrySof IQ Vivity (DFT015)', type: 'EDOF', const: 119.2 },
-  { id: 'panoptix', brand: 'Alcon', model: 'AcrySof IQ PanOptix (TFNT00)', type: 'Multifocal', const: 119.1 },
-  { id: 'enavista', brand: 'Hoya', model: 'enVista (MX60E)', type: 'Monofocal', const: 119.1 },
-];
+function extractBrand(name: string): string {
+  if (name.startsWith('Alcon') || name.startsWith('AcrySof')) return 'Alcon';
+  if (name.startsWith('B+L') || name.startsWith('Bausch')) return 'B+L';
+  if (name.startsWith('J&J') || name.startsWith('J+J') || name.startsWith('Sensar')) return 'J&J';
+  if (name.startsWith('Hoya')) return 'Hoya';
+  if (name.startsWith('Zeiss')) return 'Zeiss';
+  if (name.startsWith('Rayner')) return 'Rayner';
+  if (name.startsWith('SIFI')) return 'SIFI';
+  if (name.startsWith('HumanOptics')) return 'HumanOptics';
+  if (name.startsWith('AST')) return 'AST';
+  if (name.startsWith('Lenstec')) return 'Lenstec';
+  if (name.startsWith('Ophtec')) return 'Ophtec';
+  return name.split(' ')[0];
+}
+
+function detectType(name: string): 'Monofocal' | 'Toric' | 'Multifocal' | 'EDOF' {
+  const n = name.toLowerCase();
+  if (n.includes('toric') || n.includes('zct') || n.includes('sn6at') || n.includes('snd1t') || n.includes('sv25t')) return 'Toric';
+  if (n.includes('panoptix') || n.includes('tfnt') || n.includes('lisa') || n.includes('trifocal') || n.includes('triv')) return 'Multifocal';
+  if (n.includes('vivity') || n.includes('dft') || n.includes('lara') || n.includes('emv') || n.includes('eyhance') || n.includes('well') || n.includes('envy') || n.includes('diu') || n.includes('aspire')) return 'EDOF';
+  return 'Monofocal';
+}
+
+const IOL_DATABASE: IOLModel[] = IOL_DB
+  .filter(l => l.name !== 'Personal Constant')
+  .map(l => ({
+    id: l.name.replace(/[\s().+&/]/g, '_').toLowerCase(),
+    brand: extractBrand(l.name),
+    model: l.name,
+    type: detectType(l.name),
+    const: l.a_kane || l.a || 119.0,
+  }));
 
 interface LensModalProps {
   isOpen: boolean;

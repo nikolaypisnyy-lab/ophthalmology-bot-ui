@@ -139,215 +139,15 @@ function PatientCard({
 
 // ── Форма нового пациента ─────────────────────────────────────────────────────
 
-function NewPatientModal({ onClose, onSave }: {
-  onClose: () => void;
-  onSave: (data: Partial<PatientSummary>, measurements?: any) => void;
-}) {
-  const { openOCR } = useUIStore();
-  const { language } = useClinicStore();
-  const t = T(language);
-  const [name, setName] = useState('');
-  const [age, setAge] = useState('');
-  const [sex, setSex] = useState<'М' | 'Ж' | ''>('');
-  const [type, setType] = useState<'refraction' | 'cataract'>('refraction');
-  const [eye, setEye] = useState<'OU' | 'OD' | 'OS'>('OU');
-  const [ocrData, setOcrData] = useState<any>(null);
-
-  const handleScan = () => {
-    openOCR(undefined, (data) => {
-      setOcrData(data);
-      if (data.name || data.patient_name) setName(data.name || data.patient_name);
-      if (data.age || data.patient_age) setAge(String(data.age || data.patient_age));
-      const s = String(data.sex || data.patient_sex || '').toUpperCase();
-      if (s.startsWith('М')) setSex('М');
-      else if (s.startsWith('Ж')) setSex('Ж');
-    });
-  };
-
-  const valid = name.trim().length > 1;
-
-  return (
-    <div
-      style={{
-        position: 'fixed', inset: 0, zIndex: 150,
-        background: 'rgba(5, 6, 12, 0.85)',
-        backdropFilter: 'blur(20px)',
-        WebkitBackdropFilter: 'blur(20px)',
-        display: 'flex', flexDirection: 'column', justifyContent: 'flex-end',
-      }}
-      onClick={onClose}
-    >
-      <div
-        className="fi-up"
-        style={{
-          background: C.bg,
-          borderTop: `1px solid ${C.border}`,
-          borderRadius: '32px 32px 0 0',
-          padding: '24px 20px calc(24px + env(safe-area-inset-bottom,0px))',
-          display: 'flex', flexDirection: 'column', gap: 16,
-          maxHeight: '90vh', overflowY: 'auto'
-        }}
-        onClick={e => e.stopPropagation()}
-      >
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 4 }}>
-          <div>
-            <h2 style={{ fontFamily: F.sans, fontSize: 20, fontWeight: 700, color: C.text, margin: 0 }}>
-              {t.newPatient}
-            </h2>
-            <p style={{ fontFamily: F.sans, fontSize: 12, color: C.muted2, margin: '4px 0 0' }}>
-              {t.scanRecords}
-            </p>
-          </div>
-          <button
-            onClick={handleScan}
-            style={{ 
-              padding: '10px 14px', borderRadius: 14, 
-              border: `1px solid ${C.indigo}40`, background: `${C.indigo}15`,
-              color: C.indigo, fontWeight: 700, fontSize: 13,
-              display: 'flex', alignItems: 'center', gap: 6,
-              cursor: 'pointer'
-            }}
-          >
-            <svg width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2.5">
-              <path d="M3 7V5a2 2 0 012-2h2M17 3h2a2 2 0 012 2v2M21 17v2a2 2 0 01-2 2h-2M7 21H5a2 2 0 01-2-2v-2M12 12h.01" strokeLinecap="round" />
-            </svg>
-            {t.scan}
-          </button>
-        </div>
-
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-          <label style={{ fontFamily: F.mono, fontSize: 10, color: C.muted2, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.08em', marginLeft: 4 }}>{t.fullName}</label>
-          <input
-            value={name}
-            onChange={e => setName(e.target.value)}
-            placeholder="John Doe"
-            autoFocus
-            style={{
-              background: C.surface, border: `1px solid ${C.border}`,
-              borderRadius: R.md, padding: '14px 16px',
-              fontFamily: F.sans, fontSize: 15, color: C.text,
-              outline: 'none', transition: 'all 0.2s',
-            }}
-            onFocus={(e) => e.target.style.borderColor = C.indigo}
-            onBlur={(e) => e.target.style.borderColor = C.border}
-          />
-        </div>
-
-        <div style={{ display: 'grid', gridTemplateColumns: '80px 1fr', gap: 12 }}>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-            <label style={{ fontFamily: F.mono, fontSize: 10, color: C.muted2, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.08em', marginLeft: 4 }}>{t.age}</label>
-            <input
-              type="number"
-              value={age}
-              placeholder="00"
-              onChange={e => setAge(e.target.value.slice(0, 3))}
-              style={{
-                width: '100%',
-                background: C.surface, border: `1px solid ${C.border}`,
-                borderRadius: R.md, padding: '14px 0',
-                fontFamily: F.mono, fontSize: 16, color: C.text,
-                outline: 'none', textAlign: 'center',
-              }}
-            />
-          </div>
-
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-            <label style={{ fontFamily: F.mono, fontSize: 10, color: C.muted2, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.08em', marginLeft: 4 }}>{t.gender}</label>
-            <div style={{ display: 'flex', gap: 8 }}>
-              {['М', 'Ж'].map(s => (
-                <button
-                  key={s}
-                  onClick={() => setSex(s as any)}
-                  style={{
-                    flex: 1, borderRadius: R.md, padding: '14px 0',
-                    fontFamily: F.sans, fontSize: 13, fontWeight: 700,
-                    background: sex === s ? (s === 'М' ? C.indigo : '#f472b6') : C.surface,
-                    color: sex === s ? '#fff' : C.muted2,
-                    border: sex === s ? 'none' : `1px solid ${C.border}`,
-                    transition: 'all 0.2s',
-                  }}
-                >
-                  {s === 'М' ? t.male : t.female}
-                </button>
-              ))}
-            </div>
-          </div>
-        </div>
-
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-          <label style={{ fontFamily: F.mono, fontSize: 10, color: C.muted2, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.08em', marginLeft: 4 }}>{t.clinicalPath}</label>
-          <div style={{ display: 'flex', gap: 8 }}>
-            {(['refraction', 'cataract'] as const).map(t => (
-              <button
-                key={t}
-                onClick={() => setType(t)}
-                style={{
-                  flex: 1, borderRadius: R.md, padding: '14px 0',
-                  fontFamily: F.sans, fontSize: 13, fontWeight: 700,
-                  background: type === t ? C.indigo : C.surface,
-                  color: type === t ? '#fff' : C.muted2,
-                  border: type === t ? 'none' : `1px solid ${C.border}`,
-                  transition: 'all 0.2s',
-                }}
-              >
-                {t[t as any] || (t === 'refraction' ? t.refraction : t.cataract)}
-              </button>
-            ))}
-          </div>
-        </div>
-
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-          <label style={{ fontFamily: F.mono, fontSize: 10, color: C.muted2, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.08em', marginLeft: 4 }}>{t.surgeryEye}</label>
-          <div style={{ display: 'flex', gap: 8 }}>
-            {(['OU', 'OD', 'OS'] as const).map(e => (
-              <button
-                key={e}
-                onClick={() => setEye(e)}
-                style={{
-                  flex: 1, borderRadius: R.md, padding: '14px 0',
-                  fontFamily: F.sans, fontSize: 13, fontWeight: 700,
-                  background: eye === e ? C.indigo : C.surface,
-                  color: eye === e ? '#fff' : C.muted2,
-                  border: eye === e ? 'none' : `1px solid ${C.border}`,
-                  transition: 'all 0.2s',
-                }}
-              >
-                {e}
-              </button>
-            ))}
-          </div>
-        </div>
-
-        <div style={{ display: 'flex', gap: 10, marginTop: 12 }}>
-          <Btn
-            variant="primary"
-            onClick={() => valid && onSave({ name: name.trim(), age, sex: sex || undefined, type, eye }, ocrData)}
-            disabled={!valid}
-            full
-            style={{
-              padding: '16px 0', borderRadius: R.md,
-              background: C.indigo,
-              boxShadow: `0 8px 24px ${C.indigo}40`,
-              fontWeight: 700, letterSpacing: '0.04em'
-            }}
-          >
-            {t.createPatient}
-          </Btn>
-        </div>
-      </div>
-    </div>
-  );
-}
 
 // ── Страница ──────────────────────────────────────────────────────────────────
 
 export function PatientsPage() {
   const { patients, loading, fetchPatients, savePatient, deletePatient } = usePatientStore();
-  const { searchQuery, setSearchQuery, typeFilter, setTypeFilter, openPatient, openOCR } = useUIStore();
+  const { searchQuery, setSearchQuery, typeFilter, setTypeFilter, openPatient, openOCR, openNewPatient } = useUIStore();
   const { language } = useClinicStore();
   const t = T(language);
   const { haptic } = useTelegram();
-  const [showNew, setShowNew] = useState(false);
 
   useEffect(() => { fetchPatients(); }, []);
 
@@ -408,7 +208,6 @@ export function PatientsPage() {
 
     const newP = await savePatient(patientPayload);
     if (newP?.id) {
-      setShowNew(false);
       openPatient(String(newP.id), 'bio');
     }
   };
@@ -423,7 +222,7 @@ export function PatientsPage() {
         <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
           <SearchBar value={searchQuery} onChange={setSearchQuery} placeholder={t.search} />
           <button
-            onClick={() => setShowNew(true)}
+            onClick={() => { haptic.light(); openNewPatient(); }}
             style={{
               width: 38, height: 38, borderRadius: 12, flexShrink: 0,
               background: C.accent, border: 'none', cursor: 'pointer',
@@ -493,12 +292,6 @@ export function PatientsPage() {
         ))}
       </div>
 
-      {showNew && (
-        <NewPatientModal
-          onClose={() => setShowNew(false)}
-          onSave={handleCreate}
-        />
-      )}
 
       <style>{`
         @keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }

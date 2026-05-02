@@ -121,7 +121,7 @@ export const T = (lang: Language) => {
       totalCases: 'Всего случаев',
       iolSuccess: 'Успех ИОЛ',
       lasikSuccess: 'Успех ЛКЗ',
-      nomogramTitle: 'ЛАЗЕРНЫЙ НОМОГРАММ',
+      nomogramTitle: 'ЛАЗЕРНАЯ НОМОГРАММА',
       proAnalytics: 'Про-аналитика',
       eyesAnalyzed: 'Глаз проанализировано',
       sphereSE: 'Сфера (SE)',

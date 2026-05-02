@@ -8,7 +8,7 @@ import { T } from '../../constants/translations';
 
 export function SettingsModal() {
   const { settingsOpen, closeSettings } = useUIStore();
-  const { clinics, activeClinicId, activeName, activeLaser, switchClinic, setActiveLaser, language, setLanguage } = useClinicStore();
+  const { clinics, activeClinicId, activeName, activeLaser, switchClinic, setActiveLaser, language, setLanguage, theme, setTheme } = useClinicStore();
   const [loading, setLoading] = useState(false);
   const [msg, setMsg] = useState<{ text: string; type: 'info' | 'error' } | null>(null);
   const t = T(language);
@@ -105,7 +105,9 @@ export function SettingsModal() {
           borderTopLeftRadius: 24, borderTopRightRadius: 24,
           padding: '24px 20px 48px',
           boxShadow: '0 -10px 40px rgba(0,0,0,0.5)',
-          animation: 'slideUp 0.3s cubic-bezier(0.16, 1, 0.3, 1)'
+          animation: 'slideUp 0.3s cubic-bezier(0.16, 1, 0.3, 1)',
+          maxHeight: '90vh', overflowY: 'auto',
+          WebkitOverflowScrolling: 'touch',
         }}
         onClick={e => e.stopPropagation()}
       >
@@ -246,6 +248,38 @@ export function SettingsModal() {
               </div>
             </div>
           )}
+
+          {/* Тема */}
+          <div style={{ marginTop: 8 }}>
+            <div style={{ paddingBottom: 8, borderBottom: `1px solid ${C.border}`, marginBottom: 8 }}>
+              <span style={{ fontSize: 11, fontWeight: 800, color: C.muted, textTransform: 'uppercase', letterSpacing: '.05em' }}>
+                {language === 'ru' ? 'Тема' : 'Theme'}
+              </span>
+            </div>
+            <div style={{ display: 'flex', gap: 6 }}>
+              {(['dark', 'light'] as const).map(t => {
+                const active = t === theme;
+                return (
+                  <button
+                    key={t}
+                    onClick={() => setTheme(t)}
+                    style={{
+                      flex: 1, padding: '10px', borderRadius: 14,
+                      background: active ? C.accentLt : C.surface2,
+                      border: `1px solid ${active ? C.accent : C.border}`,
+                      color: active ? C.accent : C.text,
+                      fontFamily: F.sans, fontSize: 13, fontWeight: active ? 700 : 500,
+                      cursor: active ? 'default' : 'pointer',
+                      display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6,
+                    }}
+                  >
+                    {t === 'dark' ? '🌙' : '☀️'}
+                    {t === 'dark' ? (language === 'ru' ? 'Тёмная' : 'Dark') : (language === 'ru' ? 'Светлая' : 'Light')}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
 
           {/* Язык */}
           <div style={{ marginTop: 8 }}>

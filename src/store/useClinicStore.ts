@@ -1,5 +1,6 @@
 import { create } from 'zustand';
 import { apiGet, setActiveClinicId } from '../api/client';
+import { setAppTheme } from '../constants/design';
 
 const LS_CLINIC      = 'rm_clinic_id';
 const LS_CLINIC_NAME = 'rm_clinic_name';
@@ -7,6 +8,7 @@ const LS_PATIENTS    = 'rm_patients';
 const LS_PDATA       = 'rm_pdata';
 
 export type Language = 'en' | 'ru';
+export type Theme = 'dark' | 'light';
 
 export interface Clinic {
   clinic_id:   string;
@@ -25,6 +27,10 @@ interface ClinicStore {
   recommendedNomoCyl: number | null;
   language:        Language;
   setLanguage:     (lang: Language) => void;
+  theme:           Theme;
+  setTheme:        (t: Theme) => void;
+  initialized?:    boolean;
+  error?:          string | null;
   initClinics:     () => Promise<void>;
   switchClinic:    (id: string) => void;
   setActiveLaser:  (id: string) => void;
@@ -43,6 +49,7 @@ export const useClinicStore = create<ClinicStore>((set, get) => ({
   recommendedNomo: null,
   recommendedNomoCyl: null,
   language:       'en',
+  theme:          ((): Theme => { try { return (localStorage.getItem('rm_theme') as Theme) || 'dark'; } catch { return 'dark'; } })(),
   initialized:    false,
   error:          null,
 
@@ -164,5 +171,10 @@ export const useClinicStore = create<ClinicStore>((set, get) => ({
   setLanguage: (lang) => {
     localStorage.setItem('rm_lang', lang);
     set({ language: lang });
+  },
+  setTheme: (theme) => {
+    localStorage.setItem('rm_theme', theme);
+    setAppTheme(theme === 'dark');
+    set({ theme });
   },
 }));

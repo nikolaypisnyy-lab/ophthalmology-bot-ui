@@ -1,5 +1,6 @@
 import React from 'react';
 import { C, F, R } from '../../constants/design';
+import { useClinicStore } from '../../store/useClinicStore';
 
 interface CorneaSafetyCardProps {
   eye: 'od' | 'os';
@@ -13,9 +14,10 @@ interface CorneaSafetyCardProps {
   isWarnRSB?: boolean;
 }
 
-export function CorneaSafetyCard({ 
-  eye, cct, flap, abl, rsb, pta, kpost, kpre, isWarnRSB 
+export function CorneaSafetyCard({
+  eye, cct, flap, abl, rsb, pta, kpost, kpre, isWarnRSB
 }: CorneaSafetyCardProps) {
+  void useClinicStore(s => s.theme);
   const eyeColor = eye === 'od' ? C.od : C.os;
   const isDangerRSB = rsb < 300;
   const isWarnPTA = pta >= 40;
@@ -63,7 +65,7 @@ export function CorneaSafetyCard({
 
       {/* Corneal Stack Viz */}
       <div style={{
-        background: '#05060c', border: `1px solid ${C.border}`,
+        background: C.bgHi,border: `1px solid ${C.border}`,
         borderRadius: '12px', padding: '16px 14px 12px',
         position: 'relative'
       }}>
@@ -164,7 +166,7 @@ function MetricCard({ label, value, unit, sub, pct, color = C.text, barColor, ma
   
   return (
     <div style={{
-      background: '#05060c', 
+      background: C.bgHi,
       border: `1px solid ${isABL ? 'rgba(251, 191, 36, 0.3)' : C.border}`,
       borderRadius: '11px', padding: '10px 12px', position: 'relative',
       boxShadow: isABL ? '0 0 20px rgba(251, 191, 36, 0.08)' : 'none',

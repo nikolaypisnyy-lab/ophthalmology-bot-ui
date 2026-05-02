@@ -21,7 +21,8 @@ export function CataractPlanTab() {
   const k1 = parseFloat(eyeData.k1 || '0');
   const k2 = parseFloat(eyeData.k2 || '0');
   const k1Ax = parseFloat(eyeData.k_ax || '0');
-  const steepAx = k2 > k1 ? (k1Ax + 90) % 180 : k1Ax;
+  const hasPentacam = !!(eyeData.p_tot_c || eyeData.p_tot_k);
+  const steepAx = hasPentacam ? (parseFloat(eyeData.p_tot_a || '0') + 90) % 180 : (k2 > k1 ? (k1Ax + 90) % 180 : k1Ax);
 
   const toricOn = !!(draft as any).toricMode;
   const toric = toricResults?.[planEye];
@@ -41,11 +42,6 @@ export function CataractPlanTab() {
         <span style={{ fontSize: 11, fontWeight: 900, color: toricOn ? C.amber : C.muted3, textTransform: 'uppercase', letterSpacing: '0.04em' }}>
           Toric IOL {toricOn ? 'ON' : 'OFF'}
         </span>
-        {toricOn && toric && (
-          <span style={{ marginLeft: 'auto', fontSize: 11, fontWeight: 900, color: C.amber, fontFamily: F.mono }}>
-            {toric.best_model} @ {toric.total_steep_axis}°
-          </span>
-        )}
       </div>
 
       {/* IMPLANTATION SCHEMATIC */}

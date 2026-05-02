@@ -386,8 +386,9 @@ export const usePatientStore = create<PatientStore>((set, get) => ({
       isCustomViewOS: patient.isCustomViewOS,
       astigStrategyOD: patient.od?.astigStrategy,
       astigStrategyOS: patient.os?.astigStrategy,
-      // Сохраняем iolResult и savedPlan в summary
+      // Сохраняем iolResult, toricResults и savedPlan в summary
       iolResult: patient.iolResult,
+      toricResults: (patient as any).toricResults,
       savedPlan: patient.savedPlan,
     } as PatientSummary;
 

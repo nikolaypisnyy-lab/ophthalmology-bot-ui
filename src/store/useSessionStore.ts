@@ -57,7 +57,24 @@ export const useSessionStore = create<SessionStore>()(
       iolProgress: 0,
       toricResults: { od: null, os: null },
       isRounding: true,
-      toggleRounding: () => set(state => ({ isRounding: !state.isRounding })),
+      toggleRounding: () => set(state => {
+        const next = !state.isRounding;
+        if (next && state.refPlan) {
+          const updated = { ...state.refPlan };
+          ['od', 'os'].forEach((eye: any) => {
+            if (updated[eye as 'od' | 'os']) {
+              const p = updated[eye as 'od' | 'os']!;
+              updated[eye as 'od' | 'os'] = {
+                ...p,
+                sph: Math.round(p.sph * 4) / 4,
+                cyl: Math.round(p.cyl * 4) / 4
+              };
+            }
+          });
+          return { isRounding: next, refPlan: updated };
+        }
+        return { isRounding: next };
+      }),
 
       openDraft: (patient, _initialTab) => {
         set({
@@ -104,11 +121,27 @@ export const useSessionStore = create<SessionStore>()(
           if (!state.draft) return state;
           const eyeData = { ...(state.draft[eye] ?? {}) } as any;
           eyeData[field] = value;
+          
           if (field === 'k1' || field === 'k2') {
             const k1 = parseFloat(eyeData.k1 || '0');
             const k2 = parseFloat(eyeData.k2 || '0');
             if (k1 > 0 && k2 > 0) eyeData.kavg = ((k1 + k2) / 2).toFixed(2);
           }
+
+          if (field === 'k1_ax' || field === 'k2_ax' || field === 'kerax') {
+            const v = parseFloat(value);
+            if (!isNaN(v)) {
+              let opposite = v + 90;
+              if (opposite >= 180) opposite -= 180;
+              const target = (field === 'k1_ax' || field === 'kerax') ? 'k2_ax' : 'k1_ax';
+              eyeData[target] = opposite.toString();
+              // If field was kerax, also set k1_ax for consistency in biometry
+              if (field === 'kerax') eyeData.k1_ax = value;
+              if (target === 'k1_ax' && field === 'k2_ax') eyeData.kerax = opposite.toString();
+              if (field === 'k1_ax') eyeData.kerax = value;
+            }
+          }
+          
           return { draft: { ...state.draft, [eye]: eyeData } };
         });
       },
@@ -117,8 +150,18 @@ export const useSessionStore = create<SessionStore>()(
         const bioKey = `bio_${eye}` as 'bio_od' | 'bio_os';
         set(state => {
           if (!state.draft) return state;
-          const bioData = state.draft[bioKey] ?? {};
-          return { draft: { ...state.draft, [bioKey]: { ...bioData, [field]: value } } };
+          const bioData = { ...(state.draft[bioKey] ?? {}) } as any;
+          bioData[field] = value;
+          if (field === 'k1_ax' || field === 'k2_ax') {
+            const v = parseFloat(value);
+            if (!isNaN(v)) {
+              let opposite = v + 90;
+              if (opposite >= 180) opposite -= 180;
+              const target = field === 'k1_ax' ? 'k2_ax' : 'k1_ax';
+              bioData[target] = opposite.toString();
+            }
+          }
+          return { draft: { ...state.draft, [bioKey]: bioData } };
         });
       },
 

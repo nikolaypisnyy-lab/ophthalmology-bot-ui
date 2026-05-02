@@ -106,14 +106,13 @@ class AstigVector:
 
 # ── Поправки ─────────────────────────────────────────────────────────────────
 
-def steep_axis_from_k(k1: float, k2: float, k_ax: float, k_ax_is_steep: bool = False) -> Tuple[float, float]:
+def steep_axis_from_k(k1: float, k2: float, k_ax: float, k_ax_is_steep: bool = True) -> Tuple[float, float]:
     """
     Определить цилиндр и ось крутого меридиана из кератометрии.
 
-    k_ax_is_steep=False (по умолчанию): k_ax — ось K1 (плоского меридиана)
-                                        стандарт IOLMaster / Lenstar
-    k_ax_is_steep=True:                 k_ax — ось K2 (крутого меридиана)
-                                        используется в части оборудования
+    k_ax_is_steep=True (по умолчанию):  k_ax — ось K2 (крутого меридиана)
+                                        как показывает IOLMaster/Lenstar в поле "axis"
+    k_ax_is_steep=False:                k_ax — ось K1 (плоского меридиана)
     """
     cyl = abs(k2 - k1)
     if cyl < 0.01:
@@ -221,14 +220,14 @@ def estimate_elp(acd: float, al: float, lens: str = "Alcon SN6AT") -> float:
 def calculate_autonomous_toric(
     k1: float,
     k2: float,
-    k1_axis: float,          # ось K1 (плоского меридиана) — стандарт IOLMaster
+    k1_axis: float,          # ось в поле k_ax (по умолчанию = ось K2, крутого меридиана)
     sia: float = 0.1,
     inc_axis: float = 90.0,
     al: float = 23.5,
     acd: float = 3.2,
     n_aq: float = 1.336,
     iol_db: str = "Alcon SN6AT",
-    k_ax_is_steep: bool = False,  # True если введена ось K2 (крутого)
+    k_ax_is_steep: bool = True,   # True = k_ax это ось K2 (крутого) — по умолчанию
 ) -> Dict[str, Any]:
     """
     Рассчитать рекомендацию торической ИОЛ.
@@ -253,7 +252,7 @@ def calculate_autonomous_toric(
         best_model:            рекомендованная модель
         table:                 полная таблица вариантов
     """
-    # 1. Определяем крутой меридиан и цилиндр
+    # 1. Крутой меридиан и цилиндр из кератометрии
     net_cyl, steep_ax = steep_axis_from_k(k1, k2, k1_axis, k_ax_is_steep)
 
     if net_cyl < 0.1:
@@ -268,27 +267,32 @@ def calculate_autonomous_toric(
                         "residual": 0, "res_axis": 0, "is_wtr": True}],
         }
 
-    # 2. Поправка Abulafia-Koch (PCA)
-    adj_cyl, adj_axis = apply_abulafia_koch(net_cyl, steep_ax, al)
+    # 2. ОСЬ ИМПЛАНТАЦИИ = крутой меридиан, скорректированный только на SIA.
+    #    Abulafia-Koch НЕ вращает ось — как в онлайн-калькуляторах (Alcon VERITAS).
+    #    SIA сдвигает ось незначительно для большинства случаев.
+    target_cyl, target_axis = apply_sia(net_cyl, steep_ax, sia, inc_axis)
 
-    # 3. SIA
-    final_cyl, final_axis = apply_sia(adj_cyl, adj_axis, sia, inc_axis)
+    # 3. Abulafia-Koch применяется ТОЛЬКО для определения нужного цилиндра ИОЛ
+    #    (сколько торической мощности нужно — с учётом PCA задней роговицы).
+    adj_cyl, _ = apply_abulafia_koch(net_cyl, steep_ax, al)
+    model_cyl, _ = apply_sia(adj_cyl, steep_ax, sia, inc_axis)
 
-    # 4. Вычисляем BVR из реальной биометрии
+    # 4. BVR из реальной биометрии
     km = (k1 + k2) / 2.0
     elp_mm = estimate_elp(acd, al, iol_db)
     bvr = compute_bvr(km, elp_mm, n_aq)
 
-    # 5. Подбираем линзу
+    # 5. Выбор модели: сравниваем Abulafia-Koch скорректированный цилиндр
+    #    с корнеальным цилиндром ИОЛ при размещении по target_axis.
     db = IOL_DATABASES.get(iol_db, IOL_DATABASES["Alcon SN6AT"])
-    v_target = AstigVector.from_polar(final_cyl, final_axis)
+    v_model_target = AstigVector.from_polar(model_cyl, target_axis)
 
     suggestions = [{
         "model": "None",
         "cyl_iol": 0.0,
         "cyl_cornea": 0.0,
-        "residual": round(final_cyl, 2),
-        "res_axis": round(final_axis, 0),
+        "residual": round(model_cyl, 2),
+        "res_axis": round(target_axis, 0),
         "is_wtr": True,
     }]
 
@@ -296,25 +300,22 @@ def calculate_autonomous_toric(
     min_residual = 99.0
 
     for m in db:
-        c_iol = m["cyl_iol"]
-        # Пересчёт из плоскости ИОЛ в плоскость роговицы
-        c_cornea = c_iol / bvr
+        c_iol    = m["cyl_iol"]
+        c_cornea = c_iol / bvr  # в плоскости роговицы
 
-        # Вектор коррекции — ИОЛ корректирует вдоль крутого меридиана
-        v_lens = AstigVector.from_polar(c_cornea, final_axis)
-        v_res = v_target - v_lens
+        # ИОЛ размещается по target_axis и корректирует c_cornea
+        v_lens = AstigVector.from_polar(c_cornea, target_axis)
+        v_res  = v_model_target - v_lens
         res_mag, res_ax = v_res.to_polar()
 
-        # Ось остаточного астигматизма в клинической нотации
-        # (перпендикулярная ось для minus-cylinder display)
         res_display_ax = (res_ax + 90.0) % 180.0
         if res_display_ax == 0:
             res_display_ax = 180.0
         is_wtr = 45.0 <= res_display_ax <= 135.0
 
         suggestions.append({
-            "model": m["model"],
-            "cyl_iol":   round(c_iol, 2),
+            "model":      m["model"],
+            "cyl_iol":    round(c_iol, 2),
             "cyl_cornea": round(c_cornea, 2),
             "residual":   round(res_mag, 2),
             "res_axis":   round(res_display_ax, 0),
@@ -325,15 +326,15 @@ def calculate_autonomous_toric(
             min_residual = res_mag
             best_model = m["model"]
 
-    # Предпочитаем WTR-остаток < 0.5D, иначе просто минимум
+    # Предпочитаем WTR-остаток < 0.5D, иначе минимум
     wtr_ok = [s for s in suggestions if s.get("is_wtr") and s["residual"] < 0.5]
     if wtr_ok:
         best_model = min(wtr_ok, key=lambda s: s["residual"])["model"]
 
     return {
         "net_corneal_cyl":       round(net_cyl, 2),
-        "total_corneal_cyl_adj": round(final_cyl, 2),
-        "total_steep_axis":      round(final_axis, 0),
+        "total_corneal_cyl_adj": round(model_cyl, 2),   # Abulafia-Koch скорр. цилиндр
+        "total_steep_axis":      round(target_axis, 0), # ОСЬ = SIA-adj., без A-K вращения
         "bvr":                   round(bvr, 3),
         "elp_mm":                round(elp_mm, 2),
         "best_model":            best_model,

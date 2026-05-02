@@ -11,6 +11,7 @@ import { CorneaSafetyCard } from '../../ablation/CorneaSafetyCard';
 import { useTelegram } from '../../../hooks/useTelegram';
 import { calcEx500 } from '../../../calculators/ex500';
 import { getNomogramTarget } from '../../../calculators/nomogram';
+import { MedDisclaimer } from '../../disclaimer/MedDisclaimer';
 
 const safeAx = (val: any) => {
   const a = parseInt(String(val));
@@ -18,7 +19,7 @@ const safeAx = (val: any) => {
 };
 
 const SectionHeader = ({ title }: { title: string }) => (
-  <div style={{ display: 'flex', alignItems: 'center', gap: 12, margin: '10px 4px 6px' }}>
+  <div style={{ display: 'flex', alignItems: 'center', gap: 12, margin: '6px 4px 2px' }}>
     <span style={{ fontSize: 10, fontWeight: 700, color: C.tertiary || C.secondary, letterSpacing: '0.14em', textTransform: 'uppercase' }}>{title}</span>
     <div style={{ flex: 1, height: 1, background: C.border, opacity: 0.4 }} />
   </div>
@@ -26,7 +27,7 @@ const SectionHeader = ({ title }: { title: string }) => (
 
 
 function CataractPlanTab() {
-  const { draft, iolResult, toricResults } = useSessionStore();
+  const { draft, iolResult, toricResults, formulaResults } = useSessionStore();
   const { planEye } = useUIStore();
   if (!draft) return null;
   const ec = eyeColors(planEye);
@@ -39,7 +40,7 @@ function CataractPlanTab() {
   const k1 = parseFloat(eyeData.k1 || '0');
   const k2 = parseFloat(eyeData.k2 || '0');
   const k1Ax = parseFloat(eyeData.k_ax || '0');
-  const steepAx = hasPentacam ? (parseFloat(eyeData.p_tot_a) || 0) : (k2 > k1 ? (k1Ax + 90) % 180 : k1Ax);
+  const steepAx = hasPentacam ? (parseFloat(eyeData.p_tot_a || '0') + 90) % 180 : (k2 > k1 ? (k1Ax + 90) % 180 : k1Ax);
 
   const toricOn = !!(draft as any).toricMode;
   const toric = toricResults?.[planEye];
@@ -54,11 +55,6 @@ function CataractPlanTab() {
         <span style={{ fontSize: 10, fontWeight: 900, color: toricOn ? C.amber : C.muted3, textTransform: 'uppercase', letterSpacing: '0.06em' }}>
           Toric IOL {toricOn ? 'ON' : 'OFF'}
         </span>
-        {toricOn && toric && (
-          <span style={{ marginLeft: 'auto', fontSize: 9, fontWeight: 900, color: C.amber, fontFamily: F.mono }}>
-            SN6A{toric.best_model}
-          </span>
-        )}
         {toricOn && !toric && (
           <span style={{ marginLeft: 'auto', fontSize: 9, color: C.muted3 }}>BIO → CALC</span>
         )}
@@ -72,11 +68,11 @@ function CataractPlanTab() {
         }}>
           <div style={{ position: 'absolute', top: 0, left: 0, right: 0, height: 4, background: `linear-gradient(90deg, ${C.amber}, ${ec.color})` }} />
 
-          <SectionLabel color={C.amber} style={{ marginBottom: 20, textAlign: 'center', fontSize: 10, letterSpacing: '0.15em' }}>
+          <SectionLabel color={C.amber} style={{ marginBottom: 32, textAlign: 'center', fontSize: 10, letterSpacing: '0.15em' }}>
             TORIC IOL · IMPLANTATION PLANE
           </SectionLabel>
 
-          <div style={{ display: 'flex', justifyContent: 'center', marginBottom: 16 }}>
+          <div style={{ display: 'flex', justifyContent: 'center', marginBottom: 24, marginTop: 8 }}>
             <ToricSchematic
               eye={planEye}
               incisionAx={incisionAx}
@@ -87,25 +83,22 @@ function CataractPlanTab() {
           </div>
 
           {/* Axis legend */}
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 8, marginBottom: 16 }}>
-            <div style={{ background: `${C.indigo}15`, padding: '8px', borderRadius: 12, border: `1px solid ${C.indigo}30`, textAlign: 'center' }}>
-              <div style={{ fontSize: 7, fontWeight: 900, color: C.indigo, textTransform: 'uppercase', marginBottom: 2 }}>INCISION</div>
-              <div style={{ fontFamily: F.mono, fontSize: 16, fontWeight: 800, color: C.text }}>{incisionAx}°</div>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginBottom: 14, marginTop: 32 }}>
+            <div style={{ background: `${C.indigo}15`, padding: '4px 8px', borderRadius: 10, border: `1px solid ${C.indigo}30`, textAlign: 'center' }}>
+              <div style={{ fontSize: 6, fontWeight: 900, color: C.indigo, textTransform: 'uppercase', marginBottom: 0 }}>INCISION</div>
+              <div style={{ fontFamily: F.mono, fontSize: 15, fontWeight: 400, color: C.text }}>{incisionAx}°</div>
             </div>
-            <div style={{ background: `${C.red}10`, padding: '8px', borderRadius: 12, border: `1px solid ${C.red}20`, textAlign: 'center' }}>
-              <div style={{ fontSize: 7, fontWeight: 900, color: C.red, textTransform: 'uppercase', marginBottom: 2 }}>STEEP K</div>
-              <div style={{ fontFamily: F.mono, fontSize: 16, fontWeight: 800, color: C.text }}>{Math.round(steepAx)}°</div>
-            </div>
-            <div style={{ background: `${C.amber}15`, padding: '8px', borderRadius: 12, border: `1px solid ${C.amber}30`, textAlign: 'center' }}>
-              <div style={{ fontSize: 7, fontWeight: 900, color: C.amber, textTransform: 'uppercase', marginBottom: 2 }}>IOL AXIS</div>
-              <div style={{ fontFamily: F.mono, fontSize: 16, fontWeight: 800, color: C.text }}>
+            <div style={{ background: `${C.amber}15`, padding: '4px 8px', borderRadius: 10, border: `1px solid ${C.amber}30`, textAlign: 'center' }}>
+              <div style={{ fontSize: 6, fontWeight: 900, color: C.amber, textTransform: 'uppercase', marginBottom: 0 }}>IOL AXIS</div>
+              <div style={{ fontFamily: F.mono, fontSize: 15, fontWeight: 400, color: C.text }}>
                 {toricAx != null ? `${Math.round(toricAx)}°` : '—'}
               </div>
             </div>
           </div>
 
           {toric ? (() => {
-            const best = toric.table?.find((s: any) => s.model === toric.best_model);
+            const selectedModel = (iolResult as any)?.[planEye]?.selectedToricModel || toric.best_model;
+            const best = toric.table?.find((s: any) => s.model === selectedModel);
             const cylIol  = best?.cyl_iol  ?? null;
             const residual = best?.residual ?? null;
             const resAxis  = best?.res_axis ?? null;
@@ -113,20 +106,20 @@ function CataractPlanTab() {
             const iolPower = r?.selectedPower ?? parseFloat((iolResult as any)?.power) ?? null;
             const residualOk = residual != null && residual < 0.5;
             return (
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 10, marginTop: 10 }}>
 
                 {/* Prescription строка */}
                 <div style={{
-                  background: `${C.amber}10`, borderRadius: 16, padding: '14px 16px',
+                  background: `${C.amber}10`, borderRadius: 16, padding: '10px 14px',
                   border: `1px solid ${C.amber}30`,
                 }}>
-                  <div style={{ fontSize: 7, fontWeight: 900, color: C.amber, textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: 8 }}>
+                  <div style={{ fontSize: 7, fontWeight: 900, color: C.amber, textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: 6, textAlign: 'center' }}>
                     Toric IOL Prescription
                   </div>
                   {/* Строка 1: модель + цилиндр */}
-                  <div style={{ display: 'flex', alignItems: 'baseline', gap: 8, marginBottom: 6, flexWrap: 'wrap' }}>
-                    <span style={{ fontFamily: F.mono, fontSize: 20, fontWeight: 900, color: C.text }}>
-                      SN6A{toric.best_model || '—'}
+                  <div style={{ display: 'flex', alignItems: 'baseline', gap: 8, marginBottom: 4, flexWrap: 'wrap', justifyContent: 'center' }}>
+                    <span style={{ fontFamily: F.mono, fontSize: 18, fontWeight: 900, color: C.text, textAlign: 'center' }}>
+                      {((iolResult as any)?.lens || 'IOL').replace('Toric', '').trim()} {selectedModel || ''}
                     </span>
                     {cylIol != null && (
                       <>
@@ -146,26 +139,26 @@ function CataractPlanTab() {
                     )}
                   </div>
                   {/* Строка 2: остаточный астигматизм */}
-                  <div style={{ display: 'flex', alignItems: 'baseline', gap: 8, flexWrap: 'wrap' }}>
-                    <span style={{ fontSize: 8, fontWeight: 900, color: residualOk ? C.green : C.amber, textTransform: 'uppercase' }}>
-                      Residual:
+                  <div style={{ display: 'flex', alignItems: 'baseline', gap: 8, flexWrap: 'wrap', justifyContent: 'center' }}>
+                    <span style={{ fontSize: 8, fontWeight: 900, color: residualOk ? C.green : C.amber, textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+                      Residual
                     </span>
                     {residual != null ? (
                       <>
-                        <span style={{ fontFamily: F.mono, fontSize: 15, fontWeight: 800, color: residualOk ? C.green : C.amber }}>
+                        <span style={{ fontFamily: F.mono, fontSize: 14, fontWeight: 800, color: residualOk ? C.green : C.amber }}>
                           {residual < 0.01 ? '0.00' : `-${residual.toFixed(2)}`}D
                         </span>
                         {resAxis != null && (
                           <>
-                            <span style={{ fontSize: 11, color: C.muted3 }}>@</span>
-                            <span style={{ fontFamily: F.mono, fontSize: 15, fontWeight: 800, color: residualOk ? C.green : C.amber }}>
+                            <span style={{ fontSize: 10, color: C.muted3 }}>@</span>
+                            <span style={{ fontFamily: F.mono, fontSize: 14, fontWeight: 800, color: residualOk ? C.green : C.amber }}>
                               {Math.round(resAxis)}°
                             </span>
                           </>
                         )}
                       </>
                     ) : (
-                      <span style={{ fontFamily: F.mono, fontSize: 15, color: C.muted3 }}>—</span>
+                      <span style={{ fontFamily: F.mono, fontSize: 14, color: C.muted3 }}>—</span>
                     )}
                   </div>
                 </div>
@@ -215,16 +208,23 @@ function CataractPlanTab() {
         </div>
 
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 8 }}>
-          {[
-            { label: 'TARGET', val: draft.targetRefr || '0.00', color: ec.color },
-            { label: 'SIA', val: draft.sia || '0.10', color: C.indigo },
-            { label: 'PRED. SE', val: r?.expectedRefr != null ? (r.expectedRefr > 0 ? '+' : '') + r.expectedRefr.toFixed(2) : '—', color: C.green },
-          ].map(l => (
-            <div key={l.label} style={{ background: 'rgba(255,255,255,0.02)', borderRadius: 12, padding: '10px 4px', border: `1px solid ${C.border}40`, textAlign: 'center' }}>
-              <div style={{ fontSize: 7, fontWeight: 900, color: C.muted3, textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 4 }}>{l.label}</div>
-              <div style={{ fontFamily: F.mono, fontSize: 13, fontWeight: 800, color: l.color }}>{l.val}</div>
-            </div>
-          ))}
+          {(() => {
+            const fResults = formulaResults[planEye]?.[draft.activeFormula || 'Barrett'] || [];
+            const powerVal = r?.selectedPower || parseFloat((iolResult as any)?.power || '0');
+            const match = fResults.find((x: any) => Math.abs(x.power - powerVal) < 0.01);
+            const predVal = r?.expectedRefr ?? match?.refraction ?? match?.ref;
+            
+            return [
+              { label: 'TARGET', val: draft.targetRefr || '0.00', color: ec.color },
+              { label: 'FORMULA', val: (draft.activeFormula || 'Barrett').toUpperCase(), color: C.indigo },
+              { label: 'PRED. REF', val: predVal != null ? (predVal > 0 ? '+' : '') + predVal.toFixed(2) : '—', color: C.green },
+            ].map(l => (
+              <div key={l.label} style={{ background: 'rgba(255,255,255,0.02)', borderRadius: 12, padding: '10px 4px', border: `1px solid ${C.border}40`, textAlign: 'center' }}>
+                <div style={{ fontSize: 7, fontWeight: 900, color: C.muted3, textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 4 }}>{l.label}</div>
+                <div style={{ fontFamily: F.mono, fontSize: 13, fontWeight: 800, color: l.color }}>{l.val}</div>
+              </div>
+            ));
+          })()}
         </div>
       </div>
     </div>
@@ -276,6 +276,9 @@ function RefractionPlanTab() {
         if (v < 0) v = 180 + v; 
         if (v >= 180) v = v - 180; 
       }
+      if (isRounding && (editingField === 'sph' || editingField === 'cyl')) {
+        v = Math.round(v * 4) / 4;
+      }
       setPlanField(planEye, editingField as any, v);
     }
     setEditingField(null);
@@ -289,9 +292,11 @@ function RefractionPlanTab() {
     let bCyl = parseFloat(data.man_cyl) || 0;
     let bAx = safeAx(data.man_ax);
 
-    if (strategy === 'wavefront' || strategy === 'vector') { 
-      bSph = parseFloat(data.w_sph) || 0; bCyl = parseFloat(data.w_cyl) || 0; bAx = safeAx(data.w_ax); 
-    } else if (strategy === 'corneal') { 
+    if (strategy === 'wavefront' || strategy === 'vector') {
+      bSph = parseFloat(data.w_sph) || parseFloat(data.man_sph) || 0;
+      bCyl = parseFloat(data.w_cyl) || parseFloat(data.man_cyl) || 0;
+      bAx = safeAx(data.w_ax) || safeAx(data.man_ax);
+    } else if (strategy === 'corneal') {
       bSph = parseFloat(data.n_sph) || 0; bCyl = parseFloat(data.n_cyl) || 0; bAx = safeAx(data.n_ax); 
     }
 
@@ -323,22 +328,22 @@ function RefractionPlanTab() {
     if (activeRefNomo) targetSph += activeRefNomo;
     if (activeRefNomoCyl) targetCyl += activeRefNomoCyl;
 
-    const finalSph = Math.round(targetSph * 100) / 100;
-    const finalCyl = Math.round(targetCyl * 100) / 100;
+    let finalSph = Math.round(targetSph * 100) / 100;
+    let finalCyl = Math.round(targetCyl * 100) / 100;
+
+    if (isRounding) {
+      finalSph = Math.round(finalSph * 4) / 4;
+      finalCyl = Math.round(finalCyl * 4) / 4;
+    }
+
     const currentPlan = refPlan?.[planEye];
     const needsUpdate = !currentPlan || (currentPlan.sph !== finalSph || currentPlan.cyl !== finalCyl || currentPlan.ax !== bAx);
 
     if (needsUpdate) {
       const { autoSetPlan } = useSessionStore.getState();
-      let s = finalSph;
-      let c = finalCyl;
-      if (isRounding) {
-        s = Math.round(s * 4) / 4;
-        c = Math.round(c * 4) / 4;
-      }
-      autoSetPlan(planEye, { sph: s, cyl: c, ax: bAx });
+      autoSetPlan(planEye, { sph: finalSph, cyl: finalCyl, ax: bAx });
     }
-  }, [draft?.laser, draft?.od?.astigStrategy, draft?.os?.astigStrategy, draft?.astigStrategy, planEye, draft?.od?.man_sph, draft?.os?.man_sph, draft?.od?.man_cyl, draft?.os?.man_cyl, planTweaked, isRounding, activeRefNomo, activeRefNomoCyl]);
+  }, [draft?.laser, draft?.od?.astigStrategy, draft?.os?.astigStrategy, draft?.astigStrategy, planEye, draft?.od?.man_sph, draft?.os?.man_sph, draft?.od?.man_cyl, draft?.os?.man_cyl, draft?.od?.w_sph, draft?.os?.w_sph, draft?.od?.w_cyl, draft?.os?.w_cyl, planTweaked, isRounding, activeRefNomo, activeRefNomoCyl]);
 
   if (!draft) return null;
 
@@ -359,71 +364,126 @@ function RefractionPlanTab() {
   const fmt = (v: any) => { const n = parseFloat(String(v)); if (isNaN(n)) return '—'; return (n > 0 ? '+' : '') + n.toFixed(2); };
 
   const updatePower = (field: string, isPlus: boolean, step: number) => {
-    const cur = (plan as any)[field] || 0;
+    const latestPlan = (useSessionStore.getState().refPlan as any)?.[planEye] || {};
+    const latestData = (useSessionStore.getState().draft as any)?.[planEye] || {};
+    
+    // Merge latest data for fallback
+    const curVal = latestPlan[field] ?? latestData[field] ?? (field === 'oz' ? 6.5 : (field === 'flap' ? 110 : 0));
+    let cur = parseFloat(String(curVal)) || 0;
+    
+    // If rounding is on, ensure we start from a rounded value
+    if (isRounding && (field === 'sph' || field === 'cyl')) {
+      cur = Math.round(cur * 4) / 4;
+    }
+
     let next = cur;
     if (field === 'sph' || field === 'cyl') {
       if (cur < 0) next = isPlus ? cur - step : cur + step; else if (cur > 0) next = isPlus ? cur + step : cur - step; else next = isPlus ? 0.25 : -0.25;
       next = Math.round(next * 100) / 100; if (field === 'cyl' && next > 0) next = 0;
+      if (isRounding) next = Math.round(next * 4) / 4;
     } else if (field === 'ax') {
       next = isPlus ? cur + step : cur - step; if (next < 0) next = 180 + next; if (next >= 180) next = next - 180;
     } else if (field === 'oz') {
       next = isPlus ? cur + step : cur - step; next = Math.max(0, Math.round(next * 10) / 10);
     }
     setPlanField(planEye, field as any, next);
+    haptic.light();
+  };
+
+  const fmtVA = (val: any) => {
+    const n = parseFloat(String(val));
+    if (isNaN(n)) return val || '1.0';
+    return n.toFixed(1);
   };
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 2, paddingBottom: 10 }}>
       <SectionHeader title="Diagnostics" />
-      <div style={{ background: C.card, borderRadius: 24, padding: '6px 8px 10px', border: `1px solid ${C.border}`, boxShadow: '0 8px 30px rgba(0,0,0,0.12)' }}>
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0 4px 4px', borderBottom: `1px solid ${C.border}20`, marginBottom: 2 }}>
-          <div style={{ display: 'flex', alignItems: 'baseline', gap: 4 }}><span style={{ fontSize: 8, fontWeight: 900, color: C.muted2 }}>BCVA</span><span style={{ fontSize: 18, fontWeight: 800, color: C.green, fontFamily: F.mono }}>{data.bcva || '1.0'}</span></div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-            <div style={{ fontSize: 15, fontWeight: 900, color: ec.color, fontFamily: F.mono }}>{fmt(data.man_sph)} / {fmt(data.man_cyl)} × {data.man_ax || '0'}°</div>
-            <div style={{ width: 28, height: 28, borderRadius: '50%', background: C.surface, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-              <AxisDial 
-                axis={safeAx(data.man_ax)} 
-                kAxis={safeAx(data.p_tot_a || data.k1_ax || data.k_ax)} 
-                size={22} color={ec.color} tickWidth={1.5} 
-              />
+      <div style={{ background: C.card, borderRadius: 24, padding: '10px 12px', border: `1px solid ${C.border}`, boxShadow: '0 8px 30px rgba(0,0,0,0.12)', display: 'flex', alignItems: 'center', gap: 12 }}>
+        <div style={{ flex: 1 }}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', paddingBottom: 6, borderBottom: `1px solid ${C.border}20`, marginBottom: 8 }}>
+            <div style={{ display: 'flex', alignItems: 'baseline', gap: 4 }}>
+              <span style={{ fontSize: 8, fontWeight: 900, color: C.muted2, textTransform: 'uppercase' }}>BCVA</span>
+              <span style={{ fontSize: 20, fontWeight: 800, color: C.green, fontFamily: F.mono }}>{fmtVA(data.bcva)}</span>
             </div>
+            <div style={{ fontSize: 15, fontWeight: 900, color: ec.color, fontFamily: F.mono }}>{fmt(data.man_sph)} / {fmt(data.man_cyl)} × {data.man_ax || '0'}°</div>
           </div>
-        </div>
-        <div style={{ display: 'grid', gridTemplateColumns: 'minmax(40px, auto) 1fr 1fr 1fr 40px', columnGap: 6, rowGap: 4, alignItems: 'center', padding: '0 4px' }}>
-          <div style={{ fontSize: 8, fontWeight: 900, color: C.muted2, textTransform: 'uppercase', writingMode: 'vertical-rl', transform: 'rotate(180deg)', textAlign: 'center', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', borderRight: `1px solid ${C.border}20` }}>DIAGNOSTICS</div>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-            <div style={{ fontSize: 6, color: C.indigo, fontWeight: 900, textAlign: 'center' }}>NARROW</div>
-            <div style={{ background: C.surface, borderRadius: 10, padding: '4px', border: `1px solid ${C.border}`, textAlign: 'center', fontFamily: F.mono, fontSize: 11, fontWeight: 700, color: C.indigo }}>{fmt(data.n_sph)}</div>
-            <div style={{ background: C.surface, borderRadius: 10, padding: '4px', border: `1px solid ${C.border}`, textAlign: 'center', fontFamily: F.mono, fontSize: 11, fontWeight: 700, color: C.indigo }}>{fmt(data.n_cyl)}</div>
-            <div style={{ background: C.surface, borderRadius: 10, padding: '4px', border: `1px solid ${C.border}`, textAlign: 'center', fontFamily: F.mono, fontSize: 11, fontWeight: 700, color: C.indigo }}>{data.n_ax || '0'}°</div>
-          </div>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-            <div style={{ fontSize: 6, color: C.muted2, fontWeight: 900, textAlign: 'center' }}>WIDE</div>
-            <div style={{ background: C.surface, borderRadius: 10, padding: '4px', border: `1px solid ${C.border}`, textAlign: 'center', fontFamily: F.mono, fontSize: 11, color: C.muted2 }}>{fmt(data.c_sph)}</div>
-            <div style={{ background: C.surface, borderRadius: 10, padding: '4px', border: `1px solid ${C.border}`, textAlign: 'center', fontFamily: F.mono, fontSize: 11, color: C.muted2 }}>{fmt(data.c_cyl)}</div>
-            <div style={{ background: C.surface, borderRadius: 10, padding: '4px', border: `1px solid ${C.border}`, textAlign: 'center', fontFamily: F.mono, fontSize: 11, color: C.muted2 }}>{data.c_ax || '0'}°</div>
-          </div>
-          {(() => {
+
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+            {/* KERATOMETRY ROW */}
+            {(() => {
               const hasP = !!(data.p_tot_c || data.p_tot_k);
               const kavg = hasP ? data.p_tot_k : data.kavg;
               const cyl = hasP ? data.p_tot_c : ((parseFloat(data.k1) && parseFloat(data.k2)) ? '-' + Math.abs(parseFloat(data.k2) - parseFloat(data.k1)).toFixed(2) : '0.00');
               const ax = hasP ? data.p_tot_a : (data.k1_ax || data.k_ax || '0');
               return (
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-                  <div style={{ fontSize: 6, color: C.amber, fontWeight: 900, textAlign: 'center' }}>{hasP ? 'PENTA' : 'KERAT'}</div>
-                  <div style={{ background: C.surface, borderRadius: 10, padding: '4px', border: `1px solid ${C.border}`, textAlign: 'center', fontFamily: F.mono, fontSize: 11, color: C.amber, fontWeight: 700 }}>{kavg || '—'}</div>
-                  <div style={{ background: C.surface, borderRadius: 10, padding: '4px', border: `1px solid ${C.border}`, textAlign: 'center', fontFamily: F.mono, fontSize: 11, color: C.amber, fontWeight: 700 }}>{cyl}</div>
-                  <div style={{ background: C.surface, borderRadius: 10, padding: '4px', border: `1px solid ${C.border}`, textAlign: 'center', fontFamily: F.mono, fontSize: 11, color: C.amber, fontWeight: 700 }}>{ax}°</div>
+                <div style={{ display: 'grid', gridTemplateColumns: '70px 1fr 1fr 1fr', gap: 8, alignItems: 'center' }}>
+                  <span style={{ fontSize: 9, fontWeight: 900, color: C.amber, textTransform: 'uppercase' }}>{hasP ? 'PENTA' : 'KERAT'}</span>
+                  <div style={{ textAlign: 'center', fontFamily: F.mono, fontSize: 13, fontWeight: 800, color: C.amber }}>{kavg || '—'}</div>
+                  <div style={{ textAlign: 'center', fontFamily: F.mono, fontSize: 13, fontWeight: 800, color: C.amber }}>{cyl}</div>
+                  <div style={{ textAlign: 'center', fontFamily: F.mono, fontSize: 13, fontWeight: 800, color: C.amber }}>{ax}°</div>
                 </div>
               );
-          })()}
-          <div />
+            })()}
+
+            {/* NARROW ROW */}
+            <div style={{ display: 'grid', gridTemplateColumns: '70px 1fr 1fr 1fr', gap: 8, alignItems: 'center' }}>
+              <span style={{ fontSize: 9, fontWeight: 900, color: C.indigo, textTransform: 'uppercase' }}>NARROW</span>
+              <div style={{ textAlign: 'center', fontFamily: F.mono, fontSize: 13, fontWeight: 700, color: C.indigo }}>{fmt(data.n_sph)}</div>
+              <div style={{ textAlign: 'center', fontFamily: F.mono, fontSize: 13, fontWeight: 700, color: C.indigo }}>{fmt(data.n_cyl)}</div>
+              <div style={{ textAlign: 'center', fontFamily: F.mono, fontSize: 13, fontWeight: 700, color: C.indigo }}>{data.n_ax || '0'}°</div>
+            </div>
+
+            {/* WIDE ROW */}
+            <div style={{ display: 'grid', gridTemplateColumns: '70px 1fr 1fr 1fr', gap: 8, alignItems: 'center' }}>
+              <span style={{ fontSize: 9, fontWeight: 900, color: C.muted2, textTransform: 'uppercase' }}>WIDE</span>
+              <div style={{ textAlign: 'center', fontFamily: F.mono, fontSize: 13, color: C.muted2 }}>{fmt(data.c_sph)}</div>
+              <div style={{ textAlign: 'center', fontFamily: F.mono, fontSize: 13, color: C.muted2 }}>{fmt(data.c_cyl)}</div>
+              <div style={{ textAlign: 'center', fontFamily: F.mono, fontSize: 13, color: C.muted2 }}>{data.c_ax || '0'}°</div>
+            </div>
+          </div>
         </div>
+
+            {(() => {
+              const kAx = parseInt(data.p_tot_a || data.k_ax || '0');
+              const k1 = parseFloat(data.k1 || '0');
+              const k2 = parseFloat(data.k2 || '0');
+              const cylVal = data.p_tot_c ? parseFloat(data.p_tot_c) : (k1 && k2 ? Math.abs(k1 - k2) : 0);
+              
+              // Classification based on STEEP meridian (90 deg from minus-cyl axis)
+              const steep = (kAx + 90) % 180;
+              let type = 'Oblique';
+              if ((steep >= 0 && steep <= 30) || (steep >= 150 && steep <= 180)) type = 'ATR';
+              else if (steep >= 60 && steep <= 120) type = 'WTR';
+              
+              return (
+                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 6, flexShrink: 0, marginTop: 0 }}>
+                  <div style={{ textAlign: 'center', lineHeight: 1 }}>
+                    <div style={{ fontSize: 7, fontWeight: 900, color: C.muted3, textTransform: 'uppercase', letterSpacing: '0.1em' }}>Astigmatism</div>
+                    <div style={{ fontSize: 7, fontWeight: 900, color: C.muted3, textTransform: 'uppercase', letterSpacing: '0.1em' }}>Axis</div>
+                  </div>
+                  <div style={{ width: 44, height: 44, borderRadius: '50%', background: C.surface, display: 'flex', alignItems: 'center', justifyContent: 'center', border: `1px solid ${C.border}`, flexShrink: 0 }}>
+                    <AxisDial 
+                      axis={safeAx(data.man_ax)} 
+                      kAxis={safeAx(data.p_tot_a || data.k1_ax || data.k_ax)} 
+                      size={36} color={ec.color} tickWidth={1.5} 
+                    />
+                  </div>
+                  <div style={{ textAlign: 'center', lineHeight: 1.2 }}>
+                    <div style={{ fontSize: 9, fontWeight: 900, color: C.text, textTransform: 'uppercase', marginBottom: 1 }}>{type}</div>
+                    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+                      <div style={{ fontSize: 9, fontWeight: 800, color: C.amber, fontFamily: F.mono }}>{cylVal.toFixed(2)}D</div>
+                      <div style={{ fontSize: 7, fontWeight: 800, color: C.muted2, fontFamily: F.mono, opacity: 0.8 }}>ax {steep}°</div>
+                    </div>
+                  </div>
+                </div>
+              );
+            })()}
       </div>
 
       <SectionHeader title="Laser Parameters" />
-      <div style={{ background: C.card, borderRadius: 24, padding: '12px 10px', border: `1px solid ${C.border}` }}>
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 12, marginBottom: 12 }}>
+      <div style={{ background: C.card, borderRadius: 24, padding: '8px 10px', border: `1px solid ${C.border}` }}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 12, marginBottom: 8 }}>
             <div style={{ display: 'flex', gap: 4, background: C.surface, padding: 2, borderRadius: 10 }}>
               {(['manifest', 'corneal', 'vector', 'wavefront'] as const).map(s => {
                 const currentStrategy = (data as any)?.astigStrategy || (draft as any)?.astigStrategy || 'manifest';
@@ -462,18 +522,17 @@ function RefractionPlanTab() {
               <span style={{ fontSize: 8, fontWeight: 900, color: isRounding ? C.text : C.muted2, textTransform: 'uppercase' }}>0.25 STEP</span>
             </button>
           </div>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 5 }}>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 8, marginBottom: 10 }}>
             {[
               { label: 'SPH', val: plan.sph, step: 0.25, field: 'sph', fmt: (v:any)=> fmt(v), color: ec.color },
               { label: 'CYL', val: plan.cyl, step: 0.25, field: 'cyl', fmt: (v:any)=> parseFloat(v||0).toFixed(2), color: ec.color },
               { label: 'AXIS', val: plan.ax, step: 5, field: 'ax', fmt: (v:any)=> (v||0), color: ec.color, isAx: true },
-              { label: 'OZ', val: plan.oz, step: 0.1, field: 'oz', fmt: (v:any)=> v.toFixed(1), color: C.indigo },
             ].map(f => (
-              <div key={f.label} style={{ background: C.surface, borderRadius: 14, padding: '6px 0 10px', border: `1px solid ${C.border}`, textAlign: 'center', position: 'relative', boxShadow: '0 4px 12px rgba(0,0,0,0.05)' }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '0 2px 4px', borderBottom: `1px solid ${C.border}30`, marginBottom: 6 }}>
-                  <AutoRepeatButton onTrigger={() => { haptic.light(); updatePower(f.field, false, f.step); }} style={{ background: 'none', border: 'none', color: C.muted3, fontSize: 20, padding: '12px 18px', margin: '-12px -12px', cursor: 'pointer' }}>−</AutoRepeatButton>
+              <div key={f.label} style={{ background: C.surface, borderRadius: 14, padding: '4px 0 8px', border: `1px solid ${C.border}`, textAlign: 'center', position: 'relative', boxShadow: '0 4px 12px rgba(0,0,0,0.05)' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '0 2px 2px', borderBottom: `1px solid ${C.border}30`, marginBottom: 4 }}>
+                  <AutoRepeatButton onTrigger={() => { haptic.light(); updatePower(f.field, false, f.step); }} style={{ background: 'none', border: 'none', color: C.muted3, fontSize: 20, padding: '8px 12px', margin: '-8px -8px', cursor: 'pointer' }}>−</AutoRepeatButton>
                   <div style={{ fontSize: 7, color: C.muted2, fontWeight: 900, textTransform: 'uppercase', letterSpacing: '0.04em' }}>{f.label}</div>
-                  <AutoRepeatButton onTrigger={() => { haptic.light(); updatePower(f.field, true, f.step); }} style={{ background: 'none', border: 'none', color: C.muted3, fontSize: 20, padding: '12px 18px', margin: '-12px -12px', cursor: 'pointer' }}>+</AutoRepeatButton>
+                  <AutoRepeatButton onTrigger={() => { haptic.light(); updatePower(f.field, true, f.step); }} style={{ background: 'none', border: 'none', color: C.muted3, fontSize: 20, padding: '8px 12px', margin: '-8px -8px', cursor: 'pointer' }}>+</AutoRepeatButton>
                 </div>
                 <div 
                   onClick={() => handleStartEdit(f.field, f.val)}
@@ -498,10 +557,19 @@ function RefractionPlanTab() {
               </div>
             ))}
           </div>
+
+          <div style={{ background: C.surface, borderRadius: 12, padding: '4px 12px', border: `1px solid ${C.border}`, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+            <span style={{ fontSize: 8, fontWeight: 900, color: C.muted3, textTransform: 'uppercase', letterSpacing: '0.06em' }}>Optical Zone (OZ)</span>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+              <AutoRepeatButton onTrigger={() => updatePower('oz', false, 0.1)} style={{ background: 'none', border: 'none', color: C.muted3, fontSize: 18, padding: '4px 8px', cursor: 'pointer' }}>−</AutoRepeatButton>
+              <span style={{ fontSize: 16, fontWeight: 900, color: C.indigo, fontFamily: F.mono }}>{plan.oz.toFixed(1)}<span style={{ fontSize: 9, color: C.muted3, marginLeft: 2 }}>mm</span></span>
+              <AutoRepeatButton onTrigger={() => updatePower('oz', true, 0.1)} style={{ background: 'none', border: 'none', color: C.muted3, fontSize: 18, padding: '4px 8px', cursor: 'pointer' }}>+</AutoRepeatButton>
+            </div>
+          </div>
       </div>
 
       <SectionHeader title="Ablation Profile" />
-      <div style={{ background: C.card, borderRadius: 24, padding: '14px 12px', border: `1px solid ${C.border}` }}>
+      <div style={{ background: C.card, borderRadius: 24, padding: '10px 12px', border: `1px solid ${C.border}` }}>
         {(() => {
           const diopters = Math.abs(plan.sph + plan.cyl / 2);
           const finalAbl = Math.max(0, Math.round((Math.pow(plan.oz, 2) * diopters) / 3));
@@ -526,22 +594,22 @@ function RefractionPlanTab() {
       </div>
 
       <SectionHeader title="Flap & Technique" />
-      <div style={{ background: C.card, borderRadius: 24, padding: '12px 10px', border: `1px solid ${C.border}`, position: 'relative', zIndex: 10 }}>
+      <div style={{ background: C.card, borderRadius: 24, padding: '8px 10px', border: `1px solid ${C.border}`, position: 'relative', zIndex: 10 }}>
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 6, marginBottom: 10, filter: isPRK ? 'grayscale(0.8) opacity(0.3)' : 'none' }}>
             {[
               { label: 'DIAM', val: parseFloat(draft.flapDiam || '8.5'), step: 0.1, field: 'flapDiam', unit: 'mm' },
               { label: 'POS', val: parseFloat(draft.flapPos || '90'), step: 5, field: 'flapPos', unit: '°' },
             ].map(f => (
-              <div key={f.label} style={{ background: C.surface, borderRadius: 10, padding: '6px 4px', border: `1px solid ${C.border}`, textAlign: 'center' }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4 }}>
+              <div key={f.label} style={{ background: C.surface, borderRadius: 10, padding: '4px 4px', border: `1px solid ${C.border}`, textAlign: 'center' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 2 }}>
                   <AutoRepeatButton 
                     onTrigger={() => !isPRK && setDraft({ [f.field]: String(Math.max(0, f.val - f.step)) })} 
-                    style={{ background: 'none', border: 'none', color: C.tertiary, fontSize: 18, padding: '10px 14px', margin: '-10px -8px', cursor: isPRK ? 'default' : 'pointer' }}
+                    style={{ background: 'none', border: 'none', color: C.tertiary, fontSize: 18, padding: '8px 12px', margin: '-8px -8px', cursor: isPRK ? 'default' : 'pointer' }}
                   >−</AutoRepeatButton>
                   <div style={{ fontSize: 7, color: C.tertiary, fontWeight: 700 }}>{f.label}</div>
                   <AutoRepeatButton 
                     onTrigger={() => !isPRK && setDraft({ [f.field]: String(f.val + f.step) })} 
-                    style={{ background: 'none', border: 'none', color: C.tertiary, fontSize: 18, padding: '10px 14px', margin: '-10px -8px', cursor: isPRK ? 'default' : 'pointer' }}
+                    style={{ background: 'none', border: 'none', color: C.tertiary, fontSize: 18, padding: '8px 12px', margin: '-8px -8px', cursor: isPRK ? 'default' : 'pointer' }}
                   >+</AutoRepeatButton>
                 </div>
                 <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'center', gap: 1 }}>
@@ -592,6 +660,7 @@ export function PlanTab() {
         disabledEyes={disabledEyes} 
       />
       {draft.type === 'cataract' ? <CataractPlanTab /> : <RefractionPlanTab />}
+      <MedDisclaimer />
       <div style={{ paddingBottom: 10 }}>
         <button onClick={() => { haptic.light(); setShowCalendar(!showCalendar); }} style={{ width: '100%', background: draft.date ? `${C.green}15` : C.accentLt, border: `1px solid ${draft.date ? C.green : C.accent}40`, borderRadius: 20, padding: '12px 16px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 10, color: draft.date ? C.green : C.accent, fontFamily: F.sans, fontSize: 12, fontWeight: 900, cursor: 'pointer' }}>
           <svg width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2.5"><path d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" /></svg>

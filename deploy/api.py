@@ -26,7 +26,7 @@ class PdfPatient(BaseModel):
     details: str
 
 class PdfRequest(BaseModel):
-    clinic_name: str
+    clinic_name: Optional[str] = "Clinic"
     date: str
     patients: List[PdfPatient]
 
@@ -158,6 +158,26 @@ class PatientUpdate(BaseModel):
     isCustomView: Optional[bool] = None
     isCustomViewOD: Optional[bool] = None
     isCustomViewOS: Optional[bool] = None
+    bio_od: Optional[Dict[str, Any]] = None
+    bio_os: Optional[Dict[str, Any]] = None
+    iolResult: Optional[Dict[str, Any]] = None
+    toricResults: Optional[Dict[str, Any]] = None
+    formulaResults: Optional[Dict[str, Any]] = None
+    savedPlan: Optional[Dict[str, Any]] = None
+    savedEnhancement: Optional[Dict[str, Any]] = None
+    periods: Optional[Dict[str, Any]] = None
+    status: Optional[str] = None
+    postSph: Optional[float] = None
+    postCyl: Optional[float] = None
+    postSphOD: Optional[float] = None
+    postCylOD: Optional[float] = None
+    postVaOD: Optional[str] = None
+    postSphOS: Optional[float] = None
+    postCylOS: Optional[float] = None
+    postVaOS: Optional[str] = None
+    sia: Optional[str] = None
+    siaAx: Optional[str] = None
+    incAx: Optional[str] = None
 
 class OcrFile(BaseModel):
     name: str
@@ -297,6 +317,19 @@ def get_patients(telegram_id: str = Header(None), db: MedEyeDB = Depends(get_cli
                 # Also include IOL results for ResultsPage display
                 if "iolResult" in latest_meas:
                     p["iolResult"] = latest_meas["iolResult"]
+                elif "iol_calc" in latest_meas:
+                    # Reconstruct iolResult from selected_iol
+                    sel = latest_meas["iol_calc"].get("selected_iol") if isinstance(latest_meas.get("iol_calc"), dict) else None
+                    if isinstance(sel, dict):
+                        iol_r = {}
+                        for side in ["od", "os"]:
+                            sd = sel.get(side)
+                            if isinstance(sd, dict) and sd.get("power") is not None:
+                                iol_r[side] = {"selectedPower": sd["power"]}
+                                if sd.get("model"):
+                                    iol_r["lens"] = sd["model"]
+                        if iol_r:
+                            p["iolResult"] = iol_r
                 if "toricResults" in latest_meas:
                     p["toricResults"] = latest_meas["toricResults"]
                 if "iol_calc" in latest_meas:
@@ -454,14 +487,14 @@ def calculate_iol(payload: IolCalcRequest):
     
     # Маппим данные активного глаза
     req_data[active_eye] = {
-        "al": float(d.get("al") or 0),
+        "al": float(d.get("al") or d.get("bio_al") or 0),
         "k1": float(d.get("k1") or 0),
         "k2": float(d.get("k2") or 0),
-        "acd": float(d.get("acd") or 0),
-        "lt": float(d.get("lt") or 0),
-        "wtw": float(d.get("wtw") or 0),
-        "a_const": float(d.get("a_const") or 119.3),
-        "target": float(d.get("target_refr") or 0)
+        "acd": float(d.get("acd") or d.get("bio_acd") or 0),
+        "lt": float(d.get("lt") or d.get("bio_lt") or 0),
+        "wtw": float(d.get("wtw") or d.get("bio_wtw") or 0),
+        "a_const": float(d.get("a_const") or d.get("aConst") or 119.3),
+        "target": float(d.get("target") or d.get("targetRefr") or d.get("target_refr") or 0),
     }
 
     results = []
@@ -479,11 +512,11 @@ def calculate_iol(payload: IolCalcRequest):
                 toric_data = calculate_autonomous_toric(
                     k1=float(d.get("k1") or 0),
                     k2=float(d.get("k2") or 0),
-                    k1_axis=float(d.get("k_ax") or 0),
+                    k1_axis=float(d.get("k1_ax") or d.get("k_ax") or 0),
                     sia=float(d.get("sia") or 0.1),
                     inc_axis=float(d.get("incAx") or 90),
-                    al=float(d.get("al") or 23.5),
-                    acd=float(d.get("acd") or 3.2),
+                    al=float(d.get("al") or d.get("bio_al") or 23.5),
+                    acd=float(d.get("acd") or d.get("bio_acd") or 3.2),
                     n_aq=n_aq,
                     iol_db=d.get("iol_db", "Alcon SN6AT"),
                     k_ax_is_steep=bool(d.get("k_ax_is_steep", False)),
@@ -607,19 +640,34 @@ async def send_surgical_pdf(payload: PdfRequest, telegram_id: str = Header(None)
         
         # Сохраняем текущую позицию
         x, y = pdf.get_x(), pdf.get_y()
-        
+
         pdf.cell(10, row_height, str(idx + 1), border=1, align="C")
-        
-        # Patient Info (Multi-line)
+
+        # Patient name + age
         pdf.set_font(pdf.font_family, style="B" if not font_path else "", size=10)
-        pdf.cell(60, row_height, p.name[:30], border=1) # Упрощенно
+        age_str = f"  {p.age} y.o." if p.age else ""
+        pdf.cell(60, row_height, (p.name[:22] + age_str)[:30], border=1)
         pdf.set_font(pdf.font_family, size=9)
-        
+
         pdf.cell(20, row_height, p.eye, border=1, align="C")
-        
+
         # Details (Multi-line)
         pdf.multi_cell(100, row_height/2 if "\n" in clean_details else row_height, clean_details, border=1, align="L")
+
+        # Сбрасываем курсор на начало следующей строки
+        pdf.set_xy(x, y + row_height)
         
+    # Disclaimer footer
+    pdf.ln(8)
+    pdf.set_font(pdf.font_family, size=7)
+    pdf.set_text_color(150, 150, 150)
+    pdf.multi_cell(0, 5,
+        "DISCLAIMER: This document was generated by RefMaster — a clinical decision support tool. "
+        "It is not a medical device and does not replace professional medical judgment. "
+        "The treating physician bears full responsibility for all clinical decisions.",
+        align="L")
+    pdf.set_text_color(0, 0, 0)
+
     # Save PDF to buffer
     out_path = TMP_DIR / f"surgical_{telegram_id}_{int(time.time())}.pdf"
     pdf.output(str(out_path))

@@ -22,9 +22,9 @@ export function AxisDial({
   tickWidth = 1.0, 
   bg = 'rgba(255,255,255,0.08)' 
 }: AxisDialProps) {
-  const ax = typeof axis === 'string' ? parseFloat(axis) : axis;
-  const kAx = typeof kAxis === 'string' ? parseFloat(kAxis) : kAxis;
-  const pAx = typeof pAxis === 'string' ? parseFloat(pAxis) : pAxis;
+  const ax = (typeof axis === 'string' ? parseFloat(axis) : axis) + 90;
+  const kAx = (kAxis !== undefined) ? (typeof kAxis === 'string' ? parseFloat(kAxis) : kAxis) + 90 : undefined;
+  const pAx = (pAxis !== undefined) ? (typeof pAxis === 'string' ? parseFloat(pAxis) : pAxis) + 90 : undefined;
   const cx = size / 2;
   const cy = size / 2;
   const r = size / 2 - 3;

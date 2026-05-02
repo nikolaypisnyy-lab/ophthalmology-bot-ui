@@ -151,13 +151,16 @@ function ResultCard({ patient, onOpen }: { patient: PatientSummary; onOpen: () =
           boxShadow: '0 2px 8px rgba(0,0,0,0.05)'
         }}>
           <div style={{ 
-            width: 24, height: 24, borderRadius: 8, 
-            background: `${C.cat}15`, 
+            width: 28, height: 28, borderRadius: 10, 
+            background: C.surface3, 
             display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0,
-            border: `1px solid ${C.cat}20`
+            border: `1px solid ${C.border2}`,
+            boxShadow: 'inset 0 1px 1px rgba(255,255,255,0.05)'
           }}>
-            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke={C.cat} strokeWidth="3">
-              <path d="M12 2v20M2 12h20" />
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke={C.cat} strokeWidth="2.5" strokeLinecap="round">
+              <circle cx="12" cy="12" r="6" />
+              <path d="M12 6c3.314 0 6 2.686 6 6" />
+              <path d="M12 18c-3.314 0-6-2.686-6-6" />
             </svg>
           </div>
           <div style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', gap: 1 }}>

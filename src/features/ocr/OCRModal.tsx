@@ -212,9 +212,12 @@ export function OCRModal() {
         if (!raw || typeof raw !== 'object' || Object.keys(raw).length === 0) continue;
 
         if (draft.type === 'cataract') {
-          // Катаракта: биометрия → setBioField (bio_od/bio_os)
-          const bioMapping: Record<string, string> = { al: 'al', k1: 'k1', k2: 'k2', k1_ax: 'k1_ax', acd: 'acd', lt: 'lt', wtw: 'wtw', cct: 'cct', kavg: 'kavg' };
-          Object.entries(bioMapping).forEach(([jsonKey, draftKey]) => {
+          // Для катаракты все поля биометрии и кератометрии -> в bioData
+          const cataractFields: Record<string, string> = { 
+            al: 'al', acd: 'acd', lt: 'lt', wtw: 'wtw', cct: 'cct',
+            k1: 'k1', k2: 'k2', k1_ax: 'k1_ax', kavg: 'kavg'
+          };
+          Object.entries(cataractFields).forEach(([jsonKey, draftKey]) => {
             if (raw[jsonKey] !== undefined && raw[jsonKey] !== null) {
               setBioField(eye, draftKey as any, String(raw[jsonKey]));
             }
@@ -235,7 +238,8 @@ export function OCRModal() {
           const allowed = ocrSection && sectionAllowed[ocrSection] ? sectionAllowed[ocrSection] : null;
 
           // Биометрические поля не применимы для формы рефракции
-          const skipAlways = new Set(['al', 'acd', 'lt']);
+          // Биометрические поля теперь разрешены и для рефракции
+          const skipAlways = new Set<string>([]);
 
           Object.entries(raw).forEach(([k, v]) => {
             if (v === undefined || v === null) return;
@@ -256,14 +260,16 @@ export function OCRModal() {
     <div
       style={{
         position: 'fixed', inset: 0, zIndex: 3000,
-        background: '#000000',
+        background: 'rgba(0,0,0,0.72)',
+        backdropFilter: 'blur(4px)',
+        WebkitBackdropFilter: 'blur(4px)',
         display: 'flex', flexDirection: 'column', justifyContent: 'flex-end',
       }}
       onClick={handleClose}
     >
       <div
         style={{
-          background: C.surface2,
+          background: C.surface,
           borderRadius: '20px 20px 0 0',
           padding: '20px 20px calc(24px + env(safe-area-inset-bottom,0px))',
           display: 'flex', flexDirection: 'column', gap: 14,

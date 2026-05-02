@@ -23,7 +23,8 @@ const TAB_LABELS: Record<TabKey, { ref: string; cat: string }> = {
 export function PatientHeader({ onSave, isSaving }: PatientHeaderProps) {
   const { draft, setDraft } = useSessionStore();
   const { activeTab, setActiveTab, closePatient, openOCR, targetSection } = useUIStore();
-  const { language } = useClinicStore();
+  const { language, theme } = useClinicStore();
+  void theme; // подписка на смену темы → ре-рендер
   const t = T(language);
   const { haptic } = useTelegram();
 
@@ -35,7 +36,7 @@ export function PatientHeader({ onSave, isSaving }: PatientHeaderProps) {
   const isCat = draft.type === 'cataract';
   const tabs: TabKey[] = isCat
     ? ['bio', 'calc', 'plan', 'result']
-    : ['bio', 'plan', 'enhancement', 'result'];
+    : ['bio', 'plan', 'result', 'enhancement'];
 
   const typeColor = isCat ? C.cat : C.ref;
   const typeLabel = (isCat ? t.cataract : t.refraction).toUpperCase();
@@ -61,7 +62,7 @@ export function PatientHeader({ onSave, isSaving }: PatientHeaderProps) {
   return (
     <div
       style={{
-        background: `linear-gradient(to bottom, #111425 0%, #0a0d16 100%)`,
+        background: `linear-gradient(to bottom, ${C.surface} 0%, ${C.bg} 100%)`,
         padding: 'max(20px, env(safe-area-inset-top, 0px)) 16px 0',
         borderBottom: `1px solid ${C.border}`,
         flexShrink: 0,
@@ -78,7 +79,7 @@ export function PatientHeader({ onSave, isSaving }: PatientHeaderProps) {
           onClick={closePatient}
           style={{
             width: 36, height: 36, borderRadius: 12,
-            background: 'rgba(255,255,255,0.03)', border: `1px solid ${C.border}`,
+            background: C.surface2, border: `1px solid ${C.border}`,
             display: 'flex', alignItems: 'center', justifyContent: 'center',
             cursor: 'pointer', color: C.muted2, flexShrink: 0,
           }}
@@ -119,14 +120,14 @@ export function PatientHeader({ onSave, isSaving }: PatientHeaderProps) {
             background: isCat
               ? `linear-gradient(135deg, #2563EB 0%, #3B82F6 100%)`
               : `linear-gradient(135deg, ${C.indigo} 0%, #6366F1 100%)`,
-            border: `1px solid rgba(255,255,255,0.1)`,
+            border: `1px solid ${C.border2}`,
             borderRadius: 10, padding: '6px 16px',
             fontFamily: F.sans, fontSize: 9, fontWeight: 900,
             color: '#FFFFFF', cursor: 'pointer',
             letterSpacing: '0.06em', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
             transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
             minWidth: 120,
-            boxShadow: '0 4px 12px rgba(0,0,0,0.2)'
+            boxShadow: '0 4px 12px rgba(0,0,0,0.15)'
           }}
         >
           <div style={{ width: 6, height: 6, borderRadius: '50%', background: '#FFF', flexShrink: 0 }} />
@@ -135,7 +136,7 @@ export function PatientHeader({ onSave, isSaving }: PatientHeaderProps) {
 
         <div style={{
           display: 'flex', alignItems: 'center', gap: 8,
-          background: draft.sex === 'Ж' ? 'rgba(244, 114, 182, 0.1)' : draft.sex === 'М' ? 'rgba(37, 99, 235, 0.1)' : 'rgba(255,255,255,0.05)',
+          background: draft.sex === 'Ж' ? 'rgba(244, 114, 182, 0.1)' : draft.sex === 'М' ? 'rgba(37, 99, 235, 0.1)' : C.surface2,
           padding: '4px 14px', borderRadius: 12,
           border: `1px solid ${draft.sex === 'Ж' ? 'rgba(244, 114, 182, 0.2)' : draft.sex === 'М' ? 'rgba(37, 99, 235, 0.3)' : C.border}`,
           position: 'absolute', left: '50%', transform: 'translateX(calc(-50% + 10px))',
@@ -176,14 +177,14 @@ export function PatientHeader({ onSave, isSaving }: PatientHeaderProps) {
           style={{
             marginLeft: 'auto',
             background: isSaving ? C.surface : `linear-gradient(135deg, ${C.green} 0%, #10B981 100%)`,
-            border: `1px solid rgba(255,255,255,0.1)`,
+            border: `1px solid ${C.border2}`,
             borderRadius: 10, padding: '6px 16px',
             fontFamily: F.sans, fontSize: 9, fontWeight: 900,
             color: '#FFFFFF', cursor: 'pointer',
             letterSpacing: '0.12em', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
             transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
             minWidth: 100,
-            boxShadow: '0 4px 12px rgba(0,0,0,0.2)'
+            boxShadow: '0 4px 12px rgba(0,0,0,0.15)'
           }}
         >
           {isSaving ? (
@@ -244,7 +245,7 @@ export function PatientHeader({ onSave, isSaving }: PatientHeaderProps) {
           disabled={activeTab === 'plan'}
           style={{
             height: 34, padding: '0 14px', borderRadius: '12px 12px 0 0',
-            background: activeTab === 'plan' ? 'transparent' : (targetSection ? `${C.indigo}20` : 'rgba(255,255,255,0.05)'),
+            background: activeTab === 'plan' ? 'transparent' : (targetSection ? `${C.indigo}20` : C.surface2),
             border: `1px solid ${activeTab === 'plan' ? `${C.border}40` : C.border}`, borderBottom: 'none',
             display: 'flex', alignItems: 'center', gap: 6,
             cursor: activeTab === 'plan' ? 'default' : 'pointer', transition: 'all 0.2s',

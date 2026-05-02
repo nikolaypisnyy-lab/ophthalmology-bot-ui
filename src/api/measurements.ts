@@ -235,6 +235,11 @@ export async function saveMeasurements(
     if (patient.periods && Object.keys(patient.periods).length > 0)
       d.periods = patient.periods as any;
 
+    // ── Торический расчёт ─────────────────────────────────────────────────────
+    if ((patient as any).toricResults) {
+      (d as any).toricResults = (patient as any).toricResults;
+    }
+
     // ── Результат ИОЛ расчёта ──────────────────────────────────────────────────
     if (patient.formulaResults || patient.iolResult) {
       d.iol_calc = {
