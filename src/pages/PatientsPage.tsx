@@ -72,8 +72,8 @@ function PatientCard({
         onMouseUp={handleTouchEnd}
         style={{
           position: 'relative',
-          borderRadius: R.lg,
-          background: C.card,
+          borderRadius: 14,
+          background: C.surface,
           border: `1px solid ${C.border}`,
           transform: swiped ? 'translateX(-80px)' : 'translateX(0)',
           transition: 'transform 0.3s cubic-bezier(0.2, 0.8, 0.2, 1)',

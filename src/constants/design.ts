@@ -1,14 +1,14 @@
 /** Цветовые токены RefMaster 2.0 — тема меняется через setAppTheme() */
 
 const DARK = {
-  bg:           '#05060c',
+  bg:           '#0d0f1a',
   surface:      '#151828',
   surface2:     'rgba(255,255,255,0.03)',
   surface3:     '#1e2238',
   surfaceActive:'rgba(129,140,248,0.12)',
   card:         '#1e2238',
   cardHi:       '#262b45',
-  bgHi:         '#0c0e1a',
+  bgHi:         '#0d0f1a',
 
   border:  'rgba(255,255,255,0.06)',
   border2: 'rgba(255,255,255,0.12)',

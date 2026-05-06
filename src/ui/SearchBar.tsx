@@ -18,10 +18,10 @@ export function SearchBar({
         display: 'flex',
         alignItems: 'center',
         gap: 8,
-        background: C.surface2,
+        background: C.surface,
         border: `1px solid ${C.border}`,
-        borderRadius: 20,
-        padding: '9px 14px',
+        borderRadius: 14,
+        padding: '10px 14px',
         flex: 1,
       }}
     >

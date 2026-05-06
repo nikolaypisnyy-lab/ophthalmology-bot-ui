@@ -15,10 +15,10 @@ export function Chip({ label, active, color = C.accent, onClick, style }: ChipPr
       onClick={onClick}
       style={{
         padding: '6px 14px',
-        borderRadius: 20,
-        border: `1.5px solid ${active ? color : C.border}`,
-        background: active ? color + '25' : 'transparent',
-        color: active ? color : C.muted,
+        borderRadius: 999,
+        border: `1px solid ${active ? 'transparent' : C.border}`,
+        background: active ? color + '20' : C.surface,
+        color: active ? color : C.secondary,
         fontFamily: F.sans,
         fontSize: 12,
         fontWeight: 600,

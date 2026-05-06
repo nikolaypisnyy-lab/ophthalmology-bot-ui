@@ -187,7 +187,7 @@ function OperationItem({
   };
 
   return (
-    <div style={{ position: 'relative', background: C.red, borderRadius: 16, overflow: 'hidden', marginBottom: 12 }}>
+    <div style={{ position: 'relative', background: C.red, borderRadius: 14, overflow: 'hidden', marginBottom: 10 }}>
       {/* Remove Button Background */}
       <div 
         onClick={handleRemove}
@@ -213,8 +213,8 @@ function OperationItem({
         style={{
           position: 'relative',
           display: 'flex', alignItems: 'center', gap: 14,
-          background: isMoving ? C.surfaceActive : C.card,
-          padding: '12px 14px', borderRadius: 16,
+          background: isMoving ? C.surfaceActive : C.surface,
+          padding: '12px 14px', borderRadius: 14,
           border: `1px solid ${isMoving ? C.indigo : C.border}`,
           transform: swiped ? 'translateX(-80px)' : 'translateX(0)',
           transition: 'transform 0.3s cubic-bezier(0.2, 0.8, 0.2, 1)',

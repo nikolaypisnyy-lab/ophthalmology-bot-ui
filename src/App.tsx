@@ -49,28 +49,26 @@ function GlobalStyles() {
   useClinicStore(s => s.theme); // подписка на смену темы → ре-рендер
   return (
     <style>{`
-      @import url('https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500;700&display=swap');
-      
-      *, *::before, *::after { 
-        box-sizing: border-box; 
-        margin: 0; 
-        padding: 0; 
+      *, *::before, *::after {
+        box-sizing: border-box;
+        margin: 0;
+        padding: 0;
         -webkit-tap-highlight-color: transparent;
       }
-      
-      html, body, #root { 
+
+      html, body, #root {
         width: 100%;
-        height: 100%; 
+        height: 100%;
         background: ${C.bg};
         overscroll-behavior: none;
       }
-      
-      body { 
+
+      body {
         position: fixed;
         top: 0; left: 0; right: 0; bottom: 0;
-        color: ${C.text}; 
-        font-family: 'Outfit', system-ui, sans-serif; 
-        -webkit-font-smoothing: antialiased; 
+        color: ${C.text};
+        font-family: 'DM Sans', system-ui, sans-serif;
+        -webkit-font-smoothing: antialiased;
         overflow: hidden;
         user-select: none;
         -webkit-user-select: none;
@@ -82,7 +80,7 @@ function GlobalStyles() {
         -webkit-user-select: text !important;
       }
 
-      input, textarea, select { font-family: 'Outfit', sans-serif; }
+      input, textarea, select { font-family: 'DM Sans', sans-serif; }
       input[type=number]::-webkit-inner-spin-button,
       input[type=number]::-webkit-outer-spin-button { -webkit-appearance: none; }
       input[type=number] { -moz-appearance: textfield; }
@@ -161,10 +159,10 @@ function AppHeader({ title }: { title: string }) {
         }}>
           RefMaster 2.0 <span style={{ opacity: 0.5, color: C.muted2 }}>/ {activeName || 'MedEye'}</span>
         </div>
-        <div style={{ 
-          fontFamily: F.sans, 
-          fontSize: 24, 
-          fontWeight: 900, 
+        <div style={{
+          fontFamily: F.sans,
+          fontSize: 24,
+          fontWeight: 700,
           color: C.text,
           letterSpacing: '-0.03em',
         }}>
@@ -197,7 +195,7 @@ function BottomNav() {
   const { haptic } = useTelegram();
   const t = T(language);
   const items = getNavItems(t);
-  const navBg = theme === 'light' ? 'rgba(240,242,248,0.97)' : 'rgba(5,6,12,0.95)';
+  const navBg = theme === 'light' ? 'rgba(240,242,248,0.97)' : 'rgba(13,15,26,0.95)';
 
   return (
     <div style={{

@@ -14,16 +14,15 @@ import type { PatientSummary } from '../types/patient';
 
 const StatCard = ({ label, value, color, sub }: { label: string; value: string | number; color: string; sub?: string | null }) => (
   <div style={{
-    background: `linear-gradient(135deg, ${C.surface} 0%, ${C.surface2} 100%)`, 
-    border: `1px solid ${C.border}40`,
+    background: C.surface,
+    border: `1px solid ${C.border}`,
     borderRadius: 14, padding: '10px 12px', flex: 1,
     display: 'flex', flexDirection: 'column', gap: 4,
-    boxShadow: '0 4px 16px rgba(0,0,0,0.1)',
     minWidth: 0
   }}>
-    <span style={{ fontFamily: F.sans, fontSize: 7, fontWeight: 900, color: C.muted2, letterSpacing: '.08em', textTransform: 'uppercase' }}>{label}</span>
-    <span style={{ fontFamily: F.mono, fontSize: 22, fontWeight: 900, color, lineHeight: 1.1 }}>{value}</span>
-    {sub && <span style={{ fontFamily: F.mono, fontSize: 7, color: C.muted, fontWeight: 800 }}>{sub}</span>}
+    <span style={{ fontFamily: F.sans, fontSize: 10, fontWeight: 700, color: C.tertiary, letterSpacing: '.10em', textTransform: 'uppercase' }}>{label}</span>
+    <span style={{ fontFamily: F.mono, fontSize: 22, fontWeight: 500, color, lineHeight: 1.1 }}>{value}</span>
+    {sub && <span style={{ fontFamily: F.mono, fontSize: 10, color: C.tertiary }}>{sub}</span>}
   </div>
 );
 
@@ -106,11 +105,10 @@ function ResultCard({ patient, onOpen }: { patient: PatientSummary; onOpen: () =
     <div
       onClick={onOpen}
       style={{
-        background: C.card, border: `1px solid ${C.border}`,
-        borderRadius: 16, padding: '10px 14px 10px 18px',
+        background: C.surface, border: `1px solid ${C.border}`,
+        borderRadius: 14, padding: '10px 14px 10px 18px',
         cursor: 'pointer', display: 'flex', flexDirection: 'column', gap: 6,
-        width: '100%', position: 'relative', overflow: 'hidden',
-        boxShadow: '0 4px 20px rgba(0,0,0,0.1)'
+        width: '100%', position: 'relative', overflow: 'hidden'
       }}
     >
       <div style={{ position: 'absolute', left: 0, top: 0, bottom: 0, width: 4, background: isFemale ? '#f472b6' : C.od }} />
