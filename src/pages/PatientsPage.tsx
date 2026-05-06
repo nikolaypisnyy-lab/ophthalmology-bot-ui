@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { C, F, R, typeColors, eyeColors } from '../constants/design';
+import { C, F, typeColors, eyeColors } from '../constants/design';
 import { usePatientStore } from '../store/usePatientStore';
 import { useUIStore } from '../store/useUIStore';
 import { useTelegram } from '../hooks/useTelegram';
@@ -50,7 +50,7 @@ function PatientCard({
   };
 
   return (
-    <div style={{ position: 'relative', borderRadius: R.lg, background: C.red, overflow: 'hidden' }}>
+    <div style={{ position: 'relative', borderRadius: 14, background: C.red, overflow: 'hidden' }}>
       {/* Delete Background */}
       <div 
         onClick={(e) => { e.stopPropagation(); haptic.medium(); onDelete(String(patient.id)); }}

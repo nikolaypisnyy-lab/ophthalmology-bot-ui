@@ -75,10 +75,7 @@ function CataractPlanTab() {
     const k1 = parseFloat(eyeData.k1 || '0');
     const k2 = parseFloat(eyeData.k2 || '0');
     const k1Ax = parseFloat(eyeData.k_ax || eyeData.k1_ax || '0');
-    const kavg = hasPentacam ? eyeData.p_tot_k : (eyeData.kavg || ((k1 + k2) / 2).toFixed(2));
-    const cyl  = hasPentacam ? eyeData.p_tot_c : (k1 && k2 ? (k2 - k1).toFixed(2) : '0.00');
     const steepAx = hasPentacam ? parseFloat(eyeData.p_tot_a || '0') : (k2 > k1 ? (k1Ax + 90) % 180 : k1Ax);
-    const ax = steepAx;
 
     return (
       <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
@@ -180,26 +177,6 @@ function CataractPlanTab() {
           </div>
         </div>
 
-        {/* 3. EYE DATA */}
-        <div style={{ background: C.card, borderRadius: 20, padding: '12px 14px', border: `1px solid ${C.border}`, display: 'flex', alignItems: 'center', gap: 12 }}>
-          <div style={{ width: 44, height: 44, borderRadius: '50%', background: C.surface, display: 'flex', alignItems: 'center', justifyContent: 'center', border: `1px solid ${C.border}` }}>
-            <AxisDial axis={ax} kAxis={ax} size={36} color={C.amber} />
-          </div>
-          <div style={{ flex: 1, display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 8 }}>
-            <div>
-              <div style={{ fontSize: 7, fontWeight: 900, color: C.muted3, textTransform: 'uppercase' }}>K-AVG</div>
-              <div style={{ fontSize: 13, fontWeight: 800, color: C.amber, fontFamily: F.mono }}>{kavg}</div>
-            </div>
-            <div>
-              <div style={{ fontSize: 7, fontWeight: 900, color: C.muted3, textTransform: 'uppercase' }}>CYL</div>
-              <div style={{ fontSize: 13, fontWeight: 800, color: C.amber, fontFamily: F.mono }}>{cyl}</div>
-            </div>
-            <div>
-              <div style={{ fontSize: 7, fontWeight: 900, color: C.muted3, textTransform: 'uppercase' }}>AL</div>
-              <div style={{ fontSize: 13, fontWeight: 800, color: ec.color, fontFamily: F.mono }}>{eyeData.al || '—'}</div>
-            </div>
-          </div>
-        </div>
       </div>
     );
   } catch (err) {

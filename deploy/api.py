@@ -89,7 +89,7 @@ def run_scraper_subprocess(func_name: str, req_data: dict, timeout: int = 150) -
 # ──────────────────────────────────────────────────────────────────────────────
 APP_DIR = Path("/root/medeye/api") if Path("/root/medeye/api").exists() else Path(__file__).parent.resolve()
 DB_DIR = Path("/root/medeye/data") if Path("/root/medeye/data").exists() else APP_DIR
-DIST_DIR = Path("/root/medeye/dist") if Path("/root/medeye/dist").exists() else (APP_DIR / "dist")
+DIST_DIR = APP_DIR / "dist"
 LOG_DIR = Path("/root/medeye/logs") if Path("/root/medeye/logs").exists() else (APP_DIR / "logs")
 
 TMP_DIR = APP_DIR / "tmp"

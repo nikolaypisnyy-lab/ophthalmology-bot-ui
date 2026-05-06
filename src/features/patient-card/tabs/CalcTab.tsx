@@ -312,22 +312,21 @@ export function CalcTab() {
                           if (isMain) {
                             haptic.selection();
                             const eyeRes = (iolResult as any)?.[activeEye] || {};
-                            
-                            // Find matching toric model for this power
-                            const toricMatch = draft.toricMode && toricResults?.[activeEye]
-                              ? toricResults[activeEye].table.find((s: any) => Math.abs(s.power - r.power) < 0.01)
+                            const toricData = toricResults?.[activeEye];
+
+                            const toricMatch = draft.toricMode && toricData?.table
+                              ? toricData.table.find((s: any) => Math.abs(s.power - r.power) < 0.01)
                               : null;
 
                             setIOLResult({
                               ...(iolResult || {}),
-                              [activeEye]: { 
-                                ...eyeRes, 
-                                lens: fName, // СОХРАНЯЕМ НАЗВАНИЕ ФОРМУЛЫ/ЛИНЗЫ
-                                selectedPower: r.power, 
+                              [activeEye]: {
+                                ...eyeRes,
+                                selectedPower: r.power,
                                 expectedRefr: rRef,
                                 selectedToricModel: toricMatch?.model ?? eyeRes.selectedToricModel,
                                 cyl: toricMatch?.cyl_iol ?? eyeRes.cyl,
-                                axis: (toricMatch?.res_axis ?? tr.total_steep_axis) ?? eyeRes.axis
+                                axis: (toricMatch?.res_axis ?? toricData?.total_steep_axis) ?? eyeRes.axis,
                               },
                             } as any);
                           } else {
@@ -420,14 +419,13 @@ export function CalcTab() {
                     const eyeRes = (iolResult as any)?.[activeEye] || {};
                     setIOLResult({
                       ...(iolResult || {}),
-                      [activeEye]: { 
-                        ...eyeRes, 
+                      [activeEye]: {
+                        ...eyeRes,
                         selectedToricModel: row.model,
-                        lens: `${(eyeRes.lens || 'IOL').split(' (')[0]} (${row.model})`, // Добавляем модель в название
                         selectedPower: eyeRes.selectedPower ?? displayPower,
                         expectedRefr: eyeRes.expectedRefr ?? predSE,
                         cyl: row.cyl_iol,
-                        axis: row.res_axis ?? tr.total_steep_axis
+                        axis: row.res_axis ?? tr.total_steep_axis,
                       },
                     } as any);
                   }}
