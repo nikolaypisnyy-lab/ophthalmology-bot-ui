@@ -49,9 +49,15 @@ class MasterDB:
                 clinic_id TEXT,
                 role TEXT,
                 name TEXT,
+                is_active INTEGER DEFAULT 0,
                 PRIMARY KEY (telegram_id, clinic_id)
             )
         """, commit=True)
+        # Migration: ensure is_active exists if table already existed
+        try:
+            self.execute("ALTER TABLE users ADD COLUMN is_active INTEGER DEFAULT 0", commit=True)
+        except:
+            pass
 
     def create_clinic(self, name: str, clinic_id: str = None) -> str:
         cid = clinic_id if clinic_id else "c_" + str(uuid.uuid4())[:8]
@@ -99,9 +105,13 @@ class MasterDB:
         if clinic_id:
             row = self.execute(query + " AND u.clinic_id = ?", (user_id, clinic_id)).fetchone()
         else:
-            row = self.execute(query, (user_id,)).fetchone()
+            row = self.execute(query + " ORDER BY u.is_active DESC LIMIT 1", (user_id,)).fetchone()
         
         return dict(row) if row else None
+
+    def set_active_clinic(self, user_id: int, clinic_id: str):
+        self.execute("UPDATE users SET is_active = 0 WHERE telegram_id = ?", (user_id,), commit=True)
+        self.execute("UPDATE users SET is_active = 1 WHERE telegram_id = ? AND clinic_id = ?", (user_id, clinic_id), commit=True)
 
     def get_user_clinics(self, user_id: int) -> list:
         rows = self.execute("""

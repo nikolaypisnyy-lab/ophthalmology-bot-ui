@@ -50,7 +50,10 @@ const EntryCell = ({
             {(() => {
               const n = parseFloat(String(val));
               if (isNaN(n)) return '—';
-              if (isAx) return Math.round(n).toString();
+              if (isAx) {
+                const isPenta = field.startsWith('p_');
+                return isPenta ? n.toFixed(1) : Math.round(n).toString();
+              }
               if (n > 25) return n.toFixed(2); 
               // No plus for visual acuity, axis, bio fields, or SIA
               const showPlus = !isAx && !field.includes('va') && !field.includes('k') && !field.includes('bio') && field !== 'sia' && n >= 0;
@@ -176,7 +179,7 @@ export function BioTab() {
       const res = sumCylinders(Math.abs(ac), aa, -Math.abs(pc), pa);
       
       const tc = (res.cyl > 0 ? '+' : '') + res.cyl.toFixed(2);
-      const ta = res.ax.toString();
+      const ta = res.ax.toFixed(1);
       
       // Автоматический Km (среднее K1/K2)
       const k1 = parseFloat(eye.k1 || '0');
@@ -257,6 +260,7 @@ export function BioTab() {
     let n = cur + (dir * step);
     if (field === 'cct') n = Math.max(0, n);
     const isAx = field.includes('ax') || field.endsWith('_a');
+    if (isAx && field.startsWith('p_')) step = 0.1;
     
     // Pentacam notation logic
     const isPentaCyl = field.startsWith('p_') && field.endsWith('_c');
@@ -272,9 +276,10 @@ export function BioTab() {
       if (n < 0) n = 180 + n;
       if (n >= 180) n = n - 180;
     }
-    const nv = n.toFixed(isAx ? 0 : 2);
+    const isPentaAx = isAx && field.startsWith('p_');
+    const nv = n.toFixed(isAx ? (isPentaAx ? 1 : 0) : 2);
     const showPlus = !isAx && !field.includes('va') && !field.includes('k') && !field.includes('bio') && field !== 'sia' && field !== 'cct' && !field.includes('p_tot') && n >= 0;
-    set(field, (isAx || field === 'cct') ? n.toFixed(0) : (n > 25 ? nv : (showPlus ? '+' : '') + nv));
+    set(field, (isAx || field === 'cct') ? (isPentaAx ? n.toFixed(1) : n.toFixed(0)) : (n > 25 ? nv : (showPlus ? '+' : '') + nv));
     haptic.light();
   };
 
@@ -590,13 +595,13 @@ export function BioTab() {
                 <div 
                   onClick={() => { haptic.success(); setIsLensModalOpen(true); }} 
                   style={{ 
-                    background: C.surface, borderRadius: 12, padding: '10px 14px', 
+                    background: C.surface, borderRadius: 20, padding: '10px 14px', 
                     border: `1px solid ${C.border}`, display: 'flex', alignItems: 'center', 
                     justifyContent: 'space-between', cursor: 'pointer', height: 40, boxSizing: 'border-box'
                   }}
                 >
                   <span style={{ fontSize: 13, fontWeight: 800, color: C.text }}>{draft.iolResult?.lens || 'Select Lens...'}</span>
-                  <div style={{ background: `${C.indigo}20`, borderRadius: 8, padding: '4px 10px', color: C.indigo, fontSize: 9, fontWeight: 900 }}>
+                  <div style={{ background: `${C.indigo}20`, borderRadius: 12, padding: '4px 10px', color: C.indigo, fontSize: 9, fontWeight: 900 }}>
                     CHOOSE
                   </div>
                 </div>
@@ -621,7 +626,7 @@ export function BioTab() {
             {/* Formula picker + CALC button */}
             <div style={{ display: 'flex', gap: 8, alignItems: 'stretch' }}>
               <div style={{
-                flex: 1, display: 'flex', gap: 4, background: C.surface, padding: 2, borderRadius: 10,
+                flex: 1, display: 'flex', gap: 4, background: C.surface, padding: 2, borderRadius: 20,
                 border: `1px solid ${C.border}`,
               }}>
                 {(['Haigis', 'Barrett', 'Kane'] as const).map(f => (
@@ -629,7 +634,7 @@ export function BioTab() {
                     key={f}
                     onClick={(e) => { e.stopPropagation(); haptic.light(); setDraft({ activeFormula: f }); }}
                     style={{
-                      flex: 1, padding: '8px 0', borderRadius: 8, textAlign: 'center',
+                      flex: 1, padding: '8px 0', borderRadius: 18, textAlign: 'center',
                       background: draft.activeFormula === f ? `${C.indigo}15` : 'transparent',
                       color: draft.activeFormula === f ? C.indigo : C.muted2,
                       fontSize: 9, fontWeight: 900, textTransform: 'uppercase', cursor: 'pointer',
@@ -818,18 +823,22 @@ export function BioTab() {
             <EntryCell field="man_cyl" label="CYL" color={ec.color} val={data.man_cyl} onStep={handleStep} onStartEdit={handleStartEdit} isEditing={editingField === 'man_cyl'} tempValue={tempValue} onTempChange={setTempValue} onFinish={handleFinishEdit} inputRef={inputRef} />
             <EntryCell field="man_ax" label="AX" color={ec.color} val={data.man_ax} isAx onStep={handleStep} onStartEdit={handleStartEdit} isEditing={editingField === 'man_ax'} tempValue={tempValue} onTempChange={setTempValue} onFinish={handleFinishEdit} inputRef={inputRef} />
             
-            <div style={{ gridColumn: 5, gridRow: '1 / 5', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'flex-start', paddingLeft: 4, gap: 4, marginTop: -10 }}>
+            <div style={{ gridColumn: 5, gridRow: '1 / 5', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'flex-start', paddingLeft: 4, gap: 2, marginTop: -10 }}>
               <div style={{ textAlign: 'center', lineHeight: 1 }}>
-                <div style={{ fontSize: 7, fontWeight: 900, color: C.muted3, textTransform: 'uppercase', letterSpacing: '0.08em' }}>Astigmatism</div>
+                <div style={{ fontSize: 7, fontWeight: 900, color: C.muted3, textTransform: 'uppercase', letterSpacing: '0.08em' }}>Astig.</div>
                 <div style={{ fontSize: 7, fontWeight: 900, color: C.muted3, textTransform: 'uppercase', letterSpacing: '0.08em' }}>Axis</div>
               </div>
-              <div style={{ width: 64, height: 64, borderRadius: '50%', background: `${C.surface}80`, border: `1px solid ${C.border}`, display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 4px 12px rgba(0,0,0,0.05)' }}>
-                <AxisDial 
-                  axis={parseInt(data.man_ax || '0')} 
-                  kAxis={parseInt(data.k_ax || '0')} 
-                  pAxis={parseInt(data.p_tot_a || '0')} 
-                  size={56} color={ec.color} tickWidth={2} 
-                />
+              {/* Обёртка с паддингом для меток, выходящих за SVG */}
+              <div style={{ padding: '16px 12px 6px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                <div style={{ width: 56, height: 56, borderRadius: '50%', background: `${C.surface}80`, border: `1px solid ${C.border}`, display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 4px 12px rgba(0,0,0,0.05)' }}>
+                  <AxisDial
+                    axis={parseInt(data.man_ax || '0')}
+                    kAxis={parseInt(data.k_ax || '0')}
+                    pAxis={parseInt(data.p_tot_a || '0')}
+                    size={48} color={ec.color} tickWidth={2}
+                    showLabels
+                  />
+                </div>
               </div>
 
               {(() => {
@@ -846,10 +855,10 @@ export function BioTab() {
 
                 return (
                   <div style={{ textAlign: 'center', lineHeight: 1.2 }}>
-                    <div style={{ fontSize: 10, fontWeight: 900, color: C.text, textTransform: 'uppercase', marginBottom: 2 }}>{type}</div>
+                    <div style={{ fontSize: 10, fontWeight: 900, color: data.p_tot_c ? C.purple : C.text, textTransform: 'uppercase', marginBottom: 2 }}>{type}</div>
                     <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
-                      <div style={{ fontSize: 11, fontWeight: 900, color: C.amber, fontFamily: F.mono }}>{cylVal.toFixed(2)}D</div>
-                      <div style={{ fontSize: 9, fontWeight: 800, color: C.muted2, fontFamily: F.mono, opacity: 0.8 }}>ax {steep}°</div>
+                      <div style={{ fontSize: 11, fontWeight: 900, color: data.p_tot_c ? C.purple : C.amber, fontFamily: F.mono }}>{cylVal.toFixed(2)}D</div>
+                      <div style={{ fontSize: 9, fontWeight: 800, color: data.p_tot_c ? C.purple : C.muted2, fontFamily: F.mono, opacity: 0.8 }}>ax {steep}°</div>
                     </div>
                   </div>
                 );
@@ -861,10 +870,10 @@ export function BioTab() {
             <DiagnosticCell field="k2" color={C.amber} val={data.k2} onStartEdit={handleStartEdit} isEditing={editingField === 'k2'} tempValue={tempValue} onTempChange={setTempValue} onFinish={handleFinishEdit} inputRef={inputRef} />
             <DiagnosticCell field="k_ax" color={C.amber} val={data.k_ax} isAx onStartEdit={handleStartEdit} isEditing={editingField === 'k_ax'} tempValue={tempValue} onTempChange={setTempValue} onFinish={handleFinishEdit} inputRef={inputRef} />
 
-            <div style={{ fontSize: 16, fontWeight: 900, color: C.indigo, textAlign: 'center', borderRight: `1px solid ${C.border}20`, paddingRight: 4 }}>N</div>
-            <DiagnosticCell field="n_sph" color={C.indigo} val={data.n_sph} onStartEdit={handleStartEdit} isEditing={editingField === 'n_sph'} tempValue={tempValue} onTempChange={setTempValue} onFinish={handleFinishEdit} inputRef={inputRef} />
-            <DiagnosticCell field="n_cyl" color={C.indigo} val={data.n_cyl} onStartEdit={handleStartEdit} isEditing={editingField === 'n_cyl'} tempValue={tempValue} onTempChange={setTempValue} onFinish={handleFinishEdit} inputRef={inputRef} />
-            <DiagnosticCell field="n_ax" color={C.indigo} val={data.n_ax} isAx onStartEdit={handleStartEdit} isEditing={editingField === 'n_ax'} tempValue={tempValue} onTempChange={setTempValue} onFinish={handleFinishEdit} inputRef={inputRef} />
+            <div style={{ fontSize: 16, fontWeight: 900, color: C.slate, textAlign: 'center', borderRight: `1px solid ${C.border}20`, paddingRight: 4 }}>N</div>
+            <DiagnosticCell field="n_sph" color={C.slate} val={data.n_sph} onStartEdit={handleStartEdit} isEditing={editingField === 'n_sph'} tempValue={tempValue} onTempChange={setTempValue} onFinish={handleFinishEdit} inputRef={inputRef} />
+            <DiagnosticCell field="n_cyl" color={C.slate} val={data.n_cyl} onStartEdit={handleStartEdit} isEditing={editingField === 'n_cyl'} tempValue={tempValue} onTempChange={setTempValue} onFinish={handleFinishEdit} inputRef={inputRef} />
+            <DiagnosticCell field="n_ax" color={C.slate} val={data.n_ax} isAx onStartEdit={handleStartEdit} isEditing={editingField === 'n_ax'} tempValue={tempValue} onTempChange={setTempValue} onFinish={handleFinishEdit} inputRef={inputRef} />
 
             <div style={{ fontSize: 16, fontWeight: 900, color: C.muted2, textAlign: 'center', borderRight: `1px solid ${C.border}20`, paddingRight: 4 }}>W</div>
             <DiagnosticCell field="c_sph" color={C.muted2} val={data.c_sph} onStartEdit={handleStartEdit} isEditing={editingField === 'c_sph'} tempValue={tempValue} onTempChange={setTempValue} onFinish={handleFinishEdit} inputRef={inputRef} />
@@ -879,7 +888,7 @@ export function BioTab() {
           <SectionLabel color={C.secondary || C.muted2} style={{ margin: '8px 0 4px 4px', fontSize: 10, letterSpacing: '0.14em', fontWeight: 700 }}>ASTIGMATISM · PENTACAM</SectionLabel>
           <div style={{ background: C.card, borderRadius: 24, padding: '10px 12px 8px', border: `1px solid ${C.border}`, boxShadow: '0 12px 40px rgba(0,0,0,0.1)' }}>
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
-              <span style={{ fontWeight: 700, fontSize: 10, color: C.indigo, letterSpacing: '0.04em', textTransform: 'uppercase' }}>Pentacam Station</span>
+              <span style={{ fontWeight: 700, fontSize: 10, color: C.purple, letterSpacing: '0.04em', textTransform: 'uppercase' }}>Pentacam Station</span>
               <div style={{ display: 'flex', background: C.surface, borderRadius: 10, padding: 2, border: `1px solid ${C.border}` }}>
                 {(['ANT', 'POST', 'TOTAL'] as const).map(m => (
                   <button key={m} onClick={() => setPMode(m)} style={{ padding: '4px 10px', borderRadius: 8, border: 'none', background: pMode === m ? C.cardHi : 'transparent', color: pMode === m ? C.text : C.muted2, fontFamily: F.sans, fontSize: 9, fontWeight: 900, cursor: 'pointer' }}>{m}</button>
@@ -901,18 +910,18 @@ export function BioTab() {
                   <>
                     {pMode === 'TOTAL' && (
                       <EntryCell 
-                        field={fK} label="TOTAL KM" color={C.indigo} val={data[fK]} stepOverride={0.1} 
+                        field={fK} label="TOTAL KM" color={C.purple} val={data[fK]} stepOverride={0.1} 
                         onStep={handleStep} onStartEdit={handleStartEdit} isEditing={editingField === fK} 
                         tempValue={tempValue} onTempChange={setTempValue} onFinish={handleFinishEdit} inputRef={inputRef} 
                       />
                     )}
                     <EntryCell 
-                      field={fC} label={`${pMode}-CYL`} color={C.indigo} val={data[fC]} 
+                      field={fC} label={`${pMode}-CYL`} color={C.purple} val={data[fC]} 
                       onStep={handleStep} onStartEdit={handleStartEdit} isEditing={editingField === fC} 
                       tempValue={tempValue} onTempChange={setTempValue} onFinish={handleFinishEdit} inputRef={inputRef} 
                     />
                     <EntryCell 
-                      field={fA} label={`${pMode}-AX`} color={C.indigo} val={data[fA]} isAx 
+                      field={fA} label={`${pMode}-AX`} color={C.purple} val={data[fA]} isAx 
                       onStep={handleStep} onStartEdit={handleStartEdit} isEditing={editingField === fA} 
                       tempValue={tempValue} onTempChange={setTempValue} onFinish={handleFinishEdit} inputRef={inputRef} 
                     />

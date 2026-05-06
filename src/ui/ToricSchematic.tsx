@@ -37,13 +37,13 @@ export function ToricSchematic({ eye, incisionAx, toricAx, steepAx, size = 240 }
         <g key={deg}>
           <line
             x1={px(deg, limR)} y1={py(deg, limR)}
-            x2={px(deg, limR + 12)} y2={py(deg, limR + 12)}
+            x2={px(deg, limR + 8)} y2={py(deg, limR + 8)}
             stroke={C.muted3} strokeWidth={2}
           />
           <text
-            x={px(deg, limR + 32)} y={py(deg, limR + 32)}
+            x={px(deg, limR + 22)} y={py(deg, limR + 22)}
             textAnchor="middle" dominantBaseline="central"
-            fill={C.secondary} fontSize={13} fontFamily={F.sans} fontWeight={900}
+            fill={C.secondary} fontSize={12} fontFamily={F.sans} fontWeight={900}
           >{deg}°</text>
         </g>
       ))}

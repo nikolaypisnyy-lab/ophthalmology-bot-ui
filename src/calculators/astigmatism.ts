@@ -29,7 +29,7 @@ export function vectorAxis(v: AstigVector | null): number {
   if (!v || (v.x === 0 && v.y === 0)) return 0;
   let a = (Math.atan2(v.y, v.x) / 2) * (180 / Math.PI);
   if (a < 0) a += 180;
-  return Math.round(a);
+  return Math.round(a * 10) / 10;
 }
 
 /** Разность векторов (a − b) */
@@ -59,8 +59,9 @@ export function sumCylinders(
   let cTot = -Math.sqrt(cx * cx + cy * cy);
   let aTot = (Math.atan2(-cy, -cx) / 2) * (180 / Math.PI);
   if (aTot <= 0) aTot += 180;
+  if (aTot > 180) aTot -= 180;
 
-  return { cyl: cTot, ax: Math.round(aTot) };
+  return { cyl: cTot, ax: Math.round(aTot * 10) / 10 };
 }
 
 /**

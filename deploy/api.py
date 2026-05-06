@@ -142,6 +142,7 @@ class PatientCreate(BaseModel):
     isCustomView: Optional[bool] = None
     isCustomViewOD: Optional[bool] = None
     isCustomViewOS: Optional[bool] = None
+    savedEnhancement: Optional[dict] = None
     clinic_id: Optional[str] = None
 
 class PatientUpdate(BaseModel):
@@ -312,6 +313,9 @@ def get_patients(telegram_id: str = Header(None), db: MedEyeDB = Depends(get_cli
                             if os and os.get("sph") is not None:
                                 p["postSphOS"], p["postCylOS"], p["postAxOS"], p["postVaOS"] = os.get("sph"), os.get("cyl"), os.get("ax"), os.get("va")
                                 p["status"] = "done"
+                            ou = pr.get("ou")
+                            if ou and ou.get("va") is not None:
+                                p["postVaOU"] = ou.get("va")
                             if "status" in p: break
                 
                 # Also include IOL results for ResultsPage display
@@ -325,7 +329,12 @@ def get_patients(telegram_id: str = Header(None), db: MedEyeDB = Depends(get_cli
                         for side in ["od", "os"]:
                             sd = sel.get(side)
                             if isinstance(sd, dict) and sd.get("power") is not None:
-                                iol_r[side] = {"selectedPower": sd["power"]}
+                                eye_data = {"selectedPower": sd["power"]}
+                                if sd.get("selectedToricModel"):
+                                    eye_data["selectedToricModel"] = sd["selectedToricModel"]
+                                if sd.get("expected_refr") is not None:
+                                    eye_data["expectedRefr"] = sd["expected_refr"]
+                                iol_r[side] = eye_data
                                 if sd.get("model"):
                                     iol_r["lens"] = sd["model"]
                         if iol_r:
@@ -356,6 +365,7 @@ def get_patient(patient_id: str, db: MedEyeDB = Depends(get_clinic_db)):
         elif not patient.get("op_eye"): patient["op_eye"] = pr.get("op_eye")
         if not patient.get("patient_type"): patient["patient_type"] = pr.get("patient_type")
         if not patient.get("flapDiam"): patient["flapDiam"] = pr.get("flapDiam")
+        if not patient.get("savedEnhancement"): patient["savedEnhancement"] = pr.get("savedEnhancement")
     return {"status": "ok", "patient": patient, "visit": visit, "form": form}
 
 @app.post("/api/patients")
@@ -365,7 +375,7 @@ def create_patient(data: PatientCreate, db: MedEyeDB = Depends(get_clinic_db)):
     created_at = datetime.datetime.now().isoformat(timespec="seconds")
     db.save_patient(pid, None, data.name, data.phone, created_at, 0, data.flapDiam, data.capOrFlap, 1 if data.isCustomView else 0, 1 if data.isCustomViewOD else 0, 1 if data.isCustomViewOS else 0)
 
-    prim = {"age": data.age, "sex": data.sex, "patient_type": data.patient_type, "op_eye": data.op_eye, "isEnhancement": data.isEnhancement, "flapDiam": data.flapDiam, "capOrFlap": data.capOrFlap}
+    prim = {"age": data.age, "sex": data.sex, "patient_type": data.patient_type, "op_eye": data.op_eye, "isEnhancement": data.isEnhancement, "flapDiam": data.flapDiam, "capOrFlap": data.capOrFlap, "savedEnhancement": data.savedEnhancement}
     db.save_form(pid, op_date=data.op_date, primary=prim)
 
     vid = f"V-{pid}-0000"

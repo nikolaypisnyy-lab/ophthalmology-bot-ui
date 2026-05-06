@@ -11,9 +11,12 @@ export function useTelegram() {
       tg.expand();
 
       // disableVerticalSwipes is available since 7.7
-      if (tg.isVersionAtLeast('7.7')) {
-        try { tg.disableVerticalSwipes(); } catch (e) {}
-      }
+      try {
+        if (tg.requestFullscreen) tg.requestFullscreen();
+        if (tg.isVersionAtLeast('7.7')) {
+          tg.disableVerticalSwipes();
+        }
+      } catch (e) {}
 
       // Повторный вызов через задержку для надежности на некоторых устройствах
       const t1 = setTimeout(() => tg.expand(), 500);

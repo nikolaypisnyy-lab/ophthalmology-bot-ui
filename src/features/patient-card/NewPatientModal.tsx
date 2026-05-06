@@ -129,7 +129,7 @@ export function NewPatientModal() {
             placeholder="John Doe" autoFocus
             style={{
               background: C.surface, border: `1px solid ${C.border}`,
-              borderRadius: R.md, padding: '14px 16px',
+              borderRadius: R.xxl, padding: '14px 16px',
               fontFamily: F.sans, fontSize: 16, color: C.text, outline: 'none',
             }}
           />
@@ -143,7 +143,7 @@ export function NewPatientModal() {
               onChange={e => setAge(e.target.value.slice(0, 3))}
               style={{
                 width: '100%', background: C.surface, border: `1px solid ${C.border}`,
-                borderRadius: R.md, padding: '14px 0',
+                borderRadius: R.xxl, padding: '14px 0',
                 fontFamily: F.mono, fontSize: 16, color: C.text, outline: 'none', textAlign: 'center',
               }}
             />
@@ -156,7 +156,7 @@ export function NewPatientModal() {
                 <button
                   key={s} onClick={() => setSex(s as any)}
                   style={{
-                    flex: 1, borderRadius: R.md, padding: '14px 0',
+                    flex: 1, borderRadius: R.xxl, padding: '14px 0',
                     fontFamily: F.sans, fontSize: 13, fontWeight: 700,
                     background: sex === s ? (s === 'М' ? C.indigo : '#f472b6') : C.surface,
                     color: sex === s ? '#fff' : C.muted2,
@@ -177,7 +177,7 @@ export function NewPatientModal() {
               <button
                 key={tKey} onClick={() => setType(tKey)}
                 style={{
-                  flex: 1, borderRadius: R.md, padding: '14px 0',
+                  flex: 1, borderRadius: R.xxl, padding: '14px 0',
                   fontFamily: F.sans, fontSize: 13, fontWeight: 700,
                   background: type === tKey ? C.indigo : C.surface,
                   color: type === tKey ? '#fff' : C.muted2,
@@ -197,7 +197,7 @@ export function NewPatientModal() {
               <button
                 key={e} onClick={() => setEye(e)}
                 style={{
-                  flex: 1, borderRadius: R.md, padding: '14px 0',
+                  flex: 1, borderRadius: R.xxl, padding: '14px 0',
                   fontFamily: F.sans, fontSize: 13, fontWeight: 700,
                   background: eye === e ? C.indigo : C.surface,
                   color: eye === e ? '#fff' : C.muted2,
@@ -215,7 +215,7 @@ export function NewPatientModal() {
           onClick={() => valid && onSave({ name: name.trim(), age, sex: sex || undefined, type, eye }, ocrData)}
           disabled={!valid}
           full
-          style={{ padding: '16px 0', marginTop: 12, borderRadius: R.md, fontWeight: 800 }}
+          style={{ padding: '16px 0', marginTop: 12, borderRadius: R.xxl, fontWeight: 800 }}
         >
           {t.createPatient}
         </Btn>

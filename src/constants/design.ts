@@ -43,6 +43,8 @@ const DARK = {
   green:   '#10b981',
   red:     '#ef4444',
   amber:   '#f59e0b',
+  purple:  '#a78bfa',
+  slate:   '#cbd5e1',
 };
 
 const LIGHT = {
@@ -88,23 +90,26 @@ const LIGHT = {
   green:   '#059669',
   red:     '#dc2626',
   amber:   '#d97706',
+  purple:  '#8b5cf6',
+  slate:   '#1e293b',
 };
 
 type Colors = typeof DARK;
 
+type Theme = 'light' | 'dark';
+
 // Читается из localStorage сразу при загрузке модуля
-let _dark = true;
-try { _dark = localStorage.getItem('rm_theme') !== 'light'; } catch {}
+let _theme: Theme = (() => { try { return (localStorage.getItem('rm_theme') as Theme) || 'light'; } catch { return 'light'; } })();
 
 /** Вызывается из useClinicStore.setTheme() перед Zustand set() */
-export function setAppTheme(dark: boolean) {
-  _dark = dark;
+export function setAppTheme(theme: Theme) {
+  _theme = theme;
 }
 
 /** Proxy: читает из текущей темы при каждом обращении (работает при ре-рендере) */
 export const C = new Proxy({} as Colors, {
   get(_, key: string) {
-    return (_dark ? DARK : LIGHT)[key as keyof Colors];
+    return (_theme === 'dark' ? DARK : LIGHT)[key as keyof Colors];
   },
 });
 

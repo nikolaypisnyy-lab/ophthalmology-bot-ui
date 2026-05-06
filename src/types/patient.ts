@@ -41,6 +41,10 @@ export interface PatientSummary {
     od?: import('./refraction').RefractionPlan;
     os?: import('./refraction').RefractionPlan;
   };
+  savedEnhancement?: {
+    od?: import('./refraction').RefractionPlan;
+    os?: import('./refraction').RefractionPlan;
+  };
 }
 
 export interface Patient extends PatientSummary {

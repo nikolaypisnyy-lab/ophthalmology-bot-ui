@@ -116,7 +116,19 @@ function ResultCard({ patient, onOpen }: { patient: PatientSummary; onOpen: () =
       <div style={{ position: 'absolute', left: 0, top: 0, bottom: 0, width: 4, background: isFemale ? '#f472b6' : C.od }} />
 
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-        <span style={{ fontFamily: F.sans, fontSize: 12, fontWeight: 800, color: C.primary }}>{patient.name}</span>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+          <span style={{ fontFamily: F.sans, fontSize: 12, fontWeight: 800, color: C.primary }}>{patient.name}</span>
+          {patient.isEnhancement && (
+            <span style={{ 
+              fontSize: 7, fontWeight: 900, color: '#ec4899', 
+              background: '#ec489915', padding: '1px 5px', borderRadius: 4, 
+              border: '1px solid #ec489940', textTransform: 'uppercase',
+              letterSpacing: '0.02em'
+            }}>
+              {useClinicStore.getState().language === 'ru' ? 'Докоррекция' : 'Enhancement'} {patient.eye}
+            </span>
+          )}
+        </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
           <span style={{ fontFamily: F.mono, fontSize: 7, color: C.tertiary, opacity: 0.6 }}>{latestKey || 'RESULT'}</span>
           <span style={{ fontSize: 7, fontWeight: 900, color: tc.color, background: `${tc.color}15`, padding: '2px 6px', borderRadius: 4 }}>{patient.type === 'cataract' ? 'IOL' : 'LASIK'}</span>
@@ -203,7 +215,7 @@ function ResultCard({ patient, onOpen }: { patient: PatientSummary; onOpen: () =
 export function ResultsPage() {
   const { patients } = usePatientStore();
   const { openPatient } = useUIStore();
-  const { activeRefNomo, setRefNomo, activeRefNomoCyl, setRefNomoCyl, language } = useClinicStore();
+  const { activeRefNomo, setRefNomo, activeRefNomoCyl, setRefNomoCyl, language, nomoDismissed, dismissNomo } = useClinicStore();
   const { haptic } = useTelegram();
   const t = T(language);
   const [filter, setFilter] = useState<'all' | 'refraction' | 'cataract'>('all');
@@ -212,6 +224,7 @@ export function ResultsPage() {
 
   // Fetch Nomogram stats
   const fetchNomo = async () => {
+    if (nomoDismissed) return;
     try {
       const data = await apiGet<any>('/nomogram');
       if (data && data.count > 0) setNomo(data);
@@ -220,7 +233,7 @@ export function ResultsPage() {
 
   useEffect(() => {
     fetchNomo();
-  }, []);
+  }, [nomoDismissed]);
 
   const done = useMemo(() => patients.filter(p => p.status === 'done'), [patients]);
 
@@ -237,17 +250,44 @@ export function ResultsPage() {
     const { language } = useClinicStore.getState();
     const t = T(language);
     const filtered = filter === 'all' ? done : done.filter(p => p.type === filter);
-    const catDone = filtered.filter(p => p.type === 'cataract' && (p as any).postSphOD !== undefined);
-    const refDone = filtered.filter(p => p.type === 'refraction' && (p as any).postSphOD !== undefined);
+    const catDone = filtered.filter(p => p.type === 'cataract');
+    const refDone = filtered.filter(p => p.type === 'refraction');
 
-    const getSE = (p: any) => {
-      const s = parseFloat(String(p.postSphOD || 0));
-      const c = parseFloat(String(p.postCylOD || 0));
+    // Глаза пациента как массив
+    const opEyes = (p: any): ('od' | 'os')[] => {
+      const e = (p.eye || 'OU').toUpperCase();
+      if (e === 'OD') return ['od'];
+      if (e === 'OS') return ['os'];
+      return ['od', 'os'];
+    };
+
+    // SE по глазу
+    const getSE = (p: any, eye: 'od' | 'os') => {
+      const s = parseFloat(String((p as any)[eye === 'os' ? 'postSphOS' : 'postSphOD'] ?? 0)) || 0;
+      const c = parseFloat(String((p as any)[eye === 'os' ? 'postCylOS' : 'postCylOD'] ?? 0)) || 0;
       return s + c / 2;
     };
 
-    const catHit = catDone.filter(p => Math.abs(getSE(p) - parseFloat(String(p.targetRefr ?? '0'))) <= 0.5).length;
-    const refHit = refDone.filter(p => Math.abs(getSE(p)) <= 0.25).length;
+    // Катаракта: ВСЕ оперируемые глаза ±0.5D от целевой рефракции
+    const catHit = catDone.filter(p => {
+      const eyes = opEyes(p);
+      const target = parseFloat(String(p.targetRefr ?? '0'));
+      return eyes.every(eye => Math.abs(getSE(p, eye) - target) <= 0.5);
+    }).length;
+
+    // ЛКЗ успех: приоритет — бинокулярное OU VA ≥ 0.8
+    // Если OU не введено — монокулярные глаза ≥ 0.8, фоллбэк |SE| ≤ 0.5
+    const eyeSuccess = (p: any, eye: 'od' | 'os'): boolean => {
+      const vaKey = eye === 'os' ? 'postVaOS' : 'postVaOD';
+      const va = parseFloat(String((p as any)[vaKey] ?? ''));
+      if (!isNaN(va) && va > 0) return va >= 0.8;
+      return Math.abs(getSE(p, eye)) <= 0.5;
+    };
+    const refHit = refDone.filter(p => {
+      const ouVa = parseFloat(String((p as any).postVaOU ?? ''));
+      if (!isNaN(ouVa) && ouVa > 0) return ouVa >= 0.8;
+      return opEyes(p).every(eye => eyeSuccess(p, eye));
+    }).length;
 
     if (filter === 'cataract') {
       return [
@@ -258,13 +298,13 @@ export function ResultsPage() {
     if (filter === 'refraction') {
       return [
         { label: t.totalCases, val: filtered.length, color: C.text, sub: null },
-        { label: 'Success ±0.25D', val: refDone.length ? `${Math.round(refHit / refDone.length * 100)}%` : '—', color: C.ref, sub: `${refHit}/${refDone.length}` },
+        { label: 'Success ±0.25D', val: refDone.length ? `${Math.round(refHit / refDone.length * 100)}%` : '—', color: C.purple, sub: `${refHit}/${refDone.length}` },
       ];
     }
     return [
       { label: t.totalCases, val: done.length, color: C.text, sub: null },
       { label: t.iolSuccess, val: catDone.length ? `${Math.round(catHit / catDone.length * 100)}%` : '—', color: C.green, sub: `${catHit}/${catDone.length}` },
-      { label: t.lasikSuccess, val: refDone.length ? `${Math.round(refHit / refDone.length * 100)}%` : '—', color: C.ref, sub: `${refHit}/${refDone.length}` },
+      { label: t.lasikSuccess, val: refDone.length ? `${Math.round(refHit / refDone.length * 100)}%` : '—', color: C.purple, sub: `${refHit}/${refDone.length}` },
     ];
   }, [done, filter]);
 
@@ -346,7 +386,7 @@ export function ResultsPage() {
         </div>
 
         {/* Nomogram Recommendation Card */}
-        {nomo && (
+        {!nomoDismissed && nomo && (
           <div style={{
             background: `linear-gradient(135deg, ${C.indigo}25 0%, ${C.bg} 40%, ${C.accent}15 100%)`,
             border: `1px solid ${C.indigo}40`,
@@ -357,7 +397,7 @@ export function ResultsPage() {
             overflow: 'hidden'
           }}>
             <button 
-              onClick={() => { haptic.selection(); setNomo(null); }}
+              onClick={() => { haptic.selection(); dismissNomo(); setNomo(null); }}
               style={{ position: 'absolute', top: 8, right: 8, background: 'none', border: 'none', color: C.muted2, fontSize: 18, cursor: 'pointer', zIndex: 10, padding: 4 }}
             >
               ×

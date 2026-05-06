@@ -10,17 +10,19 @@ interface AxisDialProps {
   ringWidth?: number;
   tickWidth?: number;
   bg?: string;
+  showLabels?: boolean;
 }
 
-export function AxisDial({ 
-  axis, 
+export function AxisDial({
+  axis,
   kAxis,
   pAxis,
-  size = 44, 
-  color, 
-  ringWidth = 0.5, 
-  tickWidth = 1.0, 
-  bg = 'rgba(255,255,255,0.08)' 
+  size = 44,
+  color,
+  ringWidth = 0.5,
+  tickWidth = 1.0,
+  bg = 'rgba(255,255,255,0.08)',
+  showLabels = false,
 }: AxisDialProps) {
   const ax = (typeof axis === 'string' ? parseFloat(axis) : axis) + 90;
   const kAx = (kAxis !== undefined) ? (typeof kAxis === 'string' ? parseFloat(kAxis) : kAxis) + 90 : undefined;
@@ -60,15 +62,38 @@ export function AxisDial({
     );
   }
 
+  // Метки по стандарту TABO: 0° справа, 45° вверху-справа, 90° сверху, 135° вверху-слева, 180° слева
+  const labelData = showLabels ? [
+    { svgDeg: 0,   label: '0' },
+    { svgDeg: 45,  label: '45' },
+    { svgDeg: 90,  label: '90' },
+    { svgDeg: 135, label: '135' },
+    { svgDeg: 180, label: '180' },
+  ] : [];
+  const labelR = r + (size < 50 ? 7 : 10);
+  const fs = size < 50 ? 5 : 7;
+
   return (
-    <svg 
-      width={size} 
-      height={size} 
-      viewBox={`0 0 ${size} ${size}`} 
+    <svg
+      width={size}
+      height={size}
+      viewBox={`0 0 ${size} ${size}`}
       style={{ overflow: 'visible', display: 'block' }}
     >
       <circle cx={cx} cy={cy} r={r} fill="none" stroke={bg} strokeWidth={ringWidth} />
       {ticks}
+      {labelData.map(({ svgDeg, label }) => {
+        const rad = (svgDeg * Math.PI) / 180;
+        const lx = cx + Math.cos(rad) * labelR;
+        const ly = cy - Math.sin(rad) * labelR;
+        return (
+          <text key={svgDeg} x={lx} y={ly}
+            textAnchor="middle" dominantBaseline="central"
+            fill={C.muted3} fontSize={fs} fontWeight={700} fontFamily="monospace"
+            style={{ userSelect: 'none' }}
+          >{label}°</text>
+        );
+      })}
       
       {/* KERATOMETRY AXIS (SECONDARY AMBER) */}
       {kAx !== undefined && !isNaN(kAx) && (
@@ -91,7 +116,7 @@ export function AxisDial({
           y1={cy - pDy}
           x2={cx + pDx}
           y2={cy + pDy}
-          stroke={C.indigo}
+          stroke={C.purple}
           strokeWidth={tickWidth}
           strokeLinecap="round"
           opacity="1"

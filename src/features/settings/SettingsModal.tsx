@@ -8,7 +8,12 @@ import { T } from '../../constants/translations';
 
 export function SettingsModal() {
   const { settingsOpen, closeSettings } = useUIStore();
-  const { clinics, activeClinicId, activeName, activeLaser, switchClinic, setActiveLaser, language, setLanguage, theme, setTheme } = useClinicStore();
+  const { 
+    clinics, activeClinicId, activeName, activeLaser, switchClinic, setActiveLaser, 
+    language, setLanguage, theme, setTheme, defaultFlap, setDefaultFlap,
+    activeRefNomo, setRefNomo, activeRefNomoCyl, setRefNomoCyl,
+    recommendedNomo, recommendedNomoCyl, nomoDismissed
+  } = useClinicStore();
   const [loading, setLoading] = useState(false);
   const [msg, setMsg] = useState<{ text: string; type: 'info' | 'error' } | null>(null);
   const t = T(language);
@@ -278,6 +283,112 @@ export function SettingsModal() {
                   </button>
                 );
               })}
+            </div>
+          </div>
+
+          {/* Флеп по умолчанию */}
+          <div style={{ marginTop: 8 }}>
+            <div style={{ paddingBottom: 8, borderBottom: `1px solid ${C.border}`, marginBottom: 8 }}>
+              <span style={{ fontSize: 11, fontWeight: 800, color: C.muted, textTransform: 'uppercase', letterSpacing: '.05em' }}>
+                {language === 'ru' ? 'Флеп / Кэп по умолчанию' : 'Default Flap / Cap'}
+              </span>
+            </div>
+            <div style={{ display: 'flex', gap: 6 }}>
+              {[90, 100, 110].map(v => {
+                const active = defaultFlap === v;
+                return (
+                  <button
+                    key={v}
+                    onClick={() => setDefaultFlap(v)}
+                    style={{
+                      flex: 1, padding: '10px', borderRadius: 14,
+                      background: active ? C.accentLt : C.surface2,
+                      border: `1px solid ${active ? C.accent : C.border}`,
+                      color: active ? C.accent : C.text,
+                      fontFamily: F.sans, fontSize: 14, fontWeight: active ? 800 : 500,
+                      cursor: active ? 'default' : 'pointer',
+                    }}
+                  >
+                    {v} µm
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+
+          {/* Номограмма */}
+          <div style={{ marginTop: 8 }}>
+            <div style={{ paddingBottom: 8, borderBottom: `1px solid ${C.border}`, marginBottom: 8 }}>
+              <span style={{ fontSize: 11, fontWeight: 800, color: C.muted, textTransform: 'uppercase', letterSpacing: '.05em' }}>
+                {language === 'ru' ? 'Коррекция номограммы' : 'Nomogram Correction'}
+              </span>
+            </div>
+            
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+              {/* Sphere Offset */}
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '8px 12px', background: C.surface2, borderRadius: 12, border: `1px solid ${C.border}` }}>
+                <div style={{ flex: 1 }}>
+                  <div style={{ fontSize: 8, fontWeight: 900, color: C.muted2, textTransform: 'uppercase', marginBottom: 2 }}>{t.sphereSE}</div>
+                  <div style={{ display: 'flex', alignItems: 'baseline', gap: 8 }}>
+                    <div style={{ fontFamily: F.mono, fontSize: 16, fontWeight: 900, color: (activeRefNomo ?? 0) !== 0 ? C.indigo : C.text }}>
+                      {activeRefNomo ? (activeRefNomo > 0 ? '+' : '') + activeRefNomo.toFixed(2) : '0.00'}D
+                    </div>
+                    {recommendedNomo !== null && recommendedNomo !== activeRefNomo && (
+                      <div style={{ fontSize: 9, color: C.muted3 }}>
+                        {language === 'ru' ? 'План:' : 'Prop:'} <span style={{ color: C.green, fontWeight: 700 }}>{recommendedNomo > 0 ? '+' : ''}{recommendedNomo.toFixed(2)}D</span>
+                      </div>
+                    )}
+                  </div>
+                </div>
+                <div style={{ display: 'flex', gap: 6 }}>
+                  {recommendedNomo !== null && recommendedNomo !== activeRefNomo && (
+                    <button onClick={() => setRefNomo(recommendedNomo)} style={{ background: C.green, border: 'none', borderRadius: 8, padding: '4px 10px', color: '#fff', fontSize: 8, fontWeight: 900, cursor: 'pointer', textTransform: 'uppercase' }}>{t.apply}</button>
+                  )}
+                  {activeRefNomo !== null && (
+                    <button onClick={() => setRefNomo(null)} style={{ background: C.surface3, border: `1px solid ${C.border}`, borderRadius: 8, padding: '4px 8px', color: C.muted2, fontSize: 8, fontWeight: 900, cursor: 'pointer' }}>✕</button>
+                  )}
+                </div>
+              </div>
+
+              {/* Cylinder Offset */}
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '8px 12px', background: C.surface2, borderRadius: 12, border: `1px solid ${C.border}` }}>
+                <div style={{ flex: 1 }}>
+                  <div style={{ fontSize: 8, fontWeight: 900, color: C.muted2, textTransform: 'uppercase', marginBottom: 2 }}>{t.cylinder}</div>
+                  <div style={{ display: 'flex', alignItems: 'baseline', gap: 8 }}>
+                    <div style={{ fontFamily: F.mono, fontSize: 16, fontWeight: 900, color: (activeRefNomoCyl ?? 0) !== 0 ? C.indigo : C.text }}>
+                      {activeRefNomoCyl ? (activeRefNomoCyl > 0 ? '+' : '') + activeRefNomoCyl.toFixed(2) : '0.00'}D
+                    </div>
+                    {recommendedNomoCyl !== null && recommendedNomoCyl !== activeRefNomoCyl && (
+                      <div style={{ fontSize: 9, color: C.muted3 }}>
+                        {language === 'ru' ? 'План:' : 'Prop:'} <span style={{ color: C.green, fontWeight: 700 }}>{recommendedNomoCyl > 0 ? '+' : ''}{recommendedNomoCyl.toFixed(2)}D</span>
+                      </div>
+                    )}
+                  </div>
+                </div>
+                <div style={{ display: 'flex', gap: 6 }}>
+                  {recommendedNomoCyl !== null && recommendedNomoCyl !== activeRefNomoCyl && (
+                    <button onClick={() => setRefNomoCyl(recommendedNomoCyl)} style={{ background: C.green, border: 'none', borderRadius: 8, padding: '4px 10px', color: '#fff', fontSize: 8, fontWeight: 900, cursor: 'pointer', textTransform: 'uppercase' }}>{t.apply}</button>
+                  )}
+                  {activeRefNomoCyl !== null && (
+                    <button onClick={() => setRefNomoCyl(null)} style={{ background: C.surface3, border: `1px solid ${C.border}`, borderRadius: 8, padding: '4px 8px', color: C.muted2, fontSize: 8, fontWeight: 900, cursor: 'pointer' }}>✕</button>
+                  )}
+                </div>
+              </div>
+
+              {/* Reset Dismissal */}
+              {nomoDismissed && (
+                <button 
+                  onClick={() => {
+                    if (activeClinicId) {
+                      localStorage.removeItem(`rm_nomo_dismissed_${activeClinicId}`);
+                      window.location.reload();
+                    }
+                  }}
+                  style={{ background: 'none', border: `1px dashed ${C.border}`, borderRadius: 10, padding: '6px', color: C.muted2, fontSize: 9, fontWeight: 700, cursor: 'pointer', marginTop: 4 }}
+                >
+                  {language === 'ru' ? 'Показать карточку аналитики в результатах' : 'Show analytics card in Results'}
+                </button>
+              )}
             </div>
           </div>
 

@@ -416,67 +416,67 @@ export function OCRModal() {
         )}
 
         {/* Кнопки */}
-        <div style={{ display: 'flex', gap: 10 }}>
-          {stage === 'parsed' ? (
-            <>
+        {files.length > 0 && (
+          <div style={{ display: 'flex', gap: 10 }}>
+            {stage === 'parsed' ? (
+              <>
+                <button
+                  onClick={reset}
+                  style={{
+                    flex: 1, padding: '12px', borderRadius: 12,
+                    border: `1px solid ${C.border2}`, background: 'transparent',
+                    fontFamily: F.sans, fontSize: 14, color: C.muted, cursor: 'pointer',
+                  }}
+                >
+                  {language === 'ru' ? 'Сброс' : 'Reset'}
+                </button>
+                <button
+                  onClick={apply}
+                  style={{
+                    flex: 2, padding: '12px', borderRadius: 24,
+                    border: 'none', background: C.green,
+                    fontFamily: F.sans, fontSize: 14, fontWeight: 700, color: '#fff', cursor: 'pointer',
+                  }}
+                >
+                  {t.apply}
+                </button>
+              </>
+            ) : (
               <button
-                onClick={reset}
+                onClick={stage === 'scanning' ? undefined : scan}
+                disabled={stage === 'scanning'}
                 style={{
-                  flex: 1, padding: '12px', borderRadius: 12,
-                  border: `1px solid ${C.border2}`, background: 'transparent',
-                  fontFamily: F.sans, fontSize: 14, color: C.muted, cursor: 'pointer',
+                  flex: 1, padding: '13px', borderRadius: 24,
+                  border: 'none',
+                  background: stage === 'scanning' ? C.surface3 : C.accent,
+                  fontFamily: F.sans, fontSize: 14, fontWeight: 700,
+                  color: stage === 'scanning' ? C.muted : '#fff',
+                  cursor: stage === 'scanning' ? 'not-allowed' : 'pointer',
+                  display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
                 }}
               >
-                {language === 'ru' ? 'Сброс' : 'Reset'}
-              </button>
-              <button
-                onClick={apply}
-                style={{
-                  flex: 2, padding: '12px', borderRadius: 12,
-                  border: 'none', background: C.green,
-                  fontFamily: F.sans, fontSize: 14, fontWeight: 700, color: '#fff', cursor: 'pointer',
-                }}
-              >
-                {t.apply}
-              </button>
-            </>
-          ) : (
-            <button
-              onClick={stage === 'scanning' ? undefined : (files.length ? scan : () => inputRef.current?.click())}
-              disabled={stage === 'scanning'}
-              style={{
-                flex: 1, padding: '13px', borderRadius: 12,
-                border: 'none',
-                background: stage === 'scanning' ? C.surface3 : C.accent,
-                fontFamily: F.sans, fontSize: 14, fontWeight: 700,
-                color: stage === 'scanning' ? C.muted : '#fff',
-                cursor: stage === 'scanning' ? 'not-allowed' : 'pointer',
-                display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
-              }}
-            >
-              {stage === 'scanning' ? (
-                <div style={{ width: '100%', display: 'flex', flexDirection: 'column', gap: 8, alignItems: 'center' }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                    <span style={{ display: 'inline-block', animation: 'spin 1s linear infinite' }}>⟳</span>
-                    <span>{t.scanning}... {Math.round(Math.min(progress, 100))}%</span>
+                {stage === 'scanning' ? (
+                  <div style={{ width: '100%', display: 'flex', flexDirection: 'column', gap: 8, alignItems: 'center' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                      <span style={{ display: 'inline-block', animation: 'spin 1s linear infinite' }}>⟳</span>
+                      <span>{t.scanning}... {Math.round(Math.min(progress, 100))}%</span>
+                    </div>
+                    <div style={{ width: '100%', height: 4, background: C.surface2, borderRadius: 4, overflow: 'hidden' }}>
+                      <div style={{
+                        height: '100%', borderRadius: 4,
+                        background: C.accent,
+                        width: `${Math.min(progress, 100)}%`,
+                        transition: 'width 0.3s ease',
+                      }} />
+                    </div>
                   </div>
-                  <div style={{ width: '100%', height: 4, background: C.surface2, borderRadius: 4, overflow: 'hidden' }}>
-                    <div style={{
-                      height: '100%', borderRadius: 4,
-                      background: C.accent,
-                      width: `${Math.min(progress, 100)}%`,
-                      transition: 'width 0.3s ease',
-                    }} />
-                  </div>
-                </div>
-              ) : files.length ? (
-                language === 'ru' ? 'РАСПОЗНАТЬ' : 'RECOGNIZE'
-              ) : (
-                t.scanButton
-              )}
-            </button>
-          )}
-        </div>
+                ) : (
+                  language === 'ru' ? 'РАСПОЗНАТЬ' : 'RECOGNIZE'
+                )}
+              </button>
+            )}
+          </div>
+        )}
       </div>
 
       <style>{`@keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }`}</style>

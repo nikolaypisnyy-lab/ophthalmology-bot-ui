@@ -262,8 +262,14 @@ export async function saveMeasurements(
           const odPow = patient.iolResult!.od?.selectedPower ?? patient.iolResult!.od?.p_emmetropia ?? odEmmetropia ?? (eye !== 'OS' ? flatNum : undefined);
           const osPow = patient.iolResult!.os?.selectedPower ?? patient.iolResult!.os?.p_emmetropia ?? osEmmetropia ?? (eye !== 'OD' ? flatNum : undefined);
           return {
-            od: odPow !== undefined && odPow !== null && !isNaN(odPow) ? { model: lens, power: odPow, expected_refr: patient.iolResult!.od?.expectedRefr, target } : undefined,
-            os: osPow !== undefined && osPow !== null && !isNaN(osPow) ? { model: lens, power: osPow, expected_refr: patient.iolResult!.os?.expectedRefr, target } : undefined,
+            od: odPow !== undefined && odPow !== null && !isNaN(odPow) ? {
+              model: lens, power: odPow, expected_refr: patient.iolResult!.od?.expectedRefr, target,
+              selectedToricModel: (patient.iolResult!.od as any)?.selectedToricModel,
+            } : undefined,
+            os: osPow !== undefined && osPow !== null && !isNaN(osPow) ? {
+              model: lens, power: osPow, expected_refr: patient.iolResult!.os?.expectedRefr, target,
+              selectedToricModel: (patient.iolResult!.os as any)?.selectedToricModel,
+            } : undefined,
           };
         })() : undefined
       } as any;

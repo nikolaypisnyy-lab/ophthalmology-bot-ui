@@ -142,7 +142,7 @@ function AppHeader({ title }: { title: string }) {
   return (
     <div style={{
       background: 'transparent',
-      padding: 'max(24px, env(safe-area-inset-top, 0px)) 20px 14px',
+      padding: 'max(100px, env(safe-area-inset-top, 0px)) 20px 14px',
       borderBottom: `1px solid ${C.border}`,
       flexShrink: 0,
       display: 'flex',
@@ -270,7 +270,7 @@ function CardSkeleton({ onBack, t }: { onBack: () => void; t: any }) {
     }}>
       <div style={{
         background: `linear-gradient(to bottom, ${C.surface} 0%, ${C.bg} 100%)`,
-        padding: 'max(16px, env(safe-area-inset-top, 0px)) 16px 12px',
+        padding: 'max(100px, env(safe-area-inset-top, 0px)) 16px 12px',
         borderBottom: `1px solid ${C.border}`,
       }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>

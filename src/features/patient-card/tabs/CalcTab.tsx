@@ -322,9 +322,12 @@ export function CalcTab() {
                               ...(iolResult || {}),
                               [activeEye]: { 
                                 ...eyeRes, 
+                                lens: fName, // СОХРАНЯЕМ НАЗВАНИЕ ФОРМУЛЫ/ЛИНЗЫ
                                 selectedPower: r.power, 
                                 expectedRefr: rRef,
-                                selectedToricModel: toricMatch?.model ?? eyeRes.selectedToricModel
+                                selectedToricModel: toricMatch?.model ?? eyeRes.selectedToricModel,
+                                cyl: toricMatch?.cyl_iol ?? eyeRes.cyl,
+                                axis: (toricMatch?.res_axis ?? tr.total_steep_axis) ?? eyeRes.axis
                               },
                             } as any);
                           } else {
@@ -420,10 +423,11 @@ export function CalcTab() {
                       [activeEye]: { 
                         ...eyeRes, 
                         selectedToricModel: row.model,
+                        lens: `${(eyeRes.lens || 'IOL').split(' (')[0]} (${row.model})`, // Добавляем модель в название
                         selectedPower: eyeRes.selectedPower ?? displayPower,
                         expectedRefr: eyeRes.expectedRefr ?? predSE,
-                        toricCyl: row.cyl_iol,
-                        toricAxis: row.res_axis ?? tr.total_steep_axis
+                        cyl: row.cyl_iol,
+                        axis: row.res_axis ?? tr.total_steep_axis
                       },
                     } as any);
                   }}

@@ -81,7 +81,7 @@ def html_escape(s: Any) -> str:
 
 # ================= MARKUPS =================
 def main_menu_markup(uid: int):
-    kb = types.ReplyKeyboardMarkup(resize_keyboard=True)
+    kb = types.ReplyKeyboardMarkup(resize_keyboard=True, is_persistent=True, input_field_placeholder="Выберите действие...")
     
     # Формируем URL с ID текущей клиники
     context = get_ctx(uid)
@@ -101,18 +101,20 @@ def main_menu_markup(uid: int):
         u = master_db.get_user_clinic(uid, cid)
         if u and (u["role"] == "admin" or uid in ADMIN_IDS):
             kb.row("👥 Управление доступом")
-            kb.row("⚙️ Управление клиниками", "📦 Бэкап базы")
+            kb.row("⚙️ Управление клиниками", "🛡️ Бэкап прав")
+            kb.row("📦 Бэкап базы")
     
     kb.row("ℹ️ Инфо")
     return kb
 
 # ================= HANDLERS =================
-@bot.message_handler(commands=['start'])
+@bot.message_handler(commands=['start', 'menu'])
 def start_cmd(message):
     uid = message.from_user.id
-    u = master_db.get_user_clinic(uid)
+    ctx = get_ctx(uid)
+    cid = ctx.get("cid")
     
-    if not u:
+    if not cid:
         text = (
             "👋 Добро пожаловать в <b>RefMaster</b>.\n\n"
             "Вы еще не авторизованы. Для получения доступа к вашей клинике, пожалуйста, "
@@ -123,56 +125,215 @@ def start_cmd(message):
         bot.send_message(uid, text, reply_markup=kb)
         return
 
+    # Получаем актуальные данные именно по активной клинике из контекста
+    u = master_db.get_user_clinic(uid, cid)
+    if not u:
+        # Фоллбэк: если текущий CID почему-то стал невалидным, пробуем найти любую другую
+        u = master_db.get_user_clinic(uid)
+        if u:
+            load_clinic(uid, force_cid=u['clinic_id'])
+            cid = u['clinic_id']
+        else:
+            bot.send_message(uid, "❌ Ошибка: доступ не найден.")
+            return
+
     bot.send_message(uid, f"👋 Приветствуем, {u['name']}!\nКлиника: <b>{u['clinic_name']}</b>", 
                      reply_markup=main_menu_markup(uid))
 
+# Хранит инфо о заявке для flow создания новой клиники
+# {admin_id: {'uid': requester_uid, 'name': requester_name}}
+_PENDING_REQUESTS: Dict[int, Dict] = {}
+
+def _get_clinics():
+    if hasattr(master_db, 'get_all_clinics'):
+        c = master_db.get_all_clinics()
+        if c: return c
+    rows = master_db.execute("SELECT * FROM clinics").fetchall()
+    return [dict(r) for r in rows]
+
+def _build_clinic_keyboard(requester_uid: int) -> types.InlineKeyboardMarkup:
+    """Клавиатура выбора клиники: одна кнопка на клинику + создать новую + отклонить."""
+    clinics = _get_clinics()
+    kb = types.InlineKeyboardMarkup(row_width=1)
+    for cl in clinics:
+        kb.add(types.InlineKeyboardButton(
+            f"🏥 {cl['name']}",
+            callback_data=f"adm_sel:{requester_uid}:{cl['clinic_id']}"
+        ))
+    kb.add(types.InlineKeyboardButton("➕ Создать новую клинику", callback_data=f"adm_newcl:{requester_uid}"))
+    kb.add(types.InlineKeyboardButton("❌ Отклонить", callback_data=f"adm_deny:{requester_uid}"))
+    return kb
+
 @bot.callback_query_handler(func=lambda c: c.data.startswith("req_access:"))
 def handle_access_request(c):
-    uid = c.from_user.id
-    name = f"{c.from_user.first_name or ''} {c.from_user.last_name or ''}".strip() or f"User_{uid}"
-    
-    text = f"📥 <b>Новая заявка на доступ:</b>\n\nИмя: {html_escape(name)}\nID: <code>{uid}</code>\nUser: @{c.from_user.username or 'none'}"
-    
-    clinics = master_db.get_all_clinics() if hasattr(master_db, 'get_all_clinics') else []
-    # Если метода нет, попробуем вытащить через SQL
-    if not clinics:
-        rows = master_db.execute("SELECT * FROM clinics").fetchall()
-        clinics = [dict(r) for r in rows]
+    requester_uid = c.from_user.id
+    name = f"{c.from_user.first_name or ''} {c.from_user.last_name or ''}".strip() or f"User_{requester_uid}"
+    username = c.from_user.username or "—"
 
+    text = (
+        f"📥 <b>Новая заявка на доступ</b>\n\n"
+        f"👤 {html.escape(name)}\n"
+        f"🆔 <code>{requester_uid}</code>  @{username}\n\n"
+        f"Выберите клинику для назначения:"
+    )
+    kb = _build_clinic_keyboard(requester_uid)
     for admin_id in ADMIN_IDS:
-        for cl in clinics:
-            kb = types.InlineKeyboardMarkup()
-            kb.row(
-                types.InlineKeyboardButton("Хирург", callback_data=f"adm_grant:{uid}:surgeon:{cl['clinic_id']}"),
-                types.InlineKeyboardButton("Диагностика", callback_data=f"adm_grant:{uid}:diagnostic:{cl['clinic_id']}")
-            )
-            bot.send_message(admin_id, f"{text}\nКлиника: <b>{cl['name']}</b>", reply_markup=kb)
-    
-    bot.edit_message_text("✅ Запрос отправлен администратору. Ожидайте уведомления.", c.message.chat.id, c.message.message_id)
+        bot.send_message(admin_id, text, reply_markup=kb)
+        _PENDING_REQUESTS[admin_id] = {'uid': requester_uid, 'name': name}
+
+    bot.edit_message_text(
+        "✅ Запрос отправлен администратору. Ожидайте уведомления.",
+        c.message.chat.id, c.message.message_id
+    )
+
+@bot.callback_query_handler(func=lambda c: c.data.startswith("adm_sel:"))
+def handle_admin_select_clinic(c):
+    if c.from_user.id not in ADMIN_IDS: return
+    bot.answer_callback_query(c.id)
+    parts = c.data.split(":")
+    requester_uid = int(parts[1])
+    clinic_id = parts[2]
+
+    # Получаем название клиники
+    clinic_name = clinic_id
+    try:
+        rows = master_db.execute("SELECT name FROM clinics WHERE clinic_id=?", (clinic_id,)).fetchone()
+        if rows: clinic_name = rows[0]
+    except: pass
+
+    requester_name = _PENDING_REQUESTS.get(c.from_user.id, {}).get('name', f"User_{requester_uid}")
+
+    kb = types.InlineKeyboardMarkup(row_width=2)
+    kb.row(
+        types.InlineKeyboardButton("🔬 Хирург",      callback_data=f"adm_grant:{requester_uid}:surgeon:{clinic_id}"),
+        types.InlineKeyboardButton("🔍 Диагностика", callback_data=f"adm_grant:{requester_uid}:diagnostic:{clinic_id}")
+    )
+    kb.add(types.InlineKeyboardButton("← Назад", callback_data=f"adm_back:{requester_uid}"))
+
+    bot.edit_message_text(
+        f"📥 <b>{html.escape(requester_name)}</b> → 🏥 <b>{html.escape(clinic_name)}</b>\n\nВыберите роль:",
+        c.message.chat.id, c.message.message_id, reply_markup=kb
+    )
+
+@bot.callback_query_handler(func=lambda c: c.data.startswith("adm_back:"))
+def handle_admin_back(c):
+    if c.from_user.id not in ADMIN_IDS: return
+    bot.answer_callback_query(c.id)
+    requester_uid = int(c.data.split(":")[1])
+    ctx = _PENDING_REQUESTS.get(c.from_user.id, {})
+    name = ctx.get('name', f"User_{requester_uid}")
+    username = "—"
+
+    text = (
+        f"📥 <b>Заявка на доступ</b>\n\n"
+        f"👤 {html.escape(name)}\n"
+        f"🆔 <code>{requester_uid}</code>\n\n"
+        f"Выберите клинику для назначения:"
+    )
+    bot.edit_message_text(text, c.message.chat.id, c.message.message_id,
+                          reply_markup=_build_clinic_keyboard(requester_uid))
+
+@bot.callback_query_handler(func=lambda c: c.data.startswith("adm_deny:"))
+def handle_admin_deny(c):
+    if c.from_user.id not in ADMIN_IDS: return
+    bot.answer_callback_query(c.id)
+    requester_uid = int(c.data.split(":")[1])
+    _PENDING_REQUESTS.pop(c.from_user.id, None)
+    bot.edit_message_text("❌ Заявка отклонена.", c.message.chat.id, c.message.message_id)
+    try:
+        bot.send_message(requester_uid, "❌ Ваша заявка на доступ была отклонена администратором.")
+    except: pass
+
+@bot.callback_query_handler(func=lambda c: c.data.startswith("adm_newcl:"))
+def handle_admin_new_clinic(c):
+    if c.from_user.id not in ADMIN_IDS: return
+    bot.answer_callback_query(c.id)
+    requester_uid = int(c.data.split(":")[1])
+    _PENDING_REQUESTS[c.from_user.id] = {
+        **_PENDING_REQUESTS.get(c.from_user.id, {}),
+        'uid': requester_uid,
+        'orig_msg_id': c.message.message_id
+    }
+    bot.answer_callback_query(c.id)
+    msg = bot.send_message(c.from_user.id, "✏️ Введите <b>название новой клиники</b>:")
+    bot.register_next_step_handler(msg, handle_new_clinic_name)
+
+def handle_new_clinic_name(message):
+    admin_id = message.from_user.id
+    if admin_id not in ADMIN_IDS: return
+    clinic_name = (message.text or "").strip()
+    if not clinic_name:
+        m = bot.send_message(admin_id, "⚠️ Название не может быть пустым. Введите ещё раз:")
+        bot.register_next_step_handler(m, handle_new_clinic_name)
+        return
+
+    ctx = _PENDING_REQUESTS.get(admin_id, {})
+    requester_uid = ctx.get('uid')
+    if not requester_uid:
+        bot.send_message(admin_id, "⚠️ Сессия истекла. Попросите пользователя повторить запрос.")
+        return
+
+    import uuid
+    new_cid = f"c_{uuid.uuid4().hex[:8]}"
+    try:
+        master_db.execute(
+            "INSERT INTO clinics (clinic_id, name) VALUES (?, ?)", (new_cid, clinic_name)
+        )
+        master_db.conn.commit()
+    except Exception as e:
+        bot.send_message(admin_id, f"❌ Ошибка создания клиники: {e}")
+        return
+
+    requester_name = ctx.get('name', f"User_{requester_uid}")
+    kb = types.InlineKeyboardMarkup(row_width=2)
+    kb.row(
+        types.InlineKeyboardButton("🔬 Хирург",      callback_data=f"adm_grant:{requester_uid}:surgeon:{new_cid}"),
+        types.InlineKeyboardButton("🔍 Диагностика", callback_data=f"adm_grant:{requester_uid}:diagnostic:{new_cid}")
+    )
+    bot.send_message(
+        admin_id,
+        f"✅ Клиника <b>{html.escape(clinic_name)}</b> создана!\n\n"
+        f"Назначить <b>{html.escape(requester_name)}</b> в эту клинику?\nВыберите роль:",
+        reply_markup=kb
+    )
 
 @bot.callback_query_handler(func=lambda c: c.data.startswith("adm_grant:"))
 def handle_admin_grant(c):
     if c.from_user.id not in ADMIN_IDS: return
+    bot.answer_callback_query(c.id)
     parts = c.data.split(":")
     if len(parts) != 4: return
-    
+
     target_uid = int(parts[1])
     role = parts[2]
     cid = parts[3]
-    
-    # Пытаемся получить имя
+
     name = f"Сотрудник {target_uid}"
     try:
         user_info = bot.get_chat(target_uid)
         name = f"{user_info.first_name or ''} {user_info.last_name or ''}".strip() or name
     except: pass
 
+    # Получаем название клиники
+    clinic_name = cid
+    try:
+        row = master_db.execute("SELECT name FROM clinics WHERE clinic_id=?", (cid,)).fetchone()
+        if row: clinic_name = row[0]
+    except: pass
+
     master_db.add_user(target_uid, cid, role, name)
-    
-    bot.edit_message_text(f"✅ Доступ выдан!\nСотрудник: {name}\nКлиника: {cid}\nРоль: {role}", c.message.chat.id, c.message.message_id)
-    
-    bot.send_message(target_uid, f"🎉 Вам выдан доступ в клинику <b>{cid}</b>!\nРоль: <b>{role}</b>\n\nТеперь вы можете открыть WebApp.", 
-                     reply_markup=main_menu_markup(target_uid))
+    _PENDING_REQUESTS.pop(c.from_user.id, None)
+
+    role_label = "Хирург" if role == "surgeon" else "Диагностика"
+    bot.edit_message_text(
+        f"✅ Доступ выдан!\n\n👤 {html.escape(name)}\n🏥 {html.escape(clinic_name)}\n🎭 {role_label}",
+        c.message.chat.id, c.message.message_id
+    )
+    bot.send_message(
+        target_uid,
+        f"🎉 Вам выдан доступ!\n\nКлиника: <b>{html.escape(clinic_name)}</b>\nРоль: <b>{role_label}</b>\n\nОткройте приложение:",
+        reply_markup=main_menu_markup(target_uid)
+    )
 
 @bot.message_handler(commands=['superadmin'])
 def admin_secret_menu(message):
@@ -267,74 +428,159 @@ def handle_backup_access(call):
     if not found:
         bot.send_message(call.message.chat.id, "❌ Файл master.db не найден на сервере.")
 
+def _cl_list_keyboard() -> types.InlineKeyboardMarkup:
+    rows = master_db.execute("SELECT * FROM clinics").fetchall()
+    clinics = [dict(r) for r in rows]
+    kb = types.InlineKeyboardMarkup(row_width=1)
+    for cl in clinics:
+        kb.add(types.InlineKeyboardButton(
+            f"🏥 {cl['name']}",
+            callback_data=f"cl_pick:{cl['clinic_id']}"
+        ))
+    kb.add(types.InlineKeyboardButton("➕ Создать клинику", callback_data="cl_new"))
+    return kb
+
 @bot.message_handler(func=lambda m: m.text == "⚙️ Управление клиниками")
 def admin_clinics(message):
     if message.from_user.id not in ADMIN_IDS: return
-    
-    rows = master_db.execute("SELECT * FROM clinics").fetchall()
-    clinics = [dict(r) for r in rows]
-    
-    if not clinics:
-        bot.send_message(message.chat.id, "Список клиник пуст.")
-        return
-
-    text = "<b>Управление клиниками:</b>\n\n"
-    kb = types.InlineKeyboardMarkup()
-    for c in clinics:
-        text += f"• {html_escape(c['name'])} (<code>{c['clinic_id']}</code>)\n"
-        kb.row(
-            types.InlineKeyboardButton(f"🖊 Имя", callback_data=f"adm_ren_init:{c['clinic_id']}"),
-            types.InlineKeyboardButton(f"❌ Удалить", callback_data=f"adm_del_init:{c['clinic_id']}")
-        )
-    
-    kb.add(types.InlineKeyboardButton("➕ Создать клинику", callback_data="admin:create_init"))
-    bot.send_message(message.chat.id, text, reply_markup=kb)
-
-@bot.callback_query_handler(func=lambda c: c.data.startswith("adm_del_init:"))
-def admin_delete_init(c):
-    cid = c.data.split(":")[1]
-    kb = types.InlineKeyboardMarkup()
-    kb.row(
-        types.InlineKeyboardButton("✅ ДА, УДАЛИТЬ", callback_data=f"adm_del_confirm:{cid}"),
-        types.InlineKeyboardButton("🔙 Отмена", callback_data="admin_clinics_refresh")
+    bot.send_message(
+        message.chat.id,
+        "🏥 <b>Управление клиниками</b>\n\nВыберите клинику:",
+        reply_markup=_cl_list_keyboard()
     )
-    bot.edit_message_text(f"⚠️ <b>ВНИМАНИЕ!</b>\n\nВы собираетесь удалить клинику <code>{cid}</code>.\nВсе доступы врачей будут аннулированы. Продолжить?", c.message.chat.id, c.message.message_id, reply_markup=kb)
 
+# ── Клиника → действия ────────────────────────────────────────────────────────
+@bot.callback_query_handler(func=lambda c: c.data.startswith("cl_pick:"))
+def cl_pick(c):
+    if c.from_user.id not in ADMIN_IDS: return
+    bot.answer_callback_query(c.id)
+    cid = c.data.split(":", 1)[1]
+    clinic_name = cid
+    try:
+        row = master_db.execute("SELECT name FROM clinics WHERE clinic_id=?", (cid,)).fetchone()
+        if row: clinic_name = row[0]
+    except: pass
+    # Считаем сотрудников
+    all_users = master_db.get_all_users() or []
+    cnt = sum(1 for u in all_users if u.get("clinic_id") == cid)
+    kb = types.InlineKeyboardMarkup(row_width=1)
+    kb.add(types.InlineKeyboardButton("✏️ Переименовать",  callback_data=f"cl_ren:{cid}"))
+    kb.add(types.InlineKeyboardButton("🗑 Удалить клинику", callback_data=f"cl_del:{cid}"))
+    kb.add(types.InlineKeyboardButton("← Назад",            callback_data="cl_back"))
+    bot.edit_message_text(
+        f"🏥 <b>{html_escape(clinic_name)}</b>\n"
+        f"🆔 <code>{cid}</code>  ·  👥 {cnt} сотр.",
+        c.message.chat.id, c.message.message_id, reply_markup=kb
+    )
+
+@bot.callback_query_handler(func=lambda c: c.data == "cl_back")
+def cl_back(c):
+    if c.from_user.id not in ADMIN_IDS: return
+    bot.answer_callback_query(c.id)
+    bot.edit_message_text(
+        "🏥 <b>Управление клиниками</b>\n\nВыберите клинику:",
+        c.message.chat.id, c.message.message_id,
+        reply_markup=_cl_list_keyboard()
+    )
+
+# ── Переименовать ─────────────────────────────────────────────────────────────
+@bot.callback_query_handler(func=lambda c: c.data.startswith("cl_ren:"))
+def cl_rename_init(c):
+    if c.from_user.id not in ADMIN_IDS: return
+    bot.answer_callback_query(c.id)
+    cid = c.data.split(":", 1)[1]
+    bot.answer_callback_query(c.id)
+    msg = bot.send_message(c.message.chat.id, f"✏️ Введите новое название для клиники <code>{cid}</code>:")
+    bot.register_next_step_handler(msg, cl_rename_final, cid, c.message.message_id)
+
+def cl_rename_final(message, cid, orig_msg_id):
+    new_name = (message.text or "").strip()
+    if not new_name:
+        m = bot.send_message(message.chat.id, "⚠️ Пустое название. Введите ещё раз:")
+        bot.register_next_step_handler(m, cl_rename_final, cid, orig_msg_id)
+        return
+    master_db.rename_clinic(cid, new_name)
+    # Обновляем исходное сообщение со списком
+    try:
+        bot.edit_message_text(
+            "🏥 <b>Управление клиниками</b>\n\nВыберите клинику:",
+            message.chat.id, orig_msg_id,
+            reply_markup=_cl_list_keyboard()
+        )
+    except: pass
+    bot.send_message(message.chat.id, f"✅ Клиника переименована в <b>{html_escape(new_name)}</b>.")
+
+# ── Удалить ───────────────────────────────────────────────────────────────────
+@bot.callback_query_handler(func=lambda c: c.data.startswith("cl_del:"))
+def cl_delete_confirm(c):
+    if c.from_user.id not in ADMIN_IDS: return
+    bot.answer_callback_query(c.id)
+    cid = c.data.split(":", 1)[1]
+    clinic_name = cid
+    try:
+        row = master_db.execute("SELECT name FROM clinics WHERE clinic_id=?", (cid,)).fetchone()
+        if row: clinic_name = row[0]
+    except: pass
+    kb = types.InlineKeyboardMarkup(row_width=2)
+    kb.row(
+        types.InlineKeyboardButton("✅ Да, удалить", callback_data=f"cl_del_ok:{cid}"),
+        types.InlineKeyboardButton("← Отмена",       callback_data=f"cl_pick:{cid}")
+    )
+    bot.edit_message_text(
+        f"⚠️ Удалить клинику <b>{html_escape(clinic_name)}</b>?\n\n"
+        f"Все доступы врачей будут аннулированы.",
+        c.message.chat.id, c.message.message_id, reply_markup=kb
+    )
+
+@bot.callback_query_handler(func=lambda c: c.data.startswith("cl_del_ok:"))
+def cl_delete_execute(c):
+    if c.from_user.id not in ADMIN_IDS: return
+    bot.answer_callback_query(c.id)
+    cid = c.data.split(":", 1)[1]
+    clinic_name = cid
+    try:
+        row = master_db.execute("SELECT name FROM clinics WHERE clinic_id=?", (cid,)).fetchone()
+        if row: clinic_name = row[0]
+    except: pass
+    db_file = master_db.delete_clinic(cid)
+    bot.edit_message_text(
+        f"✅ Клиника <b>{html_escape(clinic_name)}</b> удалена.\n"
+        f"Архив БД: <code>{db_file}</code>",
+        c.message.chat.id, c.message.message_id,
+        reply_markup=types.InlineKeyboardMarkup().add(
+            types.InlineKeyboardButton("← К списку клиник", callback_data="cl_back_new")
+        )
+    )
+
+@bot.callback_query_handler(func=lambda c: c.data == "cl_back_new")
+def cl_back_new(c):
+    if c.from_user.id not in ADMIN_IDS: return
+    bot.answer_callback_query(c.id)
+    bot.edit_message_text(
+        "🏥 <b>Управление клиниками</b>\n\nВыберите клинику:",
+        c.message.chat.id, c.message.message_id,
+        reply_markup=_cl_list_keyboard()
+    )
+
+# ── Создать клинику ───────────────────────────────────────────────────────────
+@bot.callback_query_handler(func=lambda c: c.data == "cl_new")
+def cl_create_init(c):
+    if c.from_user.id not in ADMIN_IDS: return
+    bot.answer_callback_query(c.id)
+    msg = bot.send_message(
+        c.message.chat.id,
+        "➕ Введите название новой клиники\n(или <code>ID Название</code> для ручного ID):"
+    )
+    bot.register_next_step_handler(msg, admin_create_final)
+
+# Backward compat
 @bot.callback_query_handler(func=lambda c: c.data == "admin_clinics_refresh")
 def admin_clinics_refresh(c):
-    # Просто возвращаемся к списку
-    class FakeMsg:
-        def __init__(self, c):
-            self.from_user = c.from_user
-            self.chat = c.message.chat
-            self.text = "⚙️ Управление клиниками"
-    admin_clinics(FakeMsg(c))
-
-@bot.callback_query_handler(func=lambda c: c.data.startswith("adm_del_confirm:"))
-def admin_delete_confirm(c):
-    if c.from_user.id not in ADMIN_IDS: return
-    cid = c.data.split(":")[1]
-    
-    db_file = master_db.delete_clinic(cid)
-    bot.edit_message_text(f"✅ Клиника <b>{cid}</b> удалена.\n\nФайл базы <code>{db_file}</code> сохранен на сервере для архива.", c.message.chat.id, c.message.message_id)
-
-@bot.callback_query_handler(func=lambda c: c.data.startswith("adm_ren_init:"))
-def admin_rename_init(c):
-    cid = c.data.split(":")[1]
-    bot.send_message(c.message.chat.id, f"Введите НОВОЕ название для клиники <code>{cid}</code>:")
-    bot.register_next_step_handler(c.message, admin_rename_final, cid)
-
-def admin_rename_final(message, cid):
-    new_name = message.text.strip()
-    if not new_name: return
-    
-    master_db.rename_clinic(cid, new_name)
-    bot.send_message(message.chat.id, f"✅ Клиника <code>{cid}</code> теперь называется <b>{new_name}</b>.", reply_markup=main_menu_markup(message.from_user.id))
+    cl_back(c)
 
 @bot.callback_query_handler(func=lambda c: c.data == "admin:create_init")
 def admin_create_init(c):
-    bot.send_message(c.message.chat.id, "Введите данные клиники в формате:\n<code>ID Название</code>\n(например: <code>distarmed ДистарМед</code>)\n\nИли просто <b>Название</b> (ID создастся сам):")
-    bot.register_next_step_handler(c.message, admin_create_final)
+    cl_create_init(c)
 
 def admin_create_final(message):
     uid = message.from_user.id
@@ -351,78 +597,215 @@ def admin_create_final(message):
     
     # Автоматически добавляем создателя как админа этой клиники
     master_db.add_user(uid, cid, "admin", message.from_user.first_name or "Admin")
+    master_db.set_active_clinic(uid, cid)
     load_clinic(uid, force_cid=cid)
         
     bot.send_message(message.chat.id, f"✅ Клиника <b>{name}</b> создана!\nID: <code>{cid}</code>\n\nВы автоматически назначены администратором этой клиники.", reply_markup=main_menu_markup(uid))
 
+ROLES_RU = {"admin": "Админ", "surgeon": "Хирург", "diagnostic": "Диагност"}
+ROLES_ICON = {"admin": "👑", "surgeon": "🔬", "diagnostic": "🔍"}
+
+def _acc_clinics_keyboard() -> types.InlineKeyboardMarkup:
+    clinics = _get_clinics()
+    all_users = master_db.get_all_users() or []
+    kb = types.InlineKeyboardMarkup(row_width=1)
+    for cl in clinics:
+        cnt = sum(1 for u in all_users if u.get("clinic_id") == cl["clinic_id"])
+        kb.add(types.InlineKeyboardButton(
+            f"🏥 {cl['name']}  · {cnt} чел.",
+            callback_data=f"acc_cl:{cl['clinic_id']}"
+        ))
+    return kb
+
 @bot.message_handler(func=lambda m: m.text == "👥 Управление доступом")
 def admin_users(message):
     if message.from_user.id not in ADMIN_IDS: return
-    
-    users = master_db.get_all_users()
-    if not users:
-        bot.send_message(message.chat.id, "Список пользователей пуст.")
-        return
-
-    text = "<b>Управление доступом сотрудников:</b>\n\n"
-    # Группируем по клиникам
-    current_cl = ""
-    for u in users:
-        if u["clinic_name"] != current_cl:
-            current_cl = u["clinic_name"]
-            text += f"\n🏥 <b>{html_escape(current_cl)}</b>\n"
-        
-        roles = {"admin": "Админ", "surgeon": "Хирург", "diagnostic": "Диагност"}
-        role_label = roles.get(u["role"], u["role"])
-        
-        text += f"• {html_escape(u['name'])} (<code>{u['telegram_id']}</code>) — {role_label} "
-        
-        # Кнопка удаления только если это не сам админ (чтобы себя не удалить случайно)
-        if u["telegram_id"] != message.from_user.id:
-             text += f"/revoke_{u['telegram_id']}_{u['clinic_id']}\n"
-        else:
-             text += "\n"
-
-    bot.send_message(message.chat.id, text)
-
-@bot.message_handler(func=lambda m: m.text.startswith("/revoke_"))
-def handle_revoke_link(message):
-    if message.from_user.id not in ADMIN_IDS: return
-    parts = message.text.split("_")
-    if len(parts) != 3: return
-    
-    uid = int(parts[1])
-    cid = parts[2]
-    
-    kb = types.InlineKeyboardMarkup()
-    kb.row(
-        types.InlineKeyboardButton("🗑 ОТЗВАТЬ ДОСТУП", callback_data=f"adm_revoke_cfm:{uid}:{cid}"),
-        types.InlineKeyboardButton("🔙 Отмена", callback_data="admin_users_refresh")
+    bot.send_message(
+        message.chat.id,
+        "🏥 <b>Управление доступом</b>\n\nВыберите клинику:",
+        reply_markup=_acc_clinics_keyboard()
     )
-    bot.send_message(message.chat.id, f"⚠️ Вы хотите отозвать доступ у пользователя <code>{uid}</code> в клинике <code>{cid}</code>?", reply_markup=kb)
 
-@bot.callback_query_handler(func=lambda c: c.data.startswith("adm_revoke_cfm:"))
-def admin_revoke_confirm(c):
+# ── Клиника → список врачей ───────────────────────────────────────────────────
+@bot.callback_query_handler(func=lambda c: c.data.startswith("acc_cl:"))
+def acc_show_doctors(c):
     if c.from_user.id not in ADMIN_IDS: return
-    parts = c.data.split(":")
-    uid = int(parts[1])
-    cid = parts[2]
-    
-    master_db.delete_user_access(uid, cid)
-    bot.edit_message_text(f"✅ Доступ пользователя <code>{uid}</code> в клинике <code>{cid}</code> отозван.", c.message.chat.id, c.message.message_id)
-    # Посылаем врачу уведомление
-    try: bot.send_message(uid, f"🔇 Ваш доступ в клинику <b>{cid}</b> был отозван администратором.")
+    bot.answer_callback_query(c.id)
+    cid = c.data.split(":", 1)[1]
+    clinic_name = cid
+    try:
+        row = master_db.execute("SELECT name FROM clinics WHERE clinic_id=?", (cid,)).fetchone()
+        if row: clinic_name = row[0]
     except: pass
 
-@bot.callback_query_handler(func=lambda c: c.data == "admin_users_refresh")
-def admin_users_refresh(c):
-    # Просто возвращаемся к списку
-    class FakeMsg:
-        def __init__(self, c):
-            self.from_user = c.from_user
-            self.chat = c.message.chat
-            self.text = "👥 Управление доступом"
-    admin_users(FakeMsg(c))
+    all_users = master_db.get_all_users() or []
+    doctors = [u for u in all_users if u.get("clinic_id") == cid]
+
+    kb = types.InlineKeyboardMarkup(row_width=1)
+    for u in doctors:
+        if u.get("telegram_id") == c.from_user.id: continue  # не себя
+        icon = ROLES_ICON.get(u.get("role", ""), "👤")
+        role_label = ROLES_RU.get(u.get("role", ""), u.get("role", ""))
+        kb.add(types.InlineKeyboardButton(
+            f"{icon} {u['name']}  · {role_label}",
+            callback_data=f"acc_doc:{u['telegram_id']}:{cid}"
+        ))
+    kb.add(types.InlineKeyboardButton("← Назад", callback_data="acc_back"))
+
+    text = f"🏥 <b>{html_escape(clinic_name)}</b>\n\n"
+    text += f"Сотрудников: {len(doctors)}" if doctors else "Нет сотрудников."
+    bot.edit_message_text(text, c.message.chat.id, c.message.message_id, reply_markup=kb)
+
+@bot.callback_query_handler(func=lambda c: c.data == "acc_back")
+def acc_back_to_clinics(c):
+    if c.from_user.id not in ADMIN_IDS: return
+    bot.answer_callback_query(c.id)
+    bot.edit_message_text(
+        "🏥 <b>Управление доступом</b>\n\nВыберите клинику:",
+        c.message.chat.id, c.message.message_id,
+        reply_markup=_acc_clinics_keyboard()
+    )
+
+# ── Врач → действия ───────────────────────────────────────────────────────────
+@bot.callback_query_handler(func=lambda c: c.data.startswith("acc_doc:"))
+def acc_show_doctor(c):
+    if c.from_user.id not in ADMIN_IDS: return
+    bot.answer_callback_query(c.id)
+    _, doc_uid_s, cid = c.data.split(":", 2)
+    doc_uid = int(doc_uid_s)
+
+    all_users = master_db.get_all_users() or []
+    doc = next((u for u in all_users if u.get("telegram_id") == doc_uid and u.get("clinic_id") == cid), None)
+    if not doc:
+        bot.answer_callback_query(c.id, "Пользователь не найден"); return
+
+    role_label = ROLES_RU.get(doc.get("role", ""), doc.get("role", ""))
+    text = (
+        f"👤 <b>{html_escape(doc['name'])}</b>\n"
+        f"🏥 {html_escape(doc.get('clinic_name', cid))}\n"
+        f"🎭 {role_label}  ·  🆔 <code>{doc_uid}</code>"
+    )
+    kb = types.InlineKeyboardMarkup(row_width=1)
+    kb.add(types.InlineKeyboardButton("🔄 Перенести в другую клинику", callback_data=f"acc_mv:{doc_uid}:{cid}"))
+    kb.add(types.InlineKeyboardButton("🗑 Отозвать доступ",            callback_data=f"acc_rev:{doc_uid}:{cid}"))
+    kb.add(types.InlineKeyboardButton("← Назад",                       callback_data=f"acc_cl:{cid}"))
+    bot.edit_message_text(text, c.message.chat.id, c.message.message_id, reply_markup=kb)
+
+# ── Отозвать доступ ───────────────────────────────────────────────────────────
+@bot.callback_query_handler(func=lambda c: c.data.startswith("acc_rev:"))
+def acc_revoke_confirm(c):
+    if c.from_user.id not in ADMIN_IDS: return
+    bot.answer_callback_query(c.id)
+    _, doc_uid_s, cid = c.data.split(":", 2)
+    doc_uid = int(doc_uid_s)
+    all_users = master_db.get_all_users() or []
+    doc = next((u for u in all_users if u.get("telegram_id") == doc_uid and u.get("clinic_id") == cid), None)
+    doc_name    = doc["name"]            if doc else f"User {doc_uid}"
+    clinic_name = doc.get("clinic_name", cid) if doc else cid
+    kb = types.InlineKeyboardMarkup(row_width=2)
+    kb.row(
+        types.InlineKeyboardButton("✅ Да, отозвать", callback_data=f"acc_rev_ok:{doc_uid}:{cid}"),
+        types.InlineKeyboardButton("← Отмена",        callback_data=f"acc_doc:{doc_uid}:{cid}")
+    )
+    bot.edit_message_text(
+        f"⚠️ Отозвать доступ у <b>{html_escape(doc_name)}</b>\nв клинике <b>{html_escape(clinic_name)}</b>?",
+        c.message.chat.id, c.message.message_id, reply_markup=kb
+    )
+
+@bot.callback_query_handler(func=lambda c: c.data.startswith("acc_rev_ok:"))
+def acc_revoke_execute(c):
+    if c.from_user.id not in ADMIN_IDS: return
+    bot.answer_callback_query(c.id)
+    _, doc_uid_s, cid = c.data.split(":", 2)
+    doc_uid = int(doc_uid_s)
+    all_users = master_db.get_all_users() or []
+    doc = next((u for u in all_users if u.get("telegram_id") == doc_uid and u.get("clinic_id") == cid), None)
+    doc_name = doc["name"] if doc else f"User {doc_uid}"
+    master_db.delete_user_access(doc_uid, cid)
+    try: bot.send_message(doc_uid, "🔇 Ваш доступ в клинику был отозван администратором.")
+    except: pass
+    bot.edit_message_text(
+        f"✅ Доступ <b>{html_escape(doc_name)}</b> отозван.",
+        c.message.chat.id, c.message.message_id,
+        reply_markup=types.InlineKeyboardMarkup().add(
+            types.InlineKeyboardButton("← К клинике", callback_data=f"acc_cl:{cid}")
+        )
+    )
+
+# ── Перенести в другую клинику ────────────────────────────────────────────────
+@bot.callback_query_handler(func=lambda c: c.data.startswith("acc_mv:"))
+def acc_move_pick_clinic(c):
+    if c.from_user.id not in ADMIN_IDS: return
+    bot.answer_callback_query(c.id)
+    _, doc_uid_s, from_cid = c.data.split(":", 2)
+    doc_uid = int(doc_uid_s)
+    all_users = master_db.get_all_users() or []
+    doc = next((u for u in all_users if u.get("telegram_id") == doc_uid and u.get("clinic_id") == from_cid), None)
+    doc_name = doc["name"] if doc else f"User {doc_uid}"
+    others = [cl for cl in _get_clinics() if cl["clinic_id"] != from_cid]
+    if not others:
+        bot.answer_callback_query(c.id, "Нет других клиник для переноса"); return
+    kb = types.InlineKeyboardMarkup(row_width=1)
+    for cl in others:
+        kb.add(types.InlineKeyboardButton(f"🏥 {cl['name']}", callback_data=f"acc_mv_to:{doc_uid}:{from_cid}:{cl['clinic_id']}"))
+    kb.add(types.InlineKeyboardButton("← Назад", callback_data=f"acc_doc:{doc_uid}:{from_cid}"))
+    bot.edit_message_text(
+        f"🔄 Перенести <b>{html_escape(doc_name)}</b>\nВыберите клинику назначения:",
+        c.message.chat.id, c.message.message_id, reply_markup=kb
+    )
+
+@bot.callback_query_handler(func=lambda c: c.data.startswith("acc_mv_to:"))
+def acc_move_confirm(c):
+    if c.from_user.id not in ADMIN_IDS: return
+    bot.answer_callback_query(c.id)
+    parts = c.data.split(":")
+    doc_uid, from_cid, to_cid = int(parts[1]), parts[2], parts[3]
+    all_users = master_db.get_all_users() or []
+    doc = next((u for u in all_users if u.get("telegram_id") == doc_uid and u.get("clinic_id") == from_cid), None)
+    doc_name = doc["name"] if doc else f"User {doc_uid}"
+    to_name = to_cid
+    try:
+        row = master_db.execute("SELECT name FROM clinics WHERE clinic_id=?", (to_cid,)).fetchone()
+        if row: to_name = row[0]
+    except: pass
+    kb = types.InlineKeyboardMarkup(row_width=2)
+    kb.row(
+        types.InlineKeyboardButton("✅ Перенести", callback_data=f"acc_mv_ok:{doc_uid}:{from_cid}:{to_cid}"),
+        types.InlineKeyboardButton("← Назад",      callback_data=f"acc_mv:{doc_uid}:{from_cid}")
+    )
+    from_name = doc.get("clinic_name", from_cid) if doc else from_cid
+    bot.edit_message_text(
+        f"🔄 <b>{html_escape(doc_name)}</b>\n"
+        f"Из: {html_escape(from_name)}\nВ: <b>{html_escape(to_name)}</b>\n\nПодтвердить?",
+        c.message.chat.id, c.message.message_id, reply_markup=kb
+    )
+
+@bot.callback_query_handler(func=lambda c: c.data.startswith("acc_mv_ok:"))
+def acc_move_execute(c):
+    if c.from_user.id not in ADMIN_IDS: return
+    bot.answer_callback_query(c.id)
+    parts = c.data.split(":")
+    doc_uid, from_cid, to_cid = int(parts[1]), parts[2], parts[3]
+    all_users = master_db.get_all_users() or []
+    doc = next((u for u in all_users if u.get("telegram_id") == doc_uid and u.get("clinic_id") == from_cid), None)
+    doc_name = doc["name"] if doc else f"User {doc_uid}"
+    doc_role = doc.get("role", "surgeon") if doc else "surgeon"
+    to_name = to_cid
+    try:
+        row = master_db.execute("SELECT name FROM clinics WHERE clinic_id=?", (to_cid,)).fetchone()
+        if row: to_name = row[0]
+    except: pass
+    master_db.delete_user_access(doc_uid, from_cid)
+    master_db.add_user(doc_uid, to_cid, doc_role, doc_name)
+    try: bot.send_message(doc_uid, f"🔄 Ваш доступ перемещён в клинику <b>{html_escape(to_name)}</b>.")
+    except: pass
+    bot.edit_message_text(
+        f"✅ <b>{html_escape(doc_name)}</b> перенесён в <b>{html_escape(to_name)}</b>.",
+        c.message.chat.id, c.message.message_id,
+        reply_markup=types.InlineKeyboardMarkup().add(
+            types.InlineKeyboardButton("← К клинике", callback_data=f"acc_cl:{to_cid}")
+        )
+    )
 
 @bot.message_handler(func=lambda m: m.text == "🏥 Сменить клинику" or m.text == "/clinics")
 def switch_clinic_cmd(message):
@@ -447,6 +830,7 @@ def handle_set_active_clinic(c):
     uid = c.from_user.id
     cid = c.data.split(":")[1]
     
+    master_db.set_active_clinic(uid, cid)
     load_clinic(uid, force_cid=cid)
     cl_info = master_db.get_clinic_by_id(cid)
     name = cl_info["name"] if cl_info else cid
@@ -541,7 +925,137 @@ def full_backup_cmd(message):
     except Exception as e:
         bot.send_message(uid, f"❌ Ошибка вызова скрипта: {str(e)}")
 
+# ── Бэкап и восстановление прав доступа ──────────────────────────────────────
+
+import json as _json
+import io as _io
+
+@bot.message_handler(func=lambda m: m.text == "🛡️ Бэкап прав")
+def access_backup_menu(message):
+    if message.from_user.id not in ADMIN_IDS: return
+    kb = types.InlineKeyboardMarkup(row_width=1)
+    kb.add(types.InlineKeyboardButton("📤 Скачать бэкап прав",    callback_data="acbk_export"))
+    kb.add(types.InlineKeyboardButton("📥 Восстановить из бэкапа", callback_data="acbk_restore_init"))
+    bot.send_message(
+        message.chat.id,
+        "🛡️ <b>Бэкап прав доступа</b>\n\n"
+        "• <b>Скачать бэкап</b> — получить JSON со всеми врачами и клиниками\n"
+        "• <b>Восстановить</b> — отправить ранее сохранённый JSON-файл",
+        reply_markup=kb
+    )
+
+@bot.callback_query_handler(func=lambda c: c.data == "acbk_export")
+def acbk_export(c):
+    if c.from_user.id not in ADMIN_IDS: return
+    bot.answer_callback_query(c.id, "⏳ Формирую бэкап...")
+    try:
+        users   = master_db.get_all_users() or []
+        clinics = _get_clinics()
+        data = {
+            "timestamp": datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+            "clinics": [{"clinic_id": cl["clinic_id"], "name": cl["name"]} for cl in clinics],
+            "users": [
+                {
+                    "telegram_id": u["telegram_id"],
+                    "clinic_id":   u["clinic_id"],
+                    "clinic_name": u.get("clinic_name", ""),
+                    "role":        u["role"],
+                    "name":        u["name"],
+                }
+                for u in users
+            ]
+        }
+        ts   = data["timestamp"].replace(" ", "_").replace(":", "-")
+        buf  = _io.BytesIO(_json.dumps(data, ensure_ascii=False, indent=2).encode("utf-8"))
+        buf.name = f"access_backup_{ts}.json"
+        bot.send_document(
+            c.message.chat.id, buf,
+            caption=f"🛡️ Бэкап прав доступа\n"
+                    f"📅 {data['timestamp']}\n"
+                    f"👥 {len(data['users'])} пользователей · 🏥 {len(data['clinics'])} клиник"
+        )
+    except Exception as e:
+        bot.send_message(c.message.chat.id, f"❌ Ошибка: {e}")
+
+@bot.callback_query_handler(func=lambda c: c.data == "acbk_restore_init")
+def acbk_restore_init(c):
+    if c.from_user.id not in ADMIN_IDS: return
+    bot.answer_callback_query(c.id)
+    msg = bot.send_message(
+        c.message.chat.id,
+        "📥 Отправьте JSON-файл бэкапа прав доступа.\n\n"
+        "⚠️ Существующие права сохранятся, недостающие будут добавлены."
+    )
+    bot.register_next_step_handler(msg, acbk_restore_process)
+
+def acbk_restore_process(message):
+    if message.from_user.id not in ADMIN_IDS: return
+    if not message.document:
+        bot.send_message(message.chat.id, "❌ Нужен файл JSON. Попробуйте снова — нажмите '🛡️ Бэкап прав'.")
+        return
+    try:
+        file_info = bot.get_file(message.document.file_id)
+        raw       = bot.download_file(file_info.file_path)
+        data      = _json.loads(raw.decode("utf-8"))
+
+        users   = data.get("users", [])
+        clinics = data.get("clinics", [])
+
+        # 1. Восстанавливаем клиники (если не существуют)
+        cl_added = 0
+        for cl in clinics:
+            cid, name = cl.get("clinic_id"), cl.get("name", "")
+            if not cid: continue
+            existing = master_db.execute("SELECT 1 FROM clinics WHERE clinic_id=?", (cid,)).fetchone()
+            if not existing:
+                master_db.execute("INSERT INTO clinics (clinic_id, name) VALUES (?,?)", (cid, name))
+                cl_added += 1
+        if cl_added:
+            master_db.conn.commit()
+
+        # 2. Восстанавливаем пользователей
+        restored, skipped = 0, 0
+        for u in users:
+            uid  = u.get("telegram_id")
+            cid  = u.get("clinic_id")
+            role = u.get("role", "surgeon")
+            name = u.get("name", f"User_{uid}")
+            if not uid or not cid: continue
+            # Проверяем — уже есть такой доступ?
+            existing = master_db.execute(
+                "SELECT 1 FROM user_clinics WHERE telegram_id=? AND clinic_id=?", (uid, cid)
+            ).fetchone()
+            if existing:
+                skipped += 1
+            else:
+                master_db.add_user(uid, cid, role, name)
+                restored += 1
+
+        ts = data.get("timestamp", "—")
+        bot.send_message(
+            message.chat.id,
+            f"✅ <b>Восстановление завершено</b>\n\n"
+            f"📅 Бэкап от: {ts}\n"
+            f"🏥 Клиник добавлено: {cl_added}\n"
+            f"👤 Доступов восстановлено: {restored}\n"
+            f"⏭ Пропущено (уже есть): {skipped}",
+            reply_markup=main_menu_markup(message.from_user.id)
+        )
+    except _json.JSONDecodeError:
+        bot.send_message(message.chat.id, "❌ Неверный формат файла. Нужен JSON из бэкапа.")
+    except Exception as e:
+        bot.send_message(message.chat.id, f"❌ Ошибка восстановления: {e}")
+
+
 if __name__ == "__main__":
     acquire_lock()
-    print("Bot SLIM v2.6.1 is running...")
+    print("Bot SLIM v2.6.2 is running...")
+    
+    bot.set_my_commands([
+        types.BotCommand("start", "🚀 Главное меню"),
+        types.BotCommand("menu",  "♻️ Обновить кнопки (если пропали)"),
+        types.BotCommand("clinics", "🏥 Сменить клинику"),
+        types.BotCommand("info", "ℹ️ Информация"),
+    ])
+    
     bot.infinity_polling()

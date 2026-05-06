@@ -5,6 +5,10 @@ import { useUIStore } from '../../../store/useUIStore';
 import { EyeToggle, AutoRepeatButton } from '../../../ui';
 import { CorneaSafetyCard } from '../../ablation/CorneaSafetyCard';
 import { computeRefStats, rsbLevel } from '../../../calculators/refStats';
+import { Calendar } from '../../../ui/Calendar';
+import { T } from '../../../constants/translations';
+import { useClinicStore } from '../../../store/useClinicStore';
+import { useTelegram } from '../../../hooks/useTelegram';
 
 const EXCIMER_LIST = [
   { id: 'ex500', shortLabel: 'EX500', color: '#3b82f6' },
@@ -13,6 +17,7 @@ const EXCIMER_LIST = [
 ];
 
 function EnhancementResult({ eye, laser, onReset }: any) {
+  const { haptic } = useTelegram();
   const { draft, refPlan, enhancementPlan, setEnhancementField, setDraft } = useSessionStore();
   const ec = eyeColors(eye);
   const plan = (enhancementPlan as any)?.[eye];
@@ -162,6 +167,10 @@ function EnhancementResult({ eye, laser, onReset }: any) {
 export function EnhancementTab() {
   const { draft, setDraft, enhancementPlan, setEnhancementPlan, toggleSurgicalEye } = useSessionStore();
   const { enhancementEye, setEnhancementEye, openOCR } = useUIStore();
+  const { language } = useClinicStore();
+  const { haptic } = useTelegram();
+  const [showCalendar, setShowCalendar] = useState(false);
+  const t = T(language);
 
   if (!draft) return null;
 
@@ -171,10 +180,26 @@ export function EnhancementTab() {
     const residualKey = `residual_${enhancementEye}` as any;
     const residual: any = (draft as any)[residualKey] ?? { sph: '', cyl: '', ax: '' };
 
+    const disabledEyes: ('od' | 'os')[] = [];
+    if (draft.eye === 'OD') disabledEyes.push('os');
+    if (draft.eye === 'OS') disabledEyes.push('od');
+
+    const handleLongPressEye = (eye: 'od' | 'os') => {
+      toggleSurgicalEye(eye);
+      const nextEye = (useSessionStore.getState().draft?.eye || 'OU').toUpperCase();
+      if (nextEye === 'OD' && enhancementEye === 'os') setEnhancementEye('od');
+      if (nextEye === 'OS' && enhancementEye === 'od') setEnhancementEye('os');
+    };
+
     return (
       <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
         <div style={{ display: 'flex', justifyContent: 'center' }}>
-          <EyeToggle value={enhancementEye} onChange={setEnhancementEye} onLongPress={toggleSurgicalEye} />
+          <EyeToggle 
+            value={enhancementEye} 
+            onChange={setEnhancementEye} 
+            onLongPress={handleLongPressEye} 
+            disabledEyes={disabledEyes}
+          />
         </div>
 
         <div style={{ background: C.card, borderRadius: 20, padding: '16px 12px', border: `1px solid ${C.border}`, display: 'flex', flexDirection: 'column', gap: 14 }}>
@@ -218,7 +243,35 @@ export function EnhancementTab() {
           onReset={() => setEnhancementPlan(null)} 
         />
         
-        <div style={{ height: 40 }} />
+        <div style={{ marginTop: 20, paddingBottom: 20 }}>
+          <button 
+            onClick={() => { haptic.light(); setShowCalendar(!showCalendar); }} 
+            style={{ 
+              width: '100%', 
+              background: draft.date ? `${C.green}15` : C.accentLt, 
+              border: `1px solid ${draft.date ? C.green : C.accent}40`, 
+              borderRadius: 20, padding: '12px 16px', 
+              display: 'flex', alignItems: 'center', justifyContent: 'center', 
+              gap: 10, color: draft.date ? C.green : C.accent, 
+              fontFamily: F.sans, fontSize: 12, fontWeight: 900, cursor: 'pointer' 
+            }}
+          >
+            <svg width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2.5">
+              <path d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+            </svg>
+            {draft.date ? `${(language === 'ru' ? 'ОПЕРАЦИЯ: ' : 'SURGERY: ') + new Date(draft.date).toLocaleDateString()}` : (language === 'ru' ? 'ЗАПИСАТЬ НА ДОКОРРЕКЦИЮ' : 'SCHEDULE ENHANCEMENT')}
+          </button>
+          {showCalendar && (
+            <Calendar 
+              selectedDate={draft.date || null} 
+              onSelect={iso => { 
+                haptic.success(); 
+                setDraft({ date: iso, status: 'planned', isEnhancement: true }); 
+                setShowCalendar(false); 
+              }} 
+            />
+          )}
+        </div>
       </div>
     );
   } catch (err) {

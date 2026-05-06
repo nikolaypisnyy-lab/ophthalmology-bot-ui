@@ -29,6 +29,8 @@ interface ClinicStore {
   setLanguage:     (lang: Language) => void;
   theme:           Theme;
   setTheme:        (t: Theme) => void;
+  defaultFlap:     number;
+  setDefaultFlap:  (v: number) => void;
   initialized?:    boolean;
   error?:          string | null;
   initClinics:     () => Promise<void>;
@@ -37,6 +39,8 @@ interface ClinicStore {
   setRefNomo:      (val: number | null) => void;
   setRefNomoCyl:   (val: number | null) => void;
   fetchRecommendedNomo: () => Promise<void>;
+  nomoDismissed:   boolean;
+  dismissNomo:     () => void;
 }
 
 export const useClinicStore = create<ClinicStore>((set, get) => ({
@@ -48,8 +52,9 @@ export const useClinicStore = create<ClinicStore>((set, get) => ({
   activeRefNomoCyl: null,
   recommendedNomo: null,
   recommendedNomoCyl: null,
+  nomoDismissed:  false,
   language:       'en',
-  theme:          ((): Theme => { try { return (localStorage.getItem('rm_theme') as Theme) || 'dark'; } catch { return 'dark'; } })(),
+  theme:          ((): Theme => { try { return (localStorage.getItem('rm_theme') as Theme) || 'light'; } catch { return 'light'; } })(),
   initialized:    false,
   error:          null,
 
@@ -97,6 +102,7 @@ export const useClinicStore = create<ClinicStore>((set, get) => ({
         activeLaser: laser, 
         activeRefNomo: nomo ? parseFloat(nomo) : null,
         activeRefNomoCyl: nomoCyl ? parseFloat(nomoCyl) : null,
+        nomoDismissed: localStorage.getItem(`rm_nomo_dismissed_${target}`) === 'true',
         language: lang,
         initialized: true, 
         error: null 
@@ -174,7 +180,19 @@ export const useClinicStore = create<ClinicStore>((set, get) => ({
   },
   setTheme: (theme) => {
     localStorage.setItem('rm_theme', theme);
-    setAppTheme(theme === 'dark');
+    setAppTheme(theme);
     set({ theme });
+  },
+  defaultFlap: (() => { try { return parseInt(localStorage.getItem('rm_default_flap') || '110') || 110; } catch { return 110; } })(),
+  setDefaultFlap: (v) => {
+    try { localStorage.setItem('rm_default_flap', String(v)); } catch {}
+    set({ defaultFlap: v });
+  },
+  dismissNomo: () => {
+    const { activeClinicId } = get();
+    if (activeClinicId) {
+      localStorage.setItem(`rm_nomo_dismissed_${activeClinicId}`, 'true');
+      set({ nomoDismissed: true });
+    }
   },
 }));

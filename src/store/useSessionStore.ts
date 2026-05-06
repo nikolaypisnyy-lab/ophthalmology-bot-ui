@@ -77,13 +77,20 @@ export const useSessionStore = create<SessionStore>()(
       }),
 
       openDraft: (patient, _initialTab) => {
+        const iolRes = patient.iolResult ?? null;
+        const toricRes = (patient as any).toricResults ?? { od: null, os: null };
+        const hasToric = (iolRes?.od?.cyl && parseFloat(String(iolRes.od.cyl)) !== 0) || 
+                         (iolRes?.os?.cyl && parseFloat(String(iolRes.os.cyl)) !== 0) ||
+                         (patient as any).toricMode;
+
         set({
-          draft: { ...patient, flapTech: patient.flapTech ?? 'fs' },
+          draft: { ...patient, flapTech: patient.flapTech ?? 'fs', toricMode: !!hasToric },
           refPlan: patient.savedPlan ? { od: patient.savedPlan.od as any, os: patient.savedPlan.os as any } : null,
           enhancementPlan: (patient as any).savedEnhancement ? { od: (patient as any).savedEnhancement.od as any, os: (patient as any).savedEnhancement.os as any } : null,
           planTweaked: (patient as any).planTweaked ?? false,
-          iolResult: patient.iolResult ?? null,
+          iolResult: iolRes,
           formulaResults: (patient as any).formulaResults ?? { od: {}, os: {} },
+          toricResults: toricRes,
           iolLoading: false,
           iolError: null,
           iolProgress: 0,
@@ -234,7 +241,10 @@ export const useSessionStore = create<SessionStore>()(
 
       setIOLLoading: (loading, progress = 0) => set({ iolLoading: loading, iolProgress: progress }),
       setIOLError: (error) => set({ iolError: error }),
-      setToricResults: (results) => set({ toricResults: results }),
+      setToricResults: (results) => set(state => ({ 
+        toricResults: results,
+        draft: state.draft ? { ...state.draft, toricResults: results } as any : state.draft
+      })),
 
       setPeriodEyeField: (period, eye, field, value) => {
         set(state => {

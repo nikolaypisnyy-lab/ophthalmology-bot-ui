@@ -168,6 +168,7 @@ export const usePatientStore = create<PatientStore>((set, get) => ({
           astigStrategyOS: ex?.astigStrategyOS ?? fd?.os?.astigStrategy ?? p.astigStrategyOS,
           toricResults: (ex as any)?.toricResults ?? (fd as any)?.toricResults ?? (p as any)?.toricResults,
           savedPlan: ex?.savedPlan ?? fd?.savedPlan ?? p.savedPlan,
+          savedEnhancement: (ex as any)?.savedEnhancement ?? (fd as any)?.savedEnhancement ?? (p as any)?.savedEnhancement,
         };
       });
 
@@ -227,18 +228,31 @@ export const usePatientStore = create<PatientStore>((set, get) => ({
             (loaded as any).formulaResults = { od: fr.od, os: fr.os };
             if (fr.active) loaded.activeFormula = fr.active as 'Haigis' | 'Barrett' | 'Kane';
 
-            // Загружаем выбранную линзу
+            // Загружаем выбранную линзу (включая selectedToricModel)
             if (m.iol_calc?.selected_iol) {
               const { od, os } = m.iol_calc.selected_iol as any;
               const anyEye = od || os;
               if (anyEye) {
                 (loaded as any).iolResult = {
                   lens: anyEye.model || '',
-                  od: od ? { selectedPower: od.power, expectedRefr: od.expected_refr } : undefined,
-                  os: os ? { selectedPower: os.power, expectedRefr: os.expected_refr } : undefined,
-                  power: (anyEye.power > 0 ? '+' : '') + anyEye.power.toFixed(2),
+                  od: od ? {
+                    selectedPower: od.power,
+                    expectedRefr: od.expected_refr,
+                    selectedToricModel: od.selectedToricModel,
+                  } : undefined,
+                  os: os ? {
+                    selectedPower: os.power,
+                    expectedRefr: os.expected_refr,
+                    selectedToricModel: os.selectedToricModel,
+                  } : undefined,
+                  power: anyEye.power != null ? (anyEye.power > 0 ? '+' : '') + Number(anyEye.power).toFixed(2) : undefined,
                 };
               }
+            }
+
+            // Загружаем toricResults из measurements
+            if ((m as any).toricResults) {
+              (loaded as any).toricResults = (m as any).toricResults;
             }
           } else {
             // Рефракция — МЕРДЖИМ данные из анкеты и данные из измерений
@@ -386,10 +400,12 @@ export const usePatientStore = create<PatientStore>((set, get) => ({
       isCustomViewOS: patient.isCustomViewOS,
       astigStrategyOD: patient.od?.astigStrategy,
       astigStrategyOS: patient.os?.astigStrategy,
+      postVaOU: (patient as any).postVaOU,
       // Сохраняем iolResult, toricResults и savedPlan в summary
       iolResult: patient.iolResult,
       toricResults: (patient as any).toricResults,
       savedPlan: patient.savedPlan,
+      savedEnhancement: (patient as any).savedEnhancement,
     } as PatientSummary;
 
     const plist = lsGetPatients();

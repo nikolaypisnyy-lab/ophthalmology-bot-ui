@@ -119,9 +119,11 @@ function buildCatDetails(p: any): { short: string; full: string } {
   const powStr = pow != null ? `${Number(pow).toFixed(2)} D` : '';
 
   const toric = p.toricResults?.[eyeKey];
-  const toricModel: string = toric?.best_model ?? p.iolResult?.[eyeKey]?.selectedToricModel ?? '';
-  const toricAxis = toric?.total_steep_axis ?? p.iolResult?.[eyeKey]?.toricAxis;
-  const toricCyl = toric?.table?.find((r: any) => r.model === toricModel)?.cyl_iol;
+  // Приоритет: явно выбранная модель → рекомендованная
+  const toricModel: string = p.iolResult?.[eyeKey]?.selectedToricModel ?? toric?.best_model ?? '';
+  const toricAxis = p.iolResult?.[eyeKey]?.toricAxis ?? toric?.total_steep_axis;
+  const toricCyl = toric?.table?.find((r: any) => r.model === toricModel)?.cyl_iol
+    ?? p.iolResult?.[eyeKey]?.toricCyl;
 
   if (toricModel) {
     // Формат: SN6AT 22.5D T3 +2.25D @163°
@@ -137,10 +139,248 @@ function buildCatDetails(p: any): { short: string; full: string } {
 
 // ── Страница ──────────────────────────────────────────────────────────────────
 
+function OperationItem({ 
+  p, i, total, isMoving, handleMove, openPatient, language, t, savePatient,
+  setMovingId, setPressTimer, pressTimer 
+}: any) {
+  const { haptic } = useTelegram();
+  const [swiped, setSwiped] = useState(false);
+  const [startX, setStartX] = useState(0);
+
+  const tc = typeColors(p.type);
+  const ec = eyeColors((p.eye?.toLowerCase() === 'os' ? 'os' : 'od'));
+
+  const handleTouchStart = (e: React.TouchEvent | React.MouseEvent) => {
+    const clientX = 'touches' in e ? e.touches[0].clientX : e.clientX;
+    setStartX(clientX);
+  };
+
+  const handleTouchEnd = (e: React.TouchEvent | React.MouseEvent) => {
+    const clientX = 'changedTouches' in e ? e.changedTouches[0].clientX : e.clientX;
+    const diff = startX - clientX;
+    if (diff > 50 && !swiped) {
+      haptic.medium();
+      setSwiped(true);
+    } else if (diff < -40 && swiped) {
+      setSwiped(false);
+    }
+  };
+
+  const handleRemove = async (e: React.MouseEvent) => {
+    e.stopPropagation();
+    haptic.notification('success');
+    // Remove from operations: clear date and set status to done (or undefined)
+    await savePatient({ ...p, date: null, status: 'done' });
+  };
+
+  const startPress = () => {
+    if (isMoving) return;
+    const timer = setTimeout(() => {
+      haptic.impact('heavy');
+      setMovingId(String(p.id));
+    }, 600);
+    setPressTimer(timer);
+  };
+
+  const endPress = () => {
+    if (pressTimer) clearTimeout(pressTimer);
+  };
+
+  return (
+    <div style={{ position: 'relative', background: C.red, borderRadius: 16, overflow: 'hidden', marginBottom: 12 }}>
+      {/* Remove Button Background */}
+      <div 
+        onClick={handleRemove}
+        style={{
+          position: 'absolute', top: 0, bottom: 0, right: 0, width: 80,
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
+          color: '#fff', fontFamily: F.sans, fontSize: 11, fontWeight: 900,
+          cursor: 'pointer', textTransform: 'uppercase'
+        }}
+      >
+        {language === 'ru' ? 'УБРАТЬ' : 'REMOVE'}
+      </div>
+
+      <div
+        onTouchStart={handleTouchStart}
+        onTouchEnd={handleTouchEnd}
+        onMouseDown={handleTouchStart}
+        onMouseUp={handleTouchEnd}
+        onPointerDown={startPress}
+        onPointerUp={endPress}
+        onPointerLeave={endPress}
+        onClick={() => { if (!isMoving) openPatient(String(p.id), p.isEnhancement ? 'enhancement' : 'plan'); }}
+        style={{
+          position: 'relative',
+          display: 'flex', alignItems: 'center', gap: 14,
+          background: isMoving ? C.surfaceActive : C.card,
+          padding: '12px 14px', borderRadius: 16,
+          border: `1px solid ${isMoving ? C.indigo : C.border}`,
+          transform: swiped ? 'translateX(-80px)' : 'translateX(0)',
+          transition: 'transform 0.3s cubic-bezier(0.2, 0.8, 0.2, 1)',
+        }}
+      >
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 4, alignItems: 'center', minWidth: 32 }}>
+          {isMoving && (
+             <button 
+               onClick={(e) => { e.stopPropagation(); handleMove('up', i); }}
+               disabled={i === 0}
+               style={{ width: 32, height: 28, borderRadius: 8, background: C.surface, border: `1px solid ${C.border}`, color: C.text, opacity: i === 0 ? 0.2 : 1, display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+             >▲</button>
+          )}
+          
+          <div style={{
+            width: 28, height: 28, borderRadius: 8, flexShrink: 0,
+            background: tc.bg, border: `1px solid ${tc.color}30`,
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            fontFamily: F.mono, fontSize: 13, fontWeight: 800, color: tc.color,
+          }}>
+            {i + 1}
+          </div>
+
+          {isMoving && (
+             <button 
+               onClick={(e) => { e.stopPropagation(); handleMove('down', i); }}
+               disabled={i === total - 1}
+               style={{ width: 32, height: 28, borderRadius: 8, background: C.surface, border: `1px solid ${C.border}`, color: C.text, opacity: i === total - 1 ? 0.2 : 1, display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+             >▼</button>
+          )}
+        </div>
+
+        <div style={{
+          width: 4, height: 26, borderRadius: 2, flexShrink: 0,
+          background: (p.sex?.startsWith('Ж') || p.sex?.toUpperCase().startsWith('F')) ? '#f472b6' : 
+                      (p.sex?.startsWith('М') || p.sex?.toUpperCase().startsWith('M')) ? C.od : C.border,
+          boxShadow: `0 0 10px ${(p.sex?.startsWith('Ж') || p.sex?.toUpperCase().startsWith('F')) ? '#f472b640' : 
+                      (p.sex?.startsWith('М') || p.sex?.toUpperCase().startsWith('M')) ? `${C.od}40` : 'transparent'}`
+        }} />
+
+        <div style={{ flex: 1, minWidth: 0 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 12, overflow: 'hidden' }}>
+            <span style={{ 
+              fontFamily: F.sans, fontSize: 15, fontWeight: 700, color: C.text, 
+              overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' 
+            }}>{p.name}</span>
+            <span style={{
+              fontFamily: F.mono, fontSize: 9, fontWeight: 900, padding: '1px 6px', borderRadius: 4,
+              background: (p.sex?.startsWith('Ж') || p.sex?.toUpperCase().startsWith('F')) ? '#f472b615' : 
+                          (p.sex?.startsWith('М') || p.sex?.toUpperCase().startsWith('M')) ? `${C.od}15` : C.surface,
+              color: (p.sex?.startsWith('Ж') || p.sex?.toUpperCase().startsWith('F')) ? '#f472b6' : 
+                     (p.sex?.startsWith('М') || p.sex?.toUpperCase().startsWith('M')) ? C.od : C.tertiary,
+              border: `1px solid ${(p.sex?.startsWith('Ж') || p.sex?.toUpperCase().startsWith('F') || p.sex?.toUpperCase().startsWith('Ж')) ? '#f472b630' : 
+                          (p.sex?.startsWith('М') || p.sex?.toUpperCase().startsWith('M') || p.sex?.toUpperCase().startsWith('М')) ? `${C.od}30` : C.border}`,
+              flexShrink: 0
+            }}>{(p.sex?.startsWith('Ж') || p.sex?.toUpperCase().startsWith('F') || p.sex?.toUpperCase().startsWith('Ж')) ? 'F' : 
+                (p.sex?.startsWith('М') || p.sex?.toUpperCase().startsWith('M') || p.sex?.toUpperCase().startsWith('М')) ? 'M' : 'P'}</span>
+            {p.isEnhancement && (
+              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 2, marginTop: 6 }}>
+                <div style={{
+                  fontSize: 8.5, fontWeight: 900, textTransform: 'uppercase', 
+                  border: '1px solid #ec4899', color: '#ec4899', 
+                  padding: '3px 10px', borderRadius: 8, background: '#ec489908',
+                  letterSpacing: '0.04em', lineHeight: 1
+                }}>
+                  {language === 'ru' ? 'ДОКОРРЕКЦИЯ' : 'ENHANCEMENT'}
+                </div>
+                <span style={{ 
+                  fontSize: 6.5, fontWeight: 900, color: C.tertiary, 
+                  textTransform: 'uppercase', letterSpacing: '0.08em',
+                  opacity: 0.8
+                }}>
+                  {language === 'ru' ? 'БЕЗ ФЛЕПА' : 'NO FLAP'}
+                </span>
+              </div>
+            )}
+          </div>
+          
+          <div style={{ fontFamily: F.mono, fontSize: 10, color: C.tertiary, marginTop: 4, display: 'flex', gap: 6, alignItems: 'center' }}>
+            <span style={{ opacity: 0.6 }}>ID {p.id}</span>
+            <span style={{ width: 2, height: 2, borderRadius: '50%', background: C.border2 }} />
+            <span>{p.age || '—'}{t.years}</span>
+            <span style={{ width: 2, height: 2, borderRadius: '50%', background: C.border2 }} />
+            <span style={{ color: ec.color, fontWeight: 800 }}>{p.eye}</span>
+            {p.isEnhancement && (() => {
+              const enh = (p as any).savedEnhancement;
+              const eyeKey = p.eye?.toLowerCase() === 'os' ? 'os' : 'od';
+              const plan = enh?.[eyeKey];
+              const s = parseFloat(String(plan?.sph ?? '0')) || 0;
+              const c = parseFloat(String(plan?.cyl ?? '0')) || 0;
+              const a = parseInt(String(plan?.ax ?? '0')) || 0;
+              const fmt = (v: number) => (v > 0 ? '+' : '') + v.toFixed(2);
+              return (
+                <>
+                  <span style={{ width: 2, height: 2, borderRadius: '50%', background: C.border2 }} />
+                  <span style={{ color: '#ec4899', fontWeight: 700 }}>
+                    {fmt(s)} / {c.toFixed(2)} × {a}°
+                  </span>
+                </>
+              );
+            })()}
+            {p.type === 'cataract' && (p.od?.al || p.os?.al) && (
+              <>
+                <span style={{ width: 2, height: 2, borderRadius: '50%', background: C.border2 }} />
+                <span style={{ color: C.cat }}>AL: {p.od?.al || p.os?.al} mm</span>
+              </>
+            )}
+          </div>
+
+          {p.type === 'cataract' && (() => {
+            const det = buildCatDetails(p);
+            if (!det.short) return null;
+            return (
+              <div style={{
+                marginTop: 4, padding: '3px 8px', borderRadius: 6,
+                background: C.surface2, border: `1px solid ${C.border}40`,
+                display: 'inline-flex', alignItems: 'center', gap: 6
+              }}>
+                <span style={{ fontSize: 8, fontWeight: 800, color: C.tertiary, textTransform: 'uppercase' }}>
+                  {language === 'ru' ? 'ПЛАН:' : 'PLAN:'}
+                </span>
+                <span style={{ fontFamily: F.mono, fontSize: 10, fontWeight: 700, color: C.cat }}>
+                  {det.short || (language === 'ru' ? 'ИОЛ не выбрана' : 'No IOL')}
+                </span>
+              </div>
+            );
+          })()}
+        </div>
+
+        {!isMoving && (
+          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 6, flexShrink: 0 }}>
+            <div style={{
+              background: tc.bg, color: tc.color, fontFamily: F.mono, fontSize: 9, fontWeight: 700,
+              padding: '2px 8px', borderRadius: 6, textTransform: 'uppercase', border: `1px solid ${tc.color}40`,
+            }}>{p.type === 'cataract' ? t.cataract : t.refraction}</div>
+            
+            {p.status === 'done' && !p.isEnhancement ? (
+              <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+                 <div style={{ width: 5, height: 5, borderRadius: '50%', background: C.success, boxShadow: `0 0 6px ${C.success}` }} />
+                 <span style={{ fontFamily: F.mono, fontSize: 9, color: C.success, fontWeight: 700, opacity: 0.8 }}>{language === 'ru' ? 'ГОТОВО' : 'DONE'}</span>
+              </div>
+            ) : (
+              <button
+                onClick={e => { e.stopPropagation(); openPatient(String(p.id), p.isEnhancement ? 'enhancement' : 'result'); }}
+                style={{
+                  background: `linear-gradient(135deg, ${C.indigo} 0%, #3B82F6 100%)`,
+                  color: '#fff', border: 'none',
+                  fontFamily: F.sans, fontSize: 9, fontWeight: 900,
+                  padding: '4px 10px', borderRadius: 8, cursor: 'pointer',
+                  boxShadow: `0 4px 12px ${C.indigoDim}`, letterSpacing: '0.02em'
+                }}
+              >
+                {language === 'ru' ? 'РЕЗУЛЬТАТ' : 'OUTCOME'}
+              </button>
+            )}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
 export function OperationsPage() {
   const today = new Date().toISOString().slice(0, 10);
   const [selDay, setSelDay] = useState(today);
-  const { patients, reorderPatients } = usePatientStore();
+  const { patients, reorderPatients, savePatient } = usePatientStore();
   const { openPatient } = useUIStore();
   const { language, activeName } = useClinicStore();
   const { tg, haptic } = useTelegram();
@@ -165,20 +405,26 @@ export function OperationsPage() {
             if (p.type === 'cataract') {
               details = buildCatDetails(p).full || '—';
             } else {
-              const plan = (p as any).savedPlan;
+              const isEnhancement = (p as any).isEnhancement;
+              const plan = isEnhancement ? (p as any).savedEnhancement : (p as any).savedPlan;
               const odPlan = plan?.od;
               const osPlan = plan?.os;
               const flapDepth = (p as any).capOrFlap;
               const isPRK = (p as any).isPRK;
-              const flapSuffix = !isPRK && flapDepth ? ` flap ${flapDepth}µm` : '';
+              const details_prefix = isEnhancement ? (language === 'ru' ? '[ДОКОРРЕКЦИЯ] ' : '[ENHANCEMENT] ') : '';
+              const flapSuffix = isEnhancement ? (language === 'ru' ? ' [NO FLAP]' : ' [NO FLAP]') : (!isPRK && flapDepth ? ` flap ${flapDepth}µm` : '');
               const parts: string[] = [];
-              const fmtPlan = (side: string, pl: any) =>
-                `${side}: ${Number(pl.sph) >= 0 ? '+' : ''}${Number(pl.sph).toFixed(2)} ${Number(pl.cyl).toFixed(2)} x${pl.ax}°${flapSuffix}`;
-              if ((eye === 'OD' || eye === 'OU') && odPlan?.sph != null && (Number(odPlan.sph) !== 0 || Number(odPlan.cyl) !== 0))
+              const fmtPlan = (side: string, pl: any) => {
+                const s = parseFloat(String(pl?.sph ?? '0')) || 0;
+                const c = parseFloat(String(pl?.cyl ?? '0')) || 0;
+                const a = parseInt(String(pl?.ax ?? '0')) || 0;
+                return `${side}: ${s >= 0 ? '+' : ''}${s.toFixed(2)} ${c.toFixed(2)} x${a}°${flapSuffix}`;
+              };
+              if ((eye === 'OD' || eye === 'OU') && (odPlan || isEnhancement))
                 parts.push(fmtPlan('OD', odPlan));
-              if ((eye === 'OS' || eye === 'OU') && osPlan?.sph != null && (Number(osPlan.sph) !== 0 || Number(osPlan.cyl) !== 0))
+              if ((eye === 'OS' || eye === 'OU') && (osPlan || isEnhancement))
                 parts.push(fmtPlan('OS', osPlan));
-              details = parts.join('  ');
+              details = details_prefix + parts.join('  ');
             }
 
             return {
@@ -287,185 +533,27 @@ export function OperationsPage() {
               {language === 'ru' ? 'На этот день нет операций' : 'No operations today'}
             </div>
           )}
-          {dayPatients.map((p, i) => {
-            const tc = typeColors(p.type);
-            const ec = eyeColors((p.eye?.toLowerCase() === 'os' ? 'os' : 'od'));
-            const isMoving = movingId === p.id;
-
-            const startPress = () => {
-              const timer = setTimeout(() => {
-                setMovingId(String(p.id));
-                if (window.navigator?.vibrate) window.navigator.vibrate(50);
-              }, 600);
-              setPressTimer(timer);
-            };
-
-            const endPress = () => {
-              if (pressTimer) clearTimeout(pressTimer);
-            };
-
-            return (
-              <div key={p.id} style={{ display: 'block', width: '100%', marginBottom: 12 }}>
-                <div
-                  onPointerDown={startPress}
-                  onPointerUp={endPress}
-                  onPointerLeave={endPress}
-                  onClick={() => { if (!isMoving) openPatient(String(p.id), p.isEnhancement ? 'enhancement' : 'plan'); }}
-                  style={{
-                    background: isMoving ? C.surfaceActive : C.card,
-                    border: `1px solid ${isMoving ? C.indigo : C.border}`,
-                    borderRadius: R.lg, 
-                    display: 'flex', alignItems: 'center', gap: 12,
-                    cursor: 'pointer',
-                    transition: 'all .2s cubic-bezier(.16,1,.3,1)',
-                    transform: isMoving ? 'scale(1.01)' : 'none',
-                    boxShadow: isMoving ? `0 8px 32px ${C.indigoGlow}` : 'none',
-                    position: 'relative',
-                    zIndex: isMoving ? 10 : 1,
-                    userSelect: 'none',
-                    WebkitUserSelect: 'none',
-                    WebkitTouchCallout: 'none',
-                    minHeight: 68, padding: '12px 14px'
-                  }}
-                >
-                  {isMoving && (
-                    <div 
-                      onClick={(e) => { e.stopPropagation(); setMovingId(null); }}
-                      style={{ position: 'absolute', top: -8, right: -8, width: 22, height: 22, borderRadius: '50%', background: C.red, color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 14, fontWeight: 700, boxShadow: '0 2px 8px rgba(0,0,0,0.3)', zIndex: 12 }}
-                    >×</div>
-                  )}
-
-                  {/* Порядок / Кнопки движения */}
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: 4, flexShrink: 0, alignItems: 'center' }}>
-                    {isMoving && (
-                       <button 
-                         onClick={(e) => { e.stopPropagation(); handleMove('up', i); }}
-                         disabled={i === 0}
-                         style={{ width: 32, height: 28, borderRadius: 8, background: C.surface, border: `1px solid ${C.border}`, color: C.text, opacity: i === 0 ? 0.2 : 1, display: 'flex', alignItems: 'center', justifyContent: 'center' }}
-                       >▲</button>
-                    )}
-                    
-                    <div style={{
-                      width: 28, height: 28, borderRadius: 8, flexShrink: 0,
-                      background: tc.bg, border: `1px solid ${tc.color}30`,
-                      display: 'flex', alignItems: 'center', justifyContent: 'center',
-                      fontFamily: F.mono, fontSize: 13, fontWeight: 800, color: tc.color,
-                    }}>
-                      {i + 1}
-                    </div>
-
-                    {isMoving && (
-                       <button 
-                         onClick={(e) => { e.stopPropagation(); handleMove('down', i); }}
-                         disabled={i === dayPatients.length - 1}
-                         style={{ width: 32, height: 28, borderRadius: 8, background: C.surface, border: `1px solid ${C.border}`, color: C.text, opacity: i === dayPatients.length - 1 ? 0.2 : 1, display: 'flex', alignItems: 'center', justifyContent: 'center' }}
-                       >▼</button>
-                    )}
-                  </div>
-
-                  {/* Gender Indicator Bar (Unified) */}
-                  <div style={{
-                    width: 4, height: 26, borderRadius: 2, flexShrink: 0,
-                    background: (p.sex?.startsWith('Ж') || p.sex?.toUpperCase().startsWith('F')) ? '#f472b6' : 
-                                (p.sex?.startsWith('М') || p.sex?.toUpperCase().startsWith('M')) ? C.od : C.border,
-                    boxShadow: `0 0 10px ${(p.sex?.startsWith('Ж') || p.sex?.toUpperCase().startsWith('F')) ? '#f472b640' : 
-                                (p.sex?.startsWith('М') || p.sex?.toUpperCase().startsWith('M')) ? `${C.od}40` : 'transparent'}`
-                  }} />
-
-                  {/* Инфо */}
-                  <div style={{ flex: 1, minWidth: 0 }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 8, overflow: 'hidden' }}>
-                      <span style={{ 
-                        fontFamily: F.sans, fontSize: 15, fontWeight: 700, color: C.text, 
-                        overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' 
-                      }}>{p.name}</span>
-                      <span style={{
-                        fontFamily: F.mono, fontSize: 9, fontWeight: 900, padding: '1px 6px', borderRadius: 4,
-                        background: (p.sex?.startsWith('Ж') || p.sex?.toUpperCase().startsWith('F')) ? '#f472b615' : 
-                                    (p.sex?.startsWith('М') || p.sex?.toUpperCase().startsWith('M')) ? `${C.od}15` : C.surface,
-                        color: (p.sex?.startsWith('Ж') || p.sex?.toUpperCase().startsWith('F')) ? '#f472b6' : 
-                               (p.sex?.startsWith('М') || p.sex?.toUpperCase().startsWith('M')) ? C.od : C.tertiary,
-                        border: `1px solid ${(p.sex?.startsWith('Ж') || p.sex?.toUpperCase().startsWith('F') || p.sex?.toUpperCase().startsWith('Ж')) ? '#f472b630' : 
-                                    (p.sex?.startsWith('М') || p.sex?.toUpperCase().startsWith('M') || p.sex?.toUpperCase().startsWith('М')) ? `${C.od}30` : C.border}`,
-                        flexShrink: 0
-                      }}>{(p.sex?.startsWith('Ж') || p.sex?.toUpperCase().startsWith('F') || p.sex?.toUpperCase().startsWith('Ж')) ? 'F' : 
-                          (p.sex?.startsWith('М') || p.sex?.toUpperCase().startsWith('M') || p.sex?.toUpperCase().startsWith('М')) ? 'M' : 'P'}</span>
-                      {p.isEnhancement && (
-                        <span style={{
-                          fontSize: 8, fontWeight: 900, textTransform: 'uppercase', border: '1px solid rgba(236,72,153,.3)'
-                        }}>{language === 'ru' ? 'ПОВТОР' : 'RE-SCAN'}</span>
-                      )}
-                    </div>
-                    
-                    <div style={{ fontFamily: F.mono, fontSize: 10, color: C.tertiary, marginTop: 4, display: 'flex', gap: 6, alignItems: 'center' }}>
-                      <span style={{ opacity: 0.6 }}>ID {p.id}</span>
-                      <span style={{ width: 2, height: 2, borderRadius: '50%', background: C.border2 }} />
-                      <span>{p.age || '—'}{t.years}</span>
-                      <span style={{ width: 2, height: 2, borderRadius: '50%', background: C.border2 }} />
-                      <span style={{ color: ec.color, fontWeight: 800 }}>{p.eye}</span>
-                      {p.type === 'cataract' && (p.od?.al || p.os?.al) && (
-                        <>
-                          <span style={{ width: 2, height: 2, borderRadius: '50%', background: C.border2 }} />
-                          <span style={{ color: C.cat }}>AL: {p.od?.al || p.os?.al} mm</span>
-                        </>
-                      )}
-                    </div>
-
-                    {/* IOL Details for Cataract */}
-                    {p.type === 'cataract' && (() => {
-                      const det = buildCatDetails(p);
-                      if (!det.short) return null;
-                      return (
-                        <div style={{
-                          marginTop: 4, padding: '3px 8px', borderRadius: 6,
-                          background: C.surface2, border: `1px solid ${C.border}40`,
-                          display: 'inline-flex', alignItems: 'center', gap: 6
-                        }}>
-                          <span style={{ fontSize: 8, fontWeight: 800, color: C.tertiary, textTransform: 'uppercase' }}>
-                            {language === 'ru' ? 'ПЛАН:' : 'PLAN:'}
-                          </span>
-                          <span style={{ fontFamily: F.mono, fontSize: 10, fontWeight: 700, color: C.cat }}>
-                            {det.short || (language === 'ru' ? 'ИОЛ не выбрана' : 'No IOL')}
-                          </span>
-                        </div>
-                      );
-                    })()}
-                  </div>
-
-                  {/* Статус / Действие */}
-                  {!isMoving && (
-                    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 6, flexShrink: 0 }}>
-                      <div style={{
-                        background: tc.bg, color: tc.color, fontFamily: F.mono, fontSize: 9, fontWeight: 700,
-                        padding: '2px 8px', borderRadius: 6, textTransform: 'uppercase', border: `1px solid ${tc.color}40`,
-                      }}>{p.type === 'cataract' ? t.cataract : t.refraction}</div>
-                      
-                      {p.status === 'done' ? (
-                        <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
-                           <div style={{ width: 5, height: 5, borderRadius: '50%', background: C.success, boxShadow: `0 0 6px ${C.success}` }} />
-                           <span style={{ fontFamily: F.mono, fontSize: 9, color: C.success, fontWeight: 700, opacity: 0.8 }}>{language === 'ru' ? 'ГОТОВО' : 'DONE'}</span>
-                        </div>
-                      ) : (
-                        <button
-                          onClick={e => { e.stopPropagation(); openPatient(String(p.id), 'result'); }}
-                          style={{
-                            background: `linear-gradient(135deg, ${C.indigo} 0%, #3B82F6 100%)`,
-                            color: '#fff', border: 'none',
-                            fontFamily: F.sans, fontSize: 9, fontWeight: 900,
-                            padding: '4px 10px', borderRadius: 8, cursor: 'pointer',
-                            boxShadow: `0 4px 12px ${C.indigoDim}`, letterSpacing: '0.02em'
-                          }}
-                        >
-                          {language === 'ru' ? 'РЕЗУЛЬТАТ' : 'OUTCOME'}
-                        </button>
-                      )}
-                    </div>
-                  )}
-                </div>
-              </div>
-            );
-          })}
+          
+          <div style={{ padding: '4px 0px 100px' }}>
+            {dayPatients.map((p, i) => (
+              <OperationItem 
+                key={p.id} 
+                p={p} 
+                i={i} 
+                total={dayPatients.length}
+                isMoving={movingId === p.id} 
+                handleMove={handleMove}
+                openPatient={openPatient}
+                language={language}
+                t={t}
+                savePatient={savePatient}
+                setMovingId={setMovingId}
+                setPressTimer={setPressTimer}
+                pressTimer={pressTimer}
+              />
+            ))}
         </div>
       </div>
-    );
+    </div>
+  );
 }

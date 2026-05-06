@@ -65,6 +65,7 @@ export const IOL_DB: IOLLens[] = [
   { name: 'SIFI Mini Toric',                a: 0,      a_kane: 118.94, haigis: H(-2.906, 0.493, 0.271) },
   { name: 'SIFI Mini WELL',                 a: 118.74, a_kane: 118.65, haigis: H(1.33,  0.4,   0.1  ) },
   { name: 'SIFI Mini WELL Toric',           a: 0,      a_kane: 118.72, haigis: H(1.33,  0.4,   0.1  ) },
+  { name: 'Sensar AAB00',                   a: 119.0,  a_kane: 119.0,  haigis: H(-1.004, 0.182, 0.232) },
   { name: 'Sensar AR40e',                   a: 118.71, a_kane: 118.62, haigis: H(0.472, 0.077, 0.174) },
   { name: 'Sensar AR40M',                   a: 118.71, a_kane: 118.62, haigis: H(0.472, 0.077, 0.174) },
   { name: 'Zeiss 409M',                     a: 118.32, a_kane: 118.34, haigis: H(0.322, 0.162, 0.158) },
