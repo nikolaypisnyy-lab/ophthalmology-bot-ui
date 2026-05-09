@@ -339,7 +339,8 @@ function RefractionPlanTab() {
       } else if (field === 'ax') {
         next = isPlus ? cur + step : cur - step; if (next < 0) next = 180 + next; if (next >= 180) next = next - 180;
       } else if (field === 'oz') {
-        next = isPlus ? cur + step : cur - step; next = Math.max(0, Math.round(next * 10) / 10);
+        next = isPlus ? cur + step : cur - step; 
+        next = Math.min(7.0, Math.max(6.0, Math.round(next * 10) / 10));
       }
       setPlanField(planEye, field as any, next);
       haptic.light();
@@ -400,7 +401,7 @@ function RefractionPlanTab() {
                 const kAx = parseInt(data.p_tot_a || data.k_ax || '0');
                 const k1 = parseFloat(data.k1 || '0');
                 const k2 = parseFloat(data.k2 || '0');
-                const cylVal = data.p_tot_c ? parseFloat(data.p_tot_c) : (k1 && k2 ? Math.abs(k1 - k2) : 0);
+                const cylVal = data.p_tot_c ? Math.abs(parseFloat(data.p_tot_c)) : (k1 && k2 ? Math.abs(k1 - k2) : 0);
                 const steep = (kAx + 90) % 180;
                 let type = 'Oblique';
                 if ((steep >= 0 && steep <= 30) || (steep >= 150 && steep <= 180)) type = 'ATR';
@@ -431,6 +432,18 @@ function RefractionPlanTab() {
                   );
                 })}
               </div>
+              <button 
+                onClick={() => { haptic.selection(); toggleRounding(); }} 
+                style={{ 
+                  height: 24, padding: '0 12px', borderRadius: 20, border: `1px solid ${isRounding ? C.green : C.border}`, 
+                  background: isRounding ? `${C.green}15` : C.surface, 
+                  color: isRounding ? C.green : C.muted2, 
+                  fontSize: 10, fontWeight: 900, cursor: 'pointer',
+                  display: 'flex', alignItems: 'center', justifyContent: 'center'
+                }}
+              >
+                0.25
+              </button>
             </div>
 
             <div style={{ display: 'flex', gap: 8 }}>
@@ -469,18 +482,14 @@ function RefractionPlanTab() {
               ))}
             </div>
 
-            <div style={{ display: 'flex', gap: 10, marginTop: 12 }}>
-              <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 6 }}>
-                <span style={{ fontSize: 8, fontWeight: 900, color: C.muted2, textTransform: 'uppercase' }}>Opt Zone</span>
-                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: C.surface, borderRadius: 10, padding: '4px 10px', border: `1px solid ${C.border}` }}>
-                  <AutoRepeatButton onTrigger={() => updatePower('oz', false, 0.1)} style={{ background: 'none', border: 'none', color: C.muted3, fontSize: 18 }}>−</AutoRepeatButton>
-                  <span style={{ fontFamily: F.mono, fontSize: 13, fontWeight: 800, color: C.text }}>{plan.oz.toFixed(1)}</span>
-                  <AutoRepeatButton onTrigger={() => updatePower('oz', true, 0.1)} style={{ background: 'none', border: 'none', color: C.muted3, fontSize: 18 }}>+</AutoRepeatButton>
+            <div style={{ display: 'flex', justifyContent: 'center', marginTop: 12 }}>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 6, width: '60%' }}>
+                <span style={{ fontSize: 8, fontWeight: 900, color: C.muted2, textTransform: 'uppercase', textAlign: 'center' }}>Opt Zone (6.0 - 7.0)</span>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: C.surface, borderRadius: 14, padding: '6px 12px', border: `1px solid ${C.border}` }}>
+                  <AutoRepeatButton onTrigger={() => updatePower('oz', false, 0.1)} style={{ background: 'none', border: 'none', color: C.muted3, fontSize: 24 }}>−</AutoRepeatButton>
+                  <span style={{ fontFamily: F.mono, fontSize: 16, fontWeight: 900, color: ec.color }}>{plan.oz.toFixed(1)}</span>
+                  <AutoRepeatButton onTrigger={() => updatePower('oz', true, 0.1)} style={{ background: 'none', border: 'none', color: C.muted3, fontSize: 24 }}>+</AutoRepeatButton>
                 </div>
-              </div>
-              <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 6 }}>
-                <span style={{ fontSize: 8, fontWeight: 900, color: C.muted2, textTransform: 'uppercase' }}>Method</span>
-                <div onClick={() => { haptic.light(); setPlanField(planEye, 'flap', plan.flap === 0 ? 110 : 0); }} style={{ height: 24, borderRadius: 10, background: plan.flap === 0 ? C.surface : C.cardHi, border: `1px solid ${C.border}`, color: plan.flap === 0 ? C.muted2 : C.indigo, fontSize: 9, fontWeight: 900, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>{plan.flap === 0 ? 'PRK' : 'LASIK'}</div>
               </div>
             </div>
         </div>
@@ -488,57 +497,59 @@ function RefractionPlanTab() {
         {(() => {
           const diopters = Math.abs(plan.sph) + Math.abs(plan.cyl) * 0.7;
           const ablPerD = 13 + (plan.oz - 6.0) * 10;
-          const actualFlap = isPRK ? 0 : (parseFloat(draft.capOrFlap || String(plan.flap)) || 110);
+          const actualFlap = isPRK ? 60 : (parseFloat(draft.capOrFlap || String(plan.flap)) || 110);
           const finalAbl = Math.ceil(ablPerD * diopters);
           const rsb = cctNum - actualFlap - finalAbl;
           const kpost = parseFloat(data.kavg || '43.5') + (plan.sph + plan.cyl * 0.5) * 0.8;
           return (
             <div style={{ marginTop: 6 }}>
-              <CorneaSafetyCard eye={planEye} cct={cctNum || 550} flap={actualFlap} abl={finalAbl} rsb={rsb} pta={Math.round((actualFlap + finalAbl) / (cctNum || 550) * 100)} kpost={kpost} />
+              <CorneaSafetyCard eye={planEye} cct={cctNum || 550} flap={actualFlap} abl={finalAbl} rsb={rsb} pta={Math.round((actualFlap + finalAbl) / (cctNum || 550) * 100)} kpost={kpost} isPRK={isPRK} />
             </div>
           );
         })()}
+
+        <div style={{ marginTop: 12 }}>
+          <SectionHeader title="Surgical Method" />
+          <div style={{ display: 'flex', gap: 10, background: C.card, borderRadius: 24, padding: '12px', border: `1px solid ${C.border}`, boxShadow: '0 8px 30px rgba(0,0,0,0.12)' }}>
+            <button 
+              onClick={() => { haptic.selection(); setPlanField(planEye, 'flap', 110); }} 
+              style={{ flex: 1, padding: '12px 0', borderRadius: 16, border: `1px solid ${!isPRK ? C.indigo : C.border}40`, background: !isPRK ? `${C.indigo}15` : C.surface, color: !isPRK ? C.indigo : C.text, fontSize: 13, fontWeight: 900, cursor: 'pointer', transition: 'all 0.2s' }}
+            >LASIK</button>
+            <button 
+              onClick={() => { haptic.selection(); setPlanField(planEye, 'flap', 0); }} 
+              style={{ flex: 1, padding: '12px 0', borderRadius: 16, border: `1px solid ${isPRK ? C.indigo : C.border}40`, background: isPRK ? `${C.indigo}15` : C.surface, color: isPRK ? C.indigo : C.text, fontSize: 13, fontWeight: 900, cursor: 'pointer', transition: 'all 0.2s' }}
+            >PRK</button>
+          </div>
+        </div>
 
         {!isPRK && (
           <div style={{ marginTop: 6 }}>
             <SectionHeader title="Flap Parameters" />
             <div style={{ background: C.card, borderRadius: 24, padding: '12px 16px', border: `1px solid ${C.border}`, boxShadow: '0 8px 30px rgba(0,0,0,0.12)' }}>
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 10 }}>
+              <div style={{ display: 'flex', gap: 16 }}>
                 <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 6 }}>
-                  <span style={{ fontSize: 8, fontWeight: 900, color: C.muted2, textTransform: 'uppercase' }}>Model</span>
-                  <select 
-                    value={draft.flapModel || 'FS200'} 
-                    onChange={(e) => setDraft({ flapModel: e.target.value })}
-                    style={{ height: 32, borderRadius: 10, background: C.surface, border: `1px solid ${C.border}`, color: C.text, fontSize: 10, fontWeight: 800, padding: '0 4px', outline: 'none' }}
-                  >
-                    <option value="FS200">FS200</option>
-                    <option value="Moria M2">Moria M2</option>
-                    <option value="Moria One">Moria One</option>
-                    <option value="VisuMax">VisuMax</option>
-                  </select>
-                </div>
-                <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 6 }}>
-                  <span style={{ fontSize: 8, fontWeight: 900, color: C.muted2, textTransform: 'uppercase' }}>Diam</span>
-                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: C.surface, borderRadius: 10, padding: '4px 8px', border: `1px solid ${C.border}` }}>
-                    <input 
-                      type="number" 
-                      step="0.1"
-                      value={draft.flapDiam || '8.5'} 
-                      onChange={(e) => setDraft({ flapDiam: e.target.value })}
-                      style={{ width: '100%', background: 'none', border: 'none', color: C.text, fontSize: 13, fontWeight: 800, fontFamily: F.mono, outline: 'none', textAlign: 'center' }} 
-                    />
+                  <span style={{ fontSize: 8, fontWeight: 900, color: C.muted2, textTransform: 'uppercase', textAlign: 'center' }}>Diameter</span>
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: C.surface, borderRadius: 14, padding: '4px 8px', border: `1px solid ${C.border}` }}>
+                    <AutoRepeatButton onTrigger={() => { haptic.light(); setDraft({ flapDiam: Math.max(8.0, (parseFloat(draft.flapDiam || '8.5') - 0.1)).toFixed(1) }); }} style={{ background: 'none', border: 'none', color: C.muted3, fontSize: 20 }}>−</AutoRepeatButton>
+                    <span style={{ fontFamily: F.mono, fontSize: 14, fontWeight: 900, color: C.text }}>{parseFloat(draft.flapDiam || '8.5').toFixed(1)}</span>
+                    <AutoRepeatButton onTrigger={() => { haptic.light(); setDraft({ flapDiam: Math.min(9.1, (parseFloat(draft.flapDiam || '8.5') + 0.1)).toFixed(1) }); }} style={{ background: 'none', border: 'none', color: C.muted3, fontSize: 20 }}>+</AutoRepeatButton>
                   </div>
                 </div>
-                <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 6 }}>
-                  <span style={{ fontSize: 8, fontWeight: 900, color: C.muted2, textTransform: 'uppercase' }}>Depth</span>
-                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: C.surface, borderRadius: 10, padding: '4px 8px', border: `1px solid ${C.border}` }}>
-                    <input 
-                      type="number" 
-                      step="5"
-                      value={draft.capOrFlap || draft.flapDepth || '110'} 
-                      onChange={(e) => setDraft({ capOrFlap: e.target.value, flapDepth: e.target.value })}
-                      style={{ width: '100%', background: 'none', border: 'none', color: C.indigo, fontSize: 13, fontWeight: 800, fontFamily: F.mono, outline: 'none', textAlign: 'center' }} 
-                    />
+                <div style={{ flex: 1.2, display: 'flex', flexDirection: 'column', gap: 6 }}>
+                  <span style={{ fontSize: 8, fontWeight: 900, color: C.muted2, textTransform: 'uppercase', textAlign: 'center' }}>Depth</span>
+                  <div style={{ display: 'flex', gap: 4, background: C.surface, padding: 2, borderRadius: 14, border: `1px solid ${C.border}` }}>
+                    {['90', '100', '110'].map(d => {
+                      const isActive = String(draft.capOrFlap || draft.flapDepth || '110') === d;
+                      return (
+                        <button 
+                          key={d}
+                          onClick={() => { haptic.selection(); setDraft({ capOrFlap: d, flapDepth: d }); }}
+                          style={{ flex: 1, padding: '6px 0', borderRadius: 12, border: 'none', background: isActive ? C.indigo : 'transparent', color: isActive ? '#fff' : C.muted2, fontSize: 13, fontWeight: 900, fontFamily: F.mono, cursor: 'pointer', transition: 'all 0.2s' }}
+                        >
+                          {d}
+                        </button>
+                      );
+                    })}
                   </div>
                 </div>
               </div>

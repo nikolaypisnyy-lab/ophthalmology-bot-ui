@@ -8,14 +8,17 @@
 - **Фронтенд:** React 18 + TypeScript + Zustand + Vite (Telegram Mini App)
 - **Бэкенд:** FastAPI (Python) + SQLite — `deploy/api.py`
 - **OCR:** Google Gemini 2.0 Flash Lite — `deploy/ocr_engine.py`
-- **Деплой:** GitHub Actions → rsync → `root@92.38.48.231:/root/medeye_bot/`
+- **Деплой:** GitHub Actions → rsync → `root@92.38.48.231:/root/medeye_bot/` → затем скрипт копирует в `/root/medeye/api/`
 
 ## Репозиторий
 `https://github.com/nikolaypisnyy-lab/RefMaster-2.0.git` ветка `main`
 
-## Деплой
-Любой `git push` в `main` → автоматический деплой через `.github/workflows/deploy.yml`.
-**deploy_medeye.sh НЕ использовать** — устарел.
+## Правила Ручного Деплоя (КРИТИЧНО)
+Обычные пуши в `main` разворачиваются автоматически. Если нужно задеплоить вручную с локальной машины, отправляйте фронтенд НАПРЯМУЮ в рабочую папку сервера:
+1. Сделайте билд: `npm run build`
+2. Отправьте `dist`: `rsync -av --delete dist/ root@92.38.48.231:/root/medeye/api/dist/`
+3. Перезапустите службы: `ssh root@92.38.48.231 "systemctl restart medeye-app medeye medeye_bot"`
+*(Внимание: папка `/root/medeye_bot/` используется только как промежуточная при авто-деплое, для ручного деплоя используйте `/root/medeye/api/dist/`)*
 
 ## Ключевые файлы
 

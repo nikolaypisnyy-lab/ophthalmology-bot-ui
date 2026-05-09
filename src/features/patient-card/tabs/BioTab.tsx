@@ -845,7 +845,7 @@ export function BioTab() {
                 const kAx = parseInt(data.p_tot_a || data.k_ax || '0');
                 const k1 = parseFloat(data.k1 || '0');
                 const k2 = parseFloat(data.k2 || '0');
-                const cylVal = data.p_tot_c ? parseFloat(data.p_tot_c) : (k1 && k2 ? Math.abs(k1 - k2) : 0);
+                const cylVal = data.p_tot_c ? Math.abs(parseFloat(data.p_tot_c)) : (k1 && k2 ? Math.abs(k1 - k2) : 0);
                 
                 // Classification based on STEEP meridian (90 deg from minus-cyl axis)
                 const steep = (kAx + 90) % 180;

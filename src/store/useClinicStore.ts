@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import { apiGet, setActiveClinicId } from '../api/client';
+import { apiGet, apiPost, setActiveClinicId } from '../api/client';
 import { setAppTheme } from '../constants/design';
 
 const LS_CLINIC      = 'rm_clinic_id';
@@ -72,10 +72,11 @@ export const useClinicStore = create<ClinicStore>((set, get) => ({
         return;
       }
 
-      // Приоритет: ?clinic= из URL (бот передаёт при открытии WebApp) > localStorage > первая клиника
-      const urlParams  = new URLSearchParams(window.location.search);
-      const urlClinic  = urlParams.get('clinic');
-      const cached     = urlClinic || localStorage.getItem(LS_CLINIC);
+      // Приоритет: ?clinic= из URL > is_active с сервера > localStorage > первая клиника
+      const urlParams   = new URLSearchParams(window.location.search);
+      const urlClinic   = urlParams.get('clinic');
+      const serverActive = (data.clinics ?? []).find((c: any) => c.is_active === 1)?.clinic_id as string | undefined;
+      const cached      = urlClinic || serverActive || localStorage.getItem(LS_CLINIC);
       const isValid    = clinics.some(c => c.clinic_id === cached);
       const target     = isValid ? cached! : clinics[0].clinic_id;
       const targetCl   = clinics.find(c => c.clinic_id === target)!;
@@ -127,16 +128,26 @@ export const useClinicStore = create<ClinicStore>((set, get) => ({
 
   switchClinic: (id) => {
     const { clinics } = get();
-    const prev = localStorage.getItem(LS_CLINIC);
-    if (prev !== id) {
-      localStorage.setItem(LS_CLINIC, id);
-      const cl = clinics.find(c => c.clinic_id === id);
-      if (cl?.clinic_name) localStorage.setItem(LS_CLINIC_NAME, cl.clinic_name);
-      
-      localStorage.removeItem(LS_PATIENTS);
-      localStorage.removeItem(LS_PDATA);
-      window.location.reload(); 
-    }
+    const cl = clinics.find(c => c.clinic_id === id);
+    if (!cl) return;
+    localStorage.setItem(LS_CLINIC, id);
+    localStorage.setItem(LS_CLINIC_NAME, cl.clinic_name);
+    localStorage.removeItem(LS_PATIENTS);
+    localStorage.removeItem(LS_PDATA);
+    setActiveClinicId(id);
+    const laser = localStorage.getItem(`rm_laser_${id}`) || 'ex500';
+    const nomo = localStorage.getItem(`rm_ref_nomo_${id}`);
+    const nomoCyl = localStorage.getItem(`rm_ref_nomo_cyl_${id}`);
+    set({
+      activeClinicId: id,
+      activeName: cl.clinic_name,
+      activeLaser: laser,
+      activeRefNomo: nomo ? parseFloat(nomo) : null,
+      activeRefNomoCyl: nomoCyl ? parseFloat(nomoCyl) : null,
+      nomoDismissed: localStorage.getItem(`rm_nomo_dismissed_${id}`) === 'true',
+    });
+    // Синхронизируем активную клинику с сервером
+    apiPost('/me/clinic', {}).catch(() => {});
   },
 
   setActiveLaser: (id) => {

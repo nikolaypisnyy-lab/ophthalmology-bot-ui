@@ -20,10 +20,7 @@ export function SettingsModal() {
 
   const handleSwitchClinic = (id: string) => {
     if (id === activeClinicId) return;
-    // Сохраняем новую клинику в localStorage и перезагружаем страницу —
-    // это сбрасывает весь in-memory стейт и загружает пациентов нужной клиники
-    switchClinic(id);
-    window.location.reload();
+    switchClinic(id); // внутри уже вызывает window.location.reload()
   };
 
   if (!settingsOpen) return null;

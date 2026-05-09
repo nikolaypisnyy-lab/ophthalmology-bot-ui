@@ -325,15 +325,12 @@ export function App() {
       haptic.light();
       const state = useUIStore.getState();
       if (state.ocrOpen) state.closeOCR();
-      else if (state.settingsOpen) state.closeSettings();
       else if (state.openPatientId) state.closePatient();
     };
 
-    const shouldShowBack = ocrOpen || settingsOpen || !!openPatientId;
-    
     if (tg && tg.isVersionAtLeast('6.1') && tg.BackButton) {
+      tg.BackButton.hide();
       tg.BackButton.onClick(handleBackBtn);
-      if (shouldShowBack) tg.BackButton.show(); else tg.BackButton.hide();
     }
     
     return () => { 
@@ -381,6 +378,27 @@ export function App() {
     const params = new URLSearchParams(window.location.search || window.location.hash.split('?')[1] || '');
     const pid = params.get('pid') || params.get('id');
     if (pid) { useUIStore.getState().openPatient(pid); }
+  }, []); // eslint-disable-line
+
+  // При смене клиники — перезагружаем пациентов
+  const { activeClinicId, initClinics: reinitClinics } = useClinicStore();
+  const prevClinicRef = React.useRef<string | null>(null);
+  useEffect(() => {
+    if (prevClinicRef.current !== null && prevClinicRef.current !== activeClinicId) {
+      closeDraft();
+      closePatient();
+      fetchPatients();
+    }
+    prevClinicRef.current = activeClinicId;
+  }, [activeClinicId]); // eslint-disable-line
+
+  // Когда Telegram поднимает WebApp из фона — перечитываем is_active с сервера
+  useEffect(() => {
+    const onVisible = () => {
+      if (!document.hidden) reinitClinics().then(() => fetchPatients());
+    };
+    document.addEventListener('visibilitychange', onVisible);
+    return () => document.removeEventListener('visibilitychange', onVisible);
   }, []); // eslint-disable-line
 
   useEffect(() => {

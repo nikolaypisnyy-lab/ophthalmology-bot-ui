@@ -63,7 +63,7 @@ export function PatientHeader({ onSave, isSaving }: PatientHeaderProps) {
     <div
       style={{
         background: `linear-gradient(to bottom, ${C.surface} 0%, ${C.bg} 100%)`,
-        padding: 'max(20px, env(safe-area-inset-top, 0px)) 16px 0',
+        padding: 'max(60px, env(safe-area-inset-top, 0px)) 16px 0',
         borderBottom: `1px solid ${C.border}`,
         flexShrink: 0,
         boxShadow: '0 8px 32px rgba(0,0,0,0.4)',

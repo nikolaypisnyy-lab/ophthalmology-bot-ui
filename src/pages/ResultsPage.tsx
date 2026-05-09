@@ -301,8 +301,8 @@ export function ResultsPage() {
     }
     return [
       { label: t.totalCases, val: done.length, color: C.text, sub: null },
-      { label: t.iolSuccess, val: catDone.length ? `${Math.round(catHit / catDone.length * 100)}%` : '—', color: C.green, sub: `${catHit}/${catDone.length}` },
       { label: t.lasikSuccess, val: refDone.length ? `${Math.round(refHit / refDone.length * 100)}%` : '—', color: C.purple, sub: `${refHit}/${refDone.length}` },
+      { label: t.iolSuccess, val: catDone.length ? `${Math.round(catHit / catDone.length * 100)}%` : '—', color: C.green, sub: `${catHit}/${catDone.length}` },
     ];
   }, [done, filter]);
 

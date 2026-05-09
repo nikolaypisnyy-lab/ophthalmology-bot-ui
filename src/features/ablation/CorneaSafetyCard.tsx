@@ -12,10 +12,11 @@ interface CorneaSafetyCardProps {
   kpost: number;
   kpre?: number;
   isWarnRSB?: boolean;
+  isPRK?: boolean;
 }
 
 export function CorneaSafetyCard({
-  eye, cct, flap, abl, rsb, pta, kpost, kpre, isWarnRSB
+  eye, cct, flap, abl, rsb, pta, kpost, kpre, isWarnRSB, isPRK
 }: CorneaSafetyCardProps) {
   void useClinicStore(s => s.theme);
   const eyeColor = eye === 'od' ? C.od : C.os;
@@ -74,8 +75,8 @@ export function CorneaSafetyCard({
         </div>
         
         <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
-          {/* Flap Layer (Blue, only if > 0) */}
-          {flap > 0 && (
+          {/* Flap Layer (Blue, only if > 0 and not PRK) */}
+          {flap > 0 && !isPRK && (
             <div style={{
               height: '26px', borderRadius: '4px', display: 'flex', alignItems: 'center', justifyContent: 'space-between',
               padding: '0 12px', background: 'rgba(59, 130, 246, 0.2)', color: '#3b82f6',

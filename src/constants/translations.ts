@@ -4,7 +4,7 @@ export const T = (lang: Language) => {
   const translations = {
     en: {
       // Common
-      all: 'All',
+      all: 'Patients',
       refraction: 'Refraction',
       cataract: 'Cataract',
       save: 'Save',
@@ -102,7 +102,7 @@ export const T = (lang: Language) => {
     },
     ru: {
       // Common
-      all: 'Все',
+      all: 'Пациенты',
       refraction: 'Рефракция',
       cataract: 'Катаракта',
       save: 'Сохранить',
@@ -187,7 +187,7 @@ export const T = (lang: Language) => {
       selectFormulaToCalc: 'Выберите формулу для расчета',
       toricRecommendation: 'Рекомендация Toric',
       noLensSelected: 'Линза не выбрана',
-      surgery: 'Хирургия',
+      surgery: 'Операции',
       surgicalSummary: 'Сводка операции',
       implantedIOL: 'Имплантированная ИОЛ',
       toricComponent: 'Торический компонент',

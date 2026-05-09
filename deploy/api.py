@@ -223,6 +223,13 @@ def get_me(telegram_id: str = Header(None)):
     clinics = master_db.get_user_clinics(int(telegram_id))
     return {"status": "ok", "telegram_id": telegram_id, "clinics": clinics}
 
+@app.post("/api/me/clinic")
+def set_active_clinic(telegram_id: str = Header(None), clinic_id: str = Header(None)):
+    if not telegram_id or not clinic_id:
+        raise HTTPException(status_code=400, detail="Missing headers")
+    master_db.set_active_clinic(int(telegram_id), clinic_id)
+    return {"status": "ok"}
+
 # ──────────────────────────────────────────────────────────────────────────────
 # Пациенты
 # ──────────────────────────────────────────────────────────────────────────────
