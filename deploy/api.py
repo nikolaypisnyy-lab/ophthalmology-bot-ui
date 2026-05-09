@@ -396,7 +396,8 @@ def update_patient(patient_id: str, data: PatientUpdate, db: MedEyeDB = Depends(
     for k, v in data.dict(exclude_unset=True).items():
         if k in ["name", "phone", "op_date"]: continue
         prim[k] = v
-    op_date = data.op_date if data.op_date is not None else f.get("op_date")
+    # Если op_date явно передан (включая null) — используем его; иначе сохраняем старый
+    op_date = data.op_date if "op_date" in data.__fields_set__ else f.get("op_date")
     db.save_form(patient_id, op_date, f.get("op_time"), prim)
 
     p = db.get_patient(patient_id)

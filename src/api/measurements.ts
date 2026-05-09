@@ -239,6 +239,9 @@ export async function saveMeasurements(
     if ((patient as any).toricResults) {
       (d as any).toricResults = (patient as any).toricResults;
     }
+    if ((patient as any).toricMode) {
+      (d as any).toricMode = true;
+    }
 
     // ── Результат ИОЛ расчёта ──────────────────────────────────────────────────
     if (patient.formulaResults || patient.iolResult) {

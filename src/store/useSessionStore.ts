@@ -8,6 +8,22 @@ import type { PeriodKey } from '../types/results';
 import type { PeriodEyeData } from '../types/results';
 import { sumCylinders } from '../calculators/astigmatism';
 
+// Fingerprint биометрии: при изменении AL/ACD/K1/K2 кэш формул инвалидируется
+function bioFingerprint(p: any): string {
+  const snap = (bio: any) =>
+    `${bio?.al ?? ''}_${bio?.acd ?? ''}_${bio?.k1 ?? ''}_${bio?.k2 ?? ''}`;
+  return `${snap(p?.bio_od)}_${snap(p?.bio_os)}`;
+}
+
+function loadCachedFormulas(patientId: string, p: any): { od: Record<string, any>; os: Record<string, any> } | null {
+  try {
+    const fp = bioFingerprint(p);
+    const raw = localStorage.getItem(`rm_fr_${patientId}_${fp}`);
+    if (raw) return JSON.parse(raw);
+  } catch {}
+  return null;
+}
+
 interface SessionStore {
   draft: Patient | null;
   refPlan: { od?: RefractionPlan; os?: RefractionPlan } | null;
@@ -79,9 +95,24 @@ export const useSessionStore = create<SessionStore>()(
       openDraft: (patient, _initialTab) => {
         const iolRes = patient.iolResult ?? null;
         const toricRes = (patient as any).toricResults ?? { od: null, os: null };
-        const hasToric = (iolRes?.od?.cyl && parseFloat(String(iolRes.od.cyl)) !== 0) || 
-                         (iolRes?.os?.cyl && parseFloat(String(iolRes.os.cyl)) !== 0) ||
-                         (patient as any).toricMode;
+        const odRes = iolRes?.od as any;
+        const osRes = iolRes?.os as any;
+        const hasToric =
+          (patient as any).toricMode ||
+          (odRes?.selectedToricModel && odRes.selectedToricModel !== 'None') ||
+          (osRes?.selectedToricModel && osRes.selectedToricModel !== 'None') ||
+          !!(toricRes?.od?.table?.length) ||
+          !!(toricRes?.os?.table?.length) ||
+          (odRes?.cyl && parseFloat(String(odRes.cyl)) !== 0) ||
+          (osRes?.cyl && parseFloat(String(osRes.cyl)) !== 0);
+
+        // Восстанавливаем результаты формул: сервер → localStorage-кэш (если биометрия не изменилась)
+        const serverFormulas = (patient as any).formulaResults as { od: Record<string, any>; os: Record<string, any> } | undefined;
+        const hasServerFormulas = serverFormulas &&
+          (Object.keys(serverFormulas.od ?? {}).length > 0 || Object.keys(serverFormulas.os ?? {}).length > 0);
+        const formulaResults = hasServerFormulas
+          ? serverFormulas!
+          : (loadCachedFormulas(String(patient.id), patient) ?? { od: {}, os: {} });
 
         set({
           draft: { ...patient, flapTech: patient.flapTech ?? 'fs', toricMode: !!hasToric },
@@ -89,7 +120,7 @@ export const useSessionStore = create<SessionStore>()(
           enhancementPlan: (patient as any).savedEnhancement ? { od: (patient as any).savedEnhancement.od as any, os: (patient as any).savedEnhancement.os as any } : null,
           planTweaked: (patient as any).planTweaked ?? false,
           iolResult: iolRes,
-          formulaResults: (patient as any).formulaResults ?? { od: {}, os: {} },
+          formulaResults,
           toricResults: toricRes,
           iolLoading: false,
           iolError: null,
@@ -233,10 +264,23 @@ export const useSessionStore = create<SessionStore>()(
       },
 
       setFormulaResults: (results) => {
-        set(state => ({
-          formulaResults: { ...results }, // ГАРАНТИРУЕМ НОВУЮ ССЫЛКУ
-          draft: state.draft ? { ...state.draft, formulaResults: { ...results } } as any : state.draft
-        }));
+        set(state => {
+          const draft = state.draft;
+          // Авто-кэш в localStorage при каждом расчёте
+          if (draft?.id) {
+            const fp = bioFingerprint(draft);
+            try {
+              localStorage.setItem(
+                `rm_fr_${draft.id}_${fp}`,
+                JSON.stringify(results)
+              );
+            } catch {}
+          }
+          return {
+            formulaResults: { ...results },
+            draft: draft ? { ...draft, formulaResults: { ...results } } as any : draft,
+          };
+        });
       },
 
       setIOLLoading: (loading, progress = 0) => set({ iolLoading: loading, iolProgress: progress }),

@@ -169,8 +169,7 @@ function OperationItem({
   const handleRemove = async (e: React.MouseEvent) => {
     e.stopPropagation();
     haptic.notification('success');
-    // Remove from operations: clear date and set status to done (or undefined)
-    await savePatient({ ...p, date: null, status: 'done' });
+    await savePatient({ ...p, date: null, status: 'planned' });
   };
 
   const startPress = () => {

@@ -3,6 +3,8 @@ import json
 import threading
 import os
 
+_UNSET = object()  # sentinel: "поле не передавалось" vs None ("явно очистить")
+
 # Пути к базам данных всегда относительно папки со скриптом
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 
@@ -169,10 +171,10 @@ class MedEyeDB:
             }
         return {"op_date": None, "op_time": None, "primary": {}}
 
-    def save_form(self, pid, op_date=None, op_time=None, primary=None):
+    def save_form(self, pid, op_date=_UNSET, op_time=_UNSET, primary=None):
         current = self.get_form(pid)
-        new_date = op_date if op_date is not None else current.get('op_date')
-        new_time = op_time if op_time is not None else current.get('op_time')
+        new_date = op_date if op_date is not _UNSET else current.get('op_date')
+        new_time = op_time if op_time is not _UNSET else current.get('op_time')
         new_prim = primary if primary is not None else current.get('primary', {})
         
         self.execute(

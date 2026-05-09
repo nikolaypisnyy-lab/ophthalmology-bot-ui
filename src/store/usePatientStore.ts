@@ -250,9 +250,12 @@ export const usePatientStore = create<PatientStore>((set, get) => ({
               }
             }
 
-            // Загружаем toricResults из measurements
+            // Загружаем toricResults и toricMode из measurements
             if ((m as any).toricResults) {
               (loaded as any).toricResults = (m as any).toricResults;
+            }
+            if ((m as any).toricMode) {
+              (loaded as any).toricMode = true;
             }
           } else {
             // Рефракция — МЕРДЖИМ данные из анкеты и данные из измерений
