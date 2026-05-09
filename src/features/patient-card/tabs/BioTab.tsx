@@ -42,7 +42,7 @@ const EntryCell = ({
             onChange={e => onTempChange(e.target.value)} 
             onBlur={onFinish}
             onKeyDown={e => e.key === 'Enter' && onFinish()}
-            inputMode="text"
+            inputMode="decimal"
             style={{ width: '100%', background: 'none', border: 'none', textAlign: 'center', color: color, fontSize: fontSize * 0.8, fontWeight: 800, fontFamily: F.mono, outline: 'none' }}
           />
         ) : (
@@ -92,7 +92,7 @@ const DiagnosticCell = ({
       {isEditing ? (
         <input 
           ref={inputRef} value={tempValue} onChange={e => onTempChange(e.target.value)} 
-          onBlur={onFinish} onKeyDown={e => e.key === 'Enter' && onFinish()} inputMode="text"
+          onBlur={onFinish} onKeyDown={e => e.key === 'Enter' && onFinish()} inputMode="decimal"
           style={{ width: '100%', background: 'none', border: 'none', textAlign: 'center', color: color, fontSize: fontSize, fontWeight: 800, fontFamily: F.mono, outline: 'none', padding: 0 }} 
         />
       ) : (
@@ -124,7 +124,7 @@ const CompactInput = ({
         <AutoRepeatButton onTrigger={() => onStep(field, -1, step)} style={{ background: 'none', border: 'none', color: C.muted3, fontSize: 16, padding: '10px 14px', margin: '-10px -8px', cursor: 'pointer' }}>−</AutoRepeatButton>
         <div onClick={() => onStartEdit(field, val)} style={{ flex: 1, textAlign: 'center', fontSize: fontSize, fontFamily: F.mono, fontWeight: 800, color: color, cursor: 'text' }}>
           {isEditing ? (
-            <input ref={inputRef} value={tempValue} onChange={e => onTempChange(e.target.value)} onBlur={onFinish} onKeyDown={e => e.key === 'Enter' && onFinish()} inputMode="text"
+            <input ref={inputRef} value={tempValue} onChange={e => onTempChange(e.target.value)} onBlur={onFinish} onKeyDown={e => e.key === 'Enter' && onFinish()} inputMode="decimal"
               style={{ width: '100%', background: 'none', border: 'none', textAlign: 'center', color: color, fontSize: fontSize, fontWeight: 800, fontFamily: F.mono, outline: 'none', padding: 0 }} />
           ) : (
             <>

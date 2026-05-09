@@ -466,6 +466,7 @@ function RefractionPlanTab() {
                         onChange={e=>setTempValue(e.target.value)} 
                         onBlur={handleFinishEdit} 
                         onKeyDown={e=>e.key==='Enter'&&handleFinishEdit()} 
+                        inputMode="decimal"
                         style={{ 
                           width: '100%', background: 'none', border: 'none', 
                           textAlign: 'center', color: f.color, 
@@ -563,7 +564,7 @@ function RefractionPlanTab() {
   }
 }
 
-export function PlanTab() {
+export function PlanTab({ onSave, isSaving }: { onSave?: () => void, isSaving?: boolean }) {
   try {
     const { draft, setDraft, toggleSurgicalEye } = useSessionStore();
     const { planEye, setPlanEye } = useUIStore();
@@ -604,6 +605,38 @@ export function PlanTab() {
           </button>
           {showCalendar && <Calendar selectedDate={draft.date || null} onSelect={iso => { haptic.success(); setDraft({ date: iso, status: 'planned', isEnhancement: false }); setShowCalendar(false); }} />}
         </div>
+
+        {/* BIG GREEN SAVE BUTTON */}
+        {onSave && (
+          <div style={{ marginTop: 24, marginBottom: 8 }}>
+            <button
+              onClick={() => { haptic.medium(); onSave(); }}
+              disabled={isSaving}
+              style={{
+                width: '100%',
+                background: isSaving ? C.surface : `linear-gradient(135deg, ${C.green} 0%, #10B981 100%)`,
+                border: `1px solid ${C.border2}`,
+                borderRadius: 16, padding: '16px 20px',
+                fontFamily: F.sans, fontSize: 15, fontWeight: 900,
+                color: '#FFFFFF', cursor: 'pointer',
+                letterSpacing: '0.1em', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 12,
+                transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
+                boxShadow: isSaving ? 'none' : '0 8px 24px rgba(16, 185, 129, 0.25)'
+              }}
+            >
+              {isSaving ? (
+                <div style={{ width: 16, height: 16, borderRadius: '50%', border: '3px solid transparent', borderTopColor: '#fff', animation: 'spin 0.6s linear infinite' }} />
+              ) : (
+                <>
+                  <svg width="20" height="20" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2.5">
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                  </svg>
+                  <span>SAVE PATIENT</span>
+                </>
+              )}
+            </button>
+          </div>
+        )}
       </div>
     );
   } catch (err) {

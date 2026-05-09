@@ -175,7 +175,7 @@ export function PatientCard() {
       >
         {activeTab === 'bio' && <BioTab onSave={handleSave} isSaving={isSaving} />}
         {activeTab === 'calc' && <CalcTab />}
-        {activeTab === 'plan' && <PlanTab onSave={handleSave} />}
+        {activeTab === 'plan' && <PlanTab onSave={handleSave} isSaving={isSaving} />}
         {activeTab === 'result' && <ResultTab onSave={handleSave} isSaving={isSaving} />}
         {activeTab === 'enhancement' && <EnhancementTab />}
       </div>
