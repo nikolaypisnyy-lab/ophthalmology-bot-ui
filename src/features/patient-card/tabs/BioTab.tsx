@@ -148,7 +148,7 @@ const CompactInput = ({
 
 // CompactInput Component
 
-export function BioTab() {
+export function BioTab({ onSave, isSaving }: { onSave?: () => void, isSaving?: boolean }) {
   const { 
     draft, setDraft, iolResult, setIOLResult, setEyeField, setBioField, toggleSurgicalEye,
     formulaResults, setFormulaResults, iolLoading: isCalculating, setIOLLoading: setIsCalculating,
@@ -943,6 +943,38 @@ export function BioTab() {
 
       {isLensModalOpen && (
         <LensModal isOpen={isLensModalOpen} onClose={() => setIsLensModalOpen(false)} />
+      )}
+
+      {/* BIG GREEN SAVE BUTTON */}
+      {onSave && (
+        <div style={{ marginTop: 24, marginBottom: 8 }}>
+          <button
+            onClick={() => { haptic.medium(); onSave(); }}
+            disabled={isSaving}
+            style={{
+              width: '100%',
+              background: isSaving ? C.surface : `linear-gradient(135deg, ${C.green} 0%, #10B981 100%)`,
+              border: `1px solid ${C.border2}`,
+              borderRadius: 16, padding: '16px 20px',
+              fontFamily: F.sans, fontSize: 15, fontWeight: 900,
+              color: '#FFFFFF', cursor: 'pointer',
+              letterSpacing: '0.1em', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 12,
+              transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
+              boxShadow: isSaving ? 'none' : '0 8px 24px rgba(16, 185, 129, 0.25)'
+            }}
+          >
+            {isSaving ? (
+              <div style={{ width: 16, height: 16, borderRadius: '50%', border: '3px solid transparent', borderTopColor: '#fff', animation: 'spin 0.6s linear infinite' }} />
+            ) : (
+              <>
+                <svg width="20" height="20" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2.5">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                </svg>
+                <span>SAVE PATIENT</span>
+              </>
+            )}
+          </button>
+        </div>
       )}
     </div>
   );

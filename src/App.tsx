@@ -325,11 +325,15 @@ export function App() {
       haptic.light();
       const state = useUIStore.getState();
       if (state.ocrOpen) state.closeOCR();
+      else if (state.settingsOpen) state.closeSettings();
+      else if (state.showNewPatientModal) state.closeNewPatient();
       else if (state.openPatientId) state.closePatient();
     };
 
+    const shouldShowBack = ocrOpen || settingsOpen || !!openPatientId || showNewPatientModal;
+    
     if (tg && tg.isVersionAtLeast('6.1') && tg.BackButton) {
-      tg.BackButton.hide();
+      if (shouldShowBack) tg.BackButton.show(); else tg.BackButton.hide();
       tg.BackButton.onClick(handleBackBtn);
     }
     
@@ -364,10 +368,11 @@ export function App() {
   const handleEdgeTouchEnd = () => {
     if (edgeTouchStart && edgeProgress > 80) {
       haptic.notification('success');
-      if (ocrOpen) closeOCR(); 
-      else if (settingsOpen) closeSettings(); 
-      else if (openPatientId) closePatient();
-      else if (showNewPatientModal) closeNewPatient();
+      const state = useUIStore.getState();
+      if (state.ocrOpen) state.closeOCR();
+      else if (state.settingsOpen) state.closeSettings();
+      else if (state.showNewPatientModal) state.closeNewPatient();
+      else if (state.openPatientId) state.closePatient();
     }
     setEdgeTouchStart(null);
     setEdgeProgress(0);

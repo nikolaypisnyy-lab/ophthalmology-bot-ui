@@ -63,7 +63,7 @@ export function PatientHeader({ onSave, isSaving }: PatientHeaderProps) {
     <div
       style={{
         background: `linear-gradient(to bottom, ${C.surface} 0%, ${C.bg} 100%)`,
-        padding: 'max(60px, env(safe-area-inset-top, 0px)) 16px 0',
+        padding: 'max(50px, env(safe-area-inset-top, 0px)) 16px 0',
         borderBottom: `1px solid ${C.border}`,
         flexShrink: 0,
         boxShadow: '0 8px 32px rgba(0,0,0,0.4)',
@@ -73,15 +73,15 @@ export function PatientHeader({ onSave, isSaving }: PatientHeaderProps) {
         WebkitTouchCallout: 'none',
       }}
     >
-      {/* Main Row: BACK + NAME + SAVE */}
-      <div style={{ display: 'flex', gap: 10, alignItems: 'center', marginBottom: 10 }}>
+      {/* Main Row: BACK + INFO (AGE/SEX + NAME) + SPACER */}
+      <div style={{ display: 'flex', gap: 10, alignItems: 'flex-start', marginBottom: 16 }}>
         <button
           onClick={closePatient}
           style={{
             width: 36, height: 36, borderRadius: 12,
             background: C.surface2, border: `1px solid ${C.border}`,
             display: 'flex', alignItems: 'center', justifyContent: 'center',
-            cursor: 'pointer', color: C.muted2, flexShrink: 0,
+            cursor: 'pointer', color: C.muted2, flexShrink: 0, marginTop: 4
           }}
         >
           <svg width="20" height="20" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2.5">
@@ -89,13 +89,50 @@ export function PatientHeader({ onSave, isSaving }: PatientHeaderProps) {
           </svg>
         </button>
 
-        <div style={{ flex: 1, minWidth: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+        <div style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 12 }}>
+          
+          {/* AGE/SEX PILL (TOP) */}
+          <div style={{
+            display: 'flex', alignItems: 'center', gap: 8,
+            background: draft.sex === 'Ж' ? 'rgba(244, 114, 182, 0.1)' : draft.sex === 'М' ? 'rgba(37, 99, 235, 0.1)' : C.surface2,
+            padding: '4px 14px', borderRadius: 12,
+            border: `1px solid ${draft.sex === 'Ж' ? 'rgba(244, 114, 182, 0.2)' : draft.sex === 'М' ? 'rgba(37, 99, 235, 0.3)' : C.border}`,
+            marginTop: 10
+          }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+              <span style={{ fontFamily: F.sans, fontSize: 9.5, fontWeight: 900, color: C.muted2 }}>A</span>
+              <input
+                type="number" value={draft.age ?? ''}
+                onChange={e => setDraft({ age: e.target.value })}
+                placeholder="00"
+                inputMode="numeric"
+                style={{
+                  width: 24, fontFamily: F.mono, fontSize: 13, color: C.text,
+                  background: 'transparent', border: 'none', textAlign: 'center', outline: 'none', fontWeight: 900, padding: 0
+                }}
+              />
+            </div>
+            <div style={{ width: 1, height: 12, background: C.border }} />
+            <button
+              onClick={() => setDraft({ sex: draft.sex === 'М' ? 'Ж' : draft.sex === 'Ж' ? undefined : 'М' })}
+              style={{
+                background: 'transparent', border: 'none',
+                fontFamily: F.sans, fontSize: 10.5, fontWeight: 900,
+                color: draft.sex === 'Ж' ? '#F472B6' : draft.sex === 'М' ? '#3B82F6' : C.muted2,
+                cursor: 'pointer', padding: 0, letterSpacing: '0.04em'
+              }}
+            >
+              {draft.sex === 'М' ? t.male : draft.sex === 'Ж' ? t.female : t.gender + '?'}
+            </button>
+          </div>
+
+          {/* NAME (BOTTOM) */}
           <input
             value={draft.name ?? ''}
             onChange={e => setDraft({ name: e.target.value })}
             placeholder={t.fullName}
             style={{
-              fontFamily: F.sans, fontSize: 17, fontWeight: 800,
+              fontFamily: F.sans, fontSize: 18, fontWeight: 500,
               color: C.text, background: 'transparent',
               border: 'none', outline: 'none',
               width: '100%', padding: 0, textAlign: 'center',
@@ -104,98 +141,8 @@ export function PatientHeader({ onSave, isSaving }: PatientHeaderProps) {
           />
         </div>
 
-        {/* Spacer for symmetry in top row */}
-        <div style={{ width: 36, height: 36, flexShrink: 0 }} />
-      </div>
-
-      {/* Second Row: TYPE (Left) + AGE/SEX (Center) */}
-      <div style={{ display: 'flex', alignItems: 'center', marginBottom: 16, position: 'relative', minHeight: 24 }}>
-
-        <button
-          onClick={() => {
-            haptic.medium();
-            setDraft({ type: isCat ? 'refraction' : 'cataract' });
-          }}
-          style={{
-            background: isCat
-              ? `linear-gradient(135deg, #2563EB 0%, #3B82F6 100%)`
-              : `linear-gradient(135deg, ${C.indigo} 0%, #6366F1 100%)`,
-            border: `1px solid ${C.border2}`,
-            borderRadius: 10, padding: '6px 16px',
-            fontFamily: F.sans, fontSize: 9, fontWeight: 900,
-            color: '#FFFFFF', cursor: 'pointer',
-            letterSpacing: '0.06em', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
-            transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
-            minWidth: 120,
-            boxShadow: '0 4px 12px rgba(0,0,0,0.15)'
-          }}
-        >
-          <div style={{ width: 6, height: 6, borderRadius: '50%', background: '#FFF', flexShrink: 0 }} />
-          <span style={{ textAlign: 'center' }}>{typeLabel}</span>
-        </button>
-
-        <div style={{
-          display: 'flex', alignItems: 'center', gap: 8,
-          background: draft.sex === 'Ж' ? 'rgba(244, 114, 182, 0.1)' : draft.sex === 'М' ? 'rgba(37, 99, 235, 0.1)' : C.surface2,
-          padding: '4px 14px', borderRadius: 12,
-          border: `1px solid ${draft.sex === 'Ж' ? 'rgba(244, 114, 182, 0.2)' : draft.sex === 'М' ? 'rgba(37, 99, 235, 0.3)' : C.border}`,
-          position: 'absolute', left: '50%', transform: 'translateX(calc(-50% + 10px))',
-          transition: 'all 0.3s',
-          zIndex: 5
-        }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
-            <span style={{ fontFamily: F.sans, fontSize: 9.5, fontWeight: 900, color: C.muted2 }}>A</span>
-            <input
-              type="number" value={draft.age ?? ''}
-              onChange={e => setDraft({ age: e.target.value })}
-              placeholder="00"
-              inputMode="numeric"
-              style={{
-                width: 24, fontFamily: F.mono, fontSize: 13, color: C.text,
-                background: 'transparent', border: 'none', textAlign: 'center', outline: 'none', fontWeight: 900, padding: 0
-              }}
-            />
-          </div>
-          <div style={{ width: 1, height: 12, background: C.border }} />
-          <button
-            onClick={() => setDraft({ sex: draft.sex === 'М' ? 'Ж' : draft.sex === 'Ж' ? undefined : 'М' })}
-            style={{
-              background: 'transparent', border: 'none',
-              fontFamily: F.sans, fontSize: 10.5, fontWeight: 900,
-              color: draft.sex === 'Ж' ? '#F472B6' : draft.sex === 'М' ? '#3B82F6' : C.muted2,
-              cursor: 'pointer', padding: 0, letterSpacing: '0.04em'
-            }}
-          >
-            {draft.sex === 'М' ? t.male : draft.sex === 'Ж' ? t.female : t.gender + '?'}
-          </button>
-        </div>
-
-        {/* Squashed SAVE Button - Symmetrical with Type Button */}
-        <button
-          onClick={() => { haptic.medium(); onSave(); }}
-          disabled={isSaving}
-          style={{
-            marginLeft: 'auto',
-            background: isSaving ? C.surface : `linear-gradient(135deg, ${C.green} 0%, #10B981 100%)`,
-            border: `1px solid ${C.border2}`,
-            borderRadius: 10, padding: '6px 16px',
-            fontFamily: F.sans, fontSize: 9, fontWeight: 900,
-            color: '#FFFFFF', cursor: 'pointer',
-            letterSpacing: '0.12em', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
-            transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
-            minWidth: 100,
-            boxShadow: '0 4px 12px rgba(0,0,0,0.15)'
-          }}
-        >
-          {isSaving ? (
-            <div style={{ width: 10, height: 10, borderRadius: '50%', border: '2px solid transparent', borderTopColor: '#fff', animation: 'spin 0.6s linear infinite' }} />
-          ) : (
-            <>
-              <div style={{ width: 6, height: 6, borderRadius: '2px', background: '#FFF', flexShrink: 0 }} />
-              <span>{t.save}</span>
-            </>
-          )}
-        </button>
+        {/* Spacer for symmetry */}
+        <div style={{ width: 36, height: 36, flexShrink: 0, marginTop: 4 }} />
       </div>
 
       {/* Navigation Tabs */}

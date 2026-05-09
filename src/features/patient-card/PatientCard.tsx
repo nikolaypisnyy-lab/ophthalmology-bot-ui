@@ -173,9 +173,9 @@ export function PatientCard() {
         ref={bodyRef}
         style={{ flex: 1, overflowY: 'auto', padding: '14px 16px 32px' }}
       >
-        {activeTab === 'bio'    && <BioTab />}
-        {activeTab === 'calc'   && <CalcTab />}
-        {activeTab === 'plan'   && <PlanTab />}
+        {activeTab === 'bio' && <BioTab onSave={handleSave} isSaving={isSaving} />}
+        {activeTab === 'calc' && <CalcTab />}
+        {activeTab === 'plan' && <PlanTab onSave={handleSave} />}
         {activeTab === 'result' && <ResultTab onSave={handleSave} isSaving={isSaving} />}
         {activeTab === 'enhancement' && <EnhancementTab />}
       </div>
