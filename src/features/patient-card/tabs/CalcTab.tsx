@@ -246,16 +246,44 @@ export function CalcTab() {
               {(iolResult as any)?.lens || <span style={{ color: C.muted3, fontStyle: 'italic' }}>{t.noLensSelected}</span>}
             </div>
 
-            {/* Pred SE + Target */}
-            <div style={{ display: 'flex', gap: 16, alignItems: 'center', background: C.surface, padding: '8px 16px', borderRadius: 14, border: `1px solid ${C.border}40` }}>
-              <div style={{ display: 'flex', gap: 5, alignItems: 'baseline' }}>
-                <span style={{ fontSize: 8, fontWeight: 900, color: C.green, textTransform: 'uppercase', letterSpacing: '0.04em' }}>Pred SE</span>
-                <span style={{ fontSize: 16, fontWeight: 900, color: C.text, fontFamily: F.mono }}>
-                  {predSE != null ? (predSE > 0 ? '+' : '') + predSE.toFixed(2) : '—'}
-                </span>
+            {/* Pred SE/Refr + Target */}
+            <div style={{ display: 'flex', gap: 16, alignItems: 'center', background: C.surface, padding: '8px 16px', borderRadius: 14, border: `1px solid ${C.border}40`, width: '100%', justifyContent: 'center' }}>
+              <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
+                {(() => {
+                  let label = 'PRED SE';
+                  let valDisplay = predSE != null ? (predSE > 0 ? '+' : '') + predSE.toFixed(2) : '—';
+                  let valSize = 16;
+                  
+                  if (draft.toricMode && toricResults?.[activeEye]) {
+                    const tr = toricResults[activeEye];
+                    const eyeRes = (iolResult as any)?.[activeEye] || {};
+                    const selectedModel = eyeRes.selectedToricModel || tr.best_model;
+                    const match = tr.table.find((s: any) => s.model === selectedModel);
+                    
+                    if (match && match.model !== 'None' && predSE != null) {
+                      const residual = Math.abs(match.residual || 0);
+                      // User treats predSE as the base Sphere.
+                      // Cylinder is minus-cylinder: -residual.
+                      // Calculated SE = Sphere + (Cyl / 2) = predSE - (residual / 2)
+                      const calculatedSE = predSE - (residual / 2);
+                      const axis = match.res_axis || tr.total_steep_axis;
+                      
+                      label = 'PRED REFR';
+                      valDisplay = `${(calculatedSE > 0 ? '+' : '')}${calculatedSE.toFixed(2)} @ ${axis}°`;
+                      valSize = 15;
+                    }
+                  }
+                  
+                  return (
+                    <>
+                      <span style={{ fontSize: 8, fontWeight: 900, color: C.green, textTransform: 'uppercase', letterSpacing: '0.04em' }}>{label}</span>
+                      <span style={{ fontSize: valSize, fontWeight: 900, color: C.text, fontFamily: F.mono }}>{valDisplay}</span>
+                    </>
+                  );
+                })()}
               </div>
               <div style={{ width: 1, height: 16, background: C.border }} />
-              <div style={{ display: 'flex', gap: 5, alignItems: 'baseline' }}>
+              <div style={{ display: 'flex', gap: 5, alignItems: 'center' }}>
                 <span style={{ fontSize: 8, fontWeight: 900, color: C.amber, textTransform: 'uppercase', letterSpacing: '0.04em' }}>{t.target}</span>
                 <span style={{ fontSize: 16, fontWeight: 900, color: C.text, fontFamily: F.mono }}>
                   {(targetVal > 0 ? '+' : '') + targetVal.toFixed(2)}

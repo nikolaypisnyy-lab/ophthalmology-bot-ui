@@ -2,6 +2,7 @@ import React, { useState, useRef, useEffect } from 'react';
 import { C, F, R, eyeColors } from '../../../constants/design';
 import { useSessionStore } from '../../../store/useSessionStore';
 import { useUIStore } from '../../../store/useUIStore';
+import { useClinicStore } from '../../../store/useClinicStore';
 import { EyeToggle, SectionLabel, AxisDial, WheelField, AutoRepeatButton } from '../../../ui';
 import { useTelegram } from '../../../hooks/useTelegram';
 import { LensModal } from '../LensModal';
@@ -155,6 +156,7 @@ export function BioTab({ onSave, isSaving }: { onSave?: () => void, isSaving?: b
     iolError: calcError, setIOLError: setCalcError, toricResults, setToricResults
   } = useSessionStore();
   const { activeEye, setActiveEye, editingField, setEditingField, tempValue, setTempValue } = useUIStore();
+  const { language } = useClinicStore();
   const { haptic } = useTelegram();
   const [isLensModalOpen, setIsLensModalOpen] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
@@ -409,7 +411,7 @@ export function BioTab({ onSave, isSaving }: { onSave?: () => void, isSaving?: b
 
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', margin: '8px 0 4px 4px' }}>
         <SectionLabel color={C.secondary || C.muted2} style={{ margin: 0, fontSize: 10, letterSpacing: '0.14em', fontWeight: 700 }}>
-          {draft.type === 'cataract' ? 'BIOMETRY' : 'DIAGNOSTICS'}
+          {draft.type === 'cataract' ? (language === 'ru' ? 'БИОМЕТРИЯ' : 'BIOMETRY') : (language === 'ru' ? 'ДИАГНОСТИКА' : 'DIAGNOSTICS')}
         </SectionLabel>
       </div>
       
@@ -885,7 +887,9 @@ export function BioTab({ onSave, isSaving }: { onSave?: () => void, isSaving?: b
 
       {draft.type === 'refraction' && (
         <>
-          <SectionLabel color={C.secondary || C.muted2} style={{ margin: '8px 0 4px 4px', fontSize: 10, letterSpacing: '0.14em', fontWeight: 700 }}>ASTIGMATISM · PENTACAM</SectionLabel>
+          <SectionLabel color={C.secondary || C.muted2} style={{ margin: '8px 0 4px 4px', fontSize: 10, letterSpacing: '0.14em', fontWeight: 700 }}>
+            {language === 'ru' ? 'АСТИГМАТИЗМ · PENTACAM' : 'ASTIGMATISM · PENTACAM'}
+          </SectionLabel>
           <div style={{ background: C.card, borderRadius: 24, padding: '10px 12px 8px', border: `1px solid ${C.border}`, boxShadow: '0 12px 40px rgba(0,0,0,0.1)' }}>
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
               <span style={{ fontWeight: 700, fontSize: 10, color: C.purple, letterSpacing: '0.04em', textTransform: 'uppercase' }}>Pentacam Station</span>
@@ -970,7 +974,7 @@ export function BioTab({ onSave, isSaving }: { onSave?: () => void, isSaving?: b
                 <svg width="20" height="20" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2.5">
                   <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
                 </svg>
-                <span>SAVE PATIENT</span>
+                <span>{language === 'ru' ? 'СОХРАНИТЬ' : 'SAVE PATIENT'}</span>
               </>
             )}
           </button>

@@ -306,9 +306,10 @@ function CardSkeleton({ onBack, t }: { onBack: () => void; t: any }) {
 // ── Root App ──────────────────────────────────────────────────────────────────
 
 export function App() {
-  const { 
-    navTab, openPatientId, ocrOpen, settingsOpen, 
-    showNewPatientModal, closeNewPatient, closeSettings, closeOCR, closePatient, setActiveEye 
+  const {
+    navTab, openPatientId, ocrOpen, settingsOpen,
+    showNewPatientModal, closeNewPatient, closeSettings, closeOCR, closePatient,
+    setActiveEye, setPlanEye, setResultEye,
   } = useUIStore();
   
   const { patients, fetchPatients, fullData, fetchPatientFull } = usePatientStore();
@@ -412,7 +413,10 @@ export function App() {
 
     const fixEye = (p: any) => {
       if (p?.type === 'cataract' && p.eye !== 'OU') {
-        setActiveEye(p.eye === 'OS' ? 'os' : 'od');
+        const eye = p.eye === 'OS' ? 'os' : 'od';
+        setActiveEye(eye);
+        setPlanEye(eye);
+        setResultEye(eye);
       }
     };
 
