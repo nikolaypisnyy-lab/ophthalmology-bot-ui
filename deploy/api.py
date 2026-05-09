@@ -138,6 +138,8 @@ class PatientCreate(BaseModel):
     op_date: Optional[str] = None
     isEnhancement: Optional[bool] = None
     flapDiam: Optional[str] = None
+    flapDiamOD: Optional[str] = None
+    flapDiamOS: Optional[str] = None
     capOrFlap: Optional[str] = None
     isCustomView: Optional[bool] = None
     isCustomViewOD: Optional[bool] = None
@@ -155,6 +157,8 @@ class PatientUpdate(BaseModel):
     patient_type: Optional[str] = None
     isEnhancement: Optional[bool] = None
     flapDiam: Optional[str] = None
+    flapDiamOD: Optional[str] = None
+    flapDiamOS: Optional[str] = None
     capOrFlap: Optional[str] = None
     isCustomView: Optional[bool] = None
     isCustomViewOD: Optional[bool] = None

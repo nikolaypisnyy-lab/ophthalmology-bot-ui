@@ -328,7 +328,7 @@ function RefractionPlanTab() {
     const updatePower = (field: string, isPlus: boolean, step: number) => {
       const latestPlan = (useSessionStore.getState().refPlan as any)?.[planEye] || {};
       const latestData = (useSessionStore.getState().draft as any)?.[planEye] || {};
-      const curVal = latestPlan[field] ?? latestData[field] ?? (field === 'oz' ? 6.5 : (field === 'flap' ? 110 : 0));
+      const curVal = latestPlan[field] ?? latestData[field] ?? (field === 'oz' ? 6.5 : (field === 'flap' ? defaultFlap : 0));
       let cur = parseFloat(String(curVal)) || 0;
       if (isRounding && (field === 'sph' || field === 'cyl')) cur = Math.round(cur * 4) / 4;
       let next = cur;
@@ -498,7 +498,11 @@ function RefractionPlanTab() {
         {(() => {
           const diopters = Math.abs(plan.sph) + Math.abs(plan.cyl) * 0.7;
           const ablPerD = 13 + (plan.oz - 6.0) * 10;
-          const actualFlap = isPRK ? 60 : (parseFloat(draft.capOrFlap || String(plan.flap)) || 110);
+          // Per-eye flap depth: OS может иметь своё значение, OD — глобальное
+          const flapDepthForEye = planEye === 'os'
+            ? ((draft as any).capOrFlapOS ?? draft.capOrFlap ?? String(defaultFlap))
+            : (draft.capOrFlap ?? String(defaultFlap));
+          const actualFlap = isPRK ? 60 : (parseFloat(String(flapDepthForEye) || String(plan.flap)) || defaultFlap);
           const finalAbl = Math.ceil(ablPerD * diopters);
           const rsb = cctNum - actualFlap - finalAbl;
           const kpost = parseFloat(data.kavg || '43.5') + (plan.sph + plan.cyl * 0.5) * 0.8;
@@ -529,22 +533,42 @@ function RefractionPlanTab() {
             <div style={{ background: C.card, borderRadius: 24, padding: '12px 16px', border: `1px solid ${C.border}`, boxShadow: '0 8px 30px rgba(0,0,0,0.12)' }}>
               <div style={{ display: 'flex', gap: 16 }}>
                 <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 6 }}>
-                  <span style={{ fontSize: 8, fontWeight: 900, color: C.muted2, textTransform: 'uppercase', textAlign: 'center' }}>Diameter</span>
+                  <span style={{ fontSize: 8, fontWeight: 900, color: C.muted2, textTransform: 'uppercase', textAlign: 'center' }}>{language === 'ru' ? 'Диаметр' : 'Diameter'}</span>
                   <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: C.surface, borderRadius: 14, padding: '4px 8px', border: `1px solid ${C.border}` }}>
-                    <AutoRepeatButton onTrigger={() => { haptic.light(); setDraft({ flapDiam: Math.max(8.0, (parseFloat(draft.flapDiam || '8.5') - 0.1)).toFixed(1) }); }} style={{ background: 'none', border: 'none', color: C.muted3, fontSize: 20 }}>−</AutoRepeatButton>
-                    <span style={{ fontFamily: F.mono, fontSize: 14, fontWeight: 900, color: C.text }}>{parseFloat(draft.flapDiam || '8.5').toFixed(1)}</span>
-                    <AutoRepeatButton onTrigger={() => { haptic.light(); setDraft({ flapDiam: Math.min(9.1, (parseFloat(draft.flapDiam || '8.5') + 0.1)).toFixed(1) }); }} style={{ background: 'none', border: 'none', color: C.muted3, fontSize: 20 }}>+</AutoRepeatButton>
+                    {(() => {
+                      const diamField = planEye === 'os' ? 'flapDiamOS' : 'flapDiamOD';
+                      const currentVal = (draft as any)[diamField] || draft.flapDiam || '8.8';
+                      return (
+                        <>
+                          <AutoRepeatButton onTrigger={() => { haptic.light(); setDraft({ [diamField]: Math.max(8.0, (parseFloat(currentVal) - 0.1)).toFixed(1) }); }} style={{ background: 'none', border: 'none', color: C.muted3, fontSize: 20 }}>−</AutoRepeatButton>
+                          <span style={{ fontFamily: F.mono, fontSize: 14, fontWeight: 900, color: C.text }}>{parseFloat(currentVal).toFixed(1)}</span>
+                          <AutoRepeatButton onTrigger={() => { haptic.light(); setDraft({ [diamField]: Math.min(10.0, (parseFloat(currentVal) + 0.1)).toFixed(1) }); }} style={{ background: 'none', border: 'none', color: C.muted3, fontSize: 20 }}>+</AutoRepeatButton>
+                        </>
+                      );
+                    })()}
                   </div>
                 </div>
                 <div style={{ flex: 1.2, display: 'flex', flexDirection: 'column', gap: 6 }}>
                   <span style={{ fontSize: 8, fontWeight: 900, color: C.muted2, textTransform: 'uppercase', textAlign: 'center' }}>Depth</span>
                   <div style={{ display: 'flex', gap: 4, background: C.surface, padding: 2, borderRadius: 14, border: `1px solid ${C.border}` }}>
                     {['90', '100', '110'].map(d => {
-                      const isActive = String(draft.capOrFlap || draft.flapDepth || '110') === d;
+                      const eyeDepth = planEye === 'os'
+                        ? String((draft as any).capOrFlapOS ?? draft.capOrFlap ?? defaultFlap)
+                        : String(draft.capOrFlap ?? defaultFlap);
+                      const isActive = eyeDepth === d;
                       return (
-                        <button 
+                        <button
                           key={d}
-                          onClick={() => { haptic.selection(); setDraft({ capOrFlap: d, flapDepth: d }); }}
+                          onClick={() => {
+                            haptic.selection();
+                            if (planEye === 'od') {
+                              // OD: обновляем глобальное значение → OS следует за ним (если не задано вручную)
+                              setDraft({ capOrFlap: d });
+                            } else {
+                              // OS: задаём только OS-специфичное значение
+                              setDraft({ capOrFlapOS: d } as any);
+                            }
+                          }}
                           style={{ flex: 1, padding: '6px 0', borderRadius: 12, border: 'none', background: isActive ? C.indigo : 'transparent', color: isActive ? '#fff' : C.muted2, fontSize: 13, fontWeight: 900, fontFamily: F.mono, cursor: 'pointer', transition: 'all 0.2s' }}
                         >
                           {d}

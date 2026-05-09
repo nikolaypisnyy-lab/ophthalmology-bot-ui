@@ -12,23 +12,12 @@ interface PatientHeaderProps {
   isSaving: boolean;
 }
 
-const getTabLabels = (lang: string): Record<TabKey, { ref: string; cat: string }> => {
-  if (lang === 'ru') {
-    return {
-      bio: { ref: 'РЕФРАКЦИЯ', cat: 'БИОМЕТРИЯ' },
-      calc: { ref: 'IOL', cat: 'IOL' },
-      plan: { ref: 'ПЛАНИРОВАНИЕ', cat: 'ПЛАНИРОВАНИЕ' },
-      result: { ref: 'РЕЗУЛЬТАТ', cat: 'РЕЗУЛЬТАТ' },
-      enhancement: { ref: 'ДОКОРРЕКЦИЯ', cat: 'ДОКОРРЕКЦИЯ' },
-    };
-  }
-  return {
-    bio: { ref: 'EXAM', cat: 'BIO' },
-    calc: { ref: 'IOL', cat: 'IOL' },
-    plan: { ref: 'PLAN', cat: 'PLAN' },
-    result: { ref: 'OUTCOME', cat: 'OUTCOME' },
-    enhancement: { ref: 'ENH', cat: 'ENH' },
-  };
+const TAB_LABELS: Record<TabKey, { ref: string; cat: string }> = {
+  bio: { ref: 'EXAM', cat: 'BIO' },
+  calc: { ref: 'IOL', cat: 'IOL' },
+  plan: { ref: 'PLAN', cat: 'PLAN' },
+  result: { ref: 'OUTCOME', cat: 'OUTCOME' },
+  enhancement: { ref: 'ENH', cat: 'ENH' },
 };
 
 export function PatientHeader({ onSave, isSaving }: PatientHeaderProps) {
@@ -70,8 +59,6 @@ export function PatientHeader({ onSave, isSaving }: PatientHeaderProps) {
     if (pressTimer.current) clearTimeout(pressTimer.current);
   };
 
-  const tabLabels = getTabLabels(language);
-
   return (
     <div
       style={{
@@ -103,7 +90,7 @@ export function PatientHeader({ onSave, isSaving }: PatientHeaderProps) {
         </button>
 
         <div style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 12 }}>
-          
+
           {/* AGE/SEX PILL (TOP) */}
           <div style={{
             display: 'flex', alignItems: 'center', gap: 8,
@@ -193,7 +180,7 @@ export function PatientHeader({ onSave, isSaving }: PatientHeaderProps) {
                     <path d="M7 11V7a5 5 0 0110 0v4" />
                   </svg>
                 )}
-                {tabLabels[t][isCat ? 'cat' : 'ref']}
+                {TAB_LABELS[t][isCat ? 'cat' : 'ref']}
               </button>
             );
           })}

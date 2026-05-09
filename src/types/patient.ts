@@ -29,7 +29,9 @@ export interface PatientSummary {
   isEnhancement?: boolean; // флаг докоррекции для календаря
   surgicalOrder?: number;  // порядок в операционном списке
   useClinicNomo?: boolean;
-  flapDiam?: string;       // диаметр флэпа
+  flapDiam?: string;       // диаметр флэпа (legacy fallback)
+  flapDiamOD?: string;     // диаметр флэпа OD
+  flapDiamOS?: string;     // диаметр флэпа OS
   capOrFlap?: string;      // толщина флэпа
   isPRK?: boolean;
   isCustomView?: boolean;
@@ -77,7 +79,9 @@ export interface Patient extends PatientSummary {
   sia?: string;            // SIA хирурга, D
   siaAx?: string;          // ось SIA
   capOrFlap?: string;      // толщина кэпа/флэпа, мкм
-  flapDiam?: string;       // диаметр флэпа, мм
+  flapDiam?: string;       // диаметр флэпа, мм (legacy)
+  flapDiamOD?: string;     // диаметр флэпа OD, мм
+  flapDiamOS?: string;     // диаметр флэпа OS, мм
   minTh?: string;          // min толщина лентикулы (SMILE)
   useCorneal?: boolean;    // использовать роговичный астигматизм (legacy, заменяется astigStrategy)
   astigStrategy?: 'manifest' | 'corneal' | 'vector' | 'wavefront'; // стратегия астигматизма

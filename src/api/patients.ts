@@ -64,7 +64,10 @@ export interface CreatePatientRequest {
   op_date?: string;
   isEnhancement?: boolean;
   flapDiam?: string;
+  flapDiamOD?: string;
+  flapDiamOS?: string;
   capOrFlap?: string;
+  capOrFlapOS?: string;
   isCustomViewOD?: boolean;
   isCustomViewOS?: boolean;
   od?: any;
@@ -97,7 +100,10 @@ export interface UpdatePatientRequest {
   isEnhancement?: boolean;
   surgical_order?: number;
   flapDiam?: string;
+  flapDiamOD?: string;
+  flapDiamOS?: string;
   capOrFlap?: string;
+  capOrFlapOS?: string;
   isCustomViewOD?: boolean;
   isCustomViewOS?: boolean;
   od?: any;
@@ -141,7 +147,10 @@ export async function savePatientMeta(patient: Partial<Patient>): Promise<SaveRe
       op_date: patient.date,
       isEnhancement: patient.isEnhancement,
       flapDiam: (patient as any).flapDiam,
+      flapDiamOD: (patient as any).flapDiamOD,
+      flapDiamOS: (patient as any).flapDiamOS,
       capOrFlap: (patient as any).capOrFlap,
+      capOrFlapOS: (patient as any).capOrFlapOS,
       isCustomViewOD: patient.isCustomViewOD,
       isCustomViewOS: patient.isCustomViewOS,
       od: patient.od,
@@ -169,7 +178,10 @@ export async function savePatientMeta(patient: Partial<Patient>): Promise<SaveRe
       patient_type: patient.type,
       isEnhancement: patient.isEnhancement,
       flapDiam: (patient as any).flapDiam,
+      flapDiamOD: (patient as any).flapDiamOD,
+      flapDiamOS: (patient as any).flapDiamOS,
       capOrFlap: (patient as any).capOrFlap,
+      capOrFlapOS: (patient as any).capOrFlapOS,
       isCustomViewOD: patient.isCustomViewOD,
       isCustomViewOS: patient.isCustomViewOS,
       od: patient.od,

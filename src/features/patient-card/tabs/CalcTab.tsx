@@ -26,13 +26,13 @@ export function CalcTab() {
 
   if (!draft) return null;
 
-  const bio     = (draft[`bio_${activeEye}` as 'bio_od' | 'bio_os'] as any) || {};
+  const bio = (draft[`bio_${activeEye}` as 'bio_od' | 'bio_os'] as any) || {};
   const eyeData = (draft[activeEye] as any) || {};
-  const ec      = eyeColors(activeEye);
+  const ec = eyeColors(activeEye);
 
-  const activeFormula  = draft.activeFormula || 'Barrett';
-  const eyeResults     = formulaResults[activeEye] || {};
-  
+  const activeFormula = draft.activeFormula || 'Barrett';
+  const eyeResults = formulaResults[activeEye] || {};
+
   // Formulas to show: active formula + any in comparisonFormulas that have results
   const formulasToShow = [
     activeFormula,
@@ -42,11 +42,11 @@ export function CalcTab() {
   const mainResults = eyeResults[activeFormula] || eyeResults[activeFormula.toLowerCase()] || [];
 
   const selectedPowerNum = (iolResult as any)?.[activeEye]?.selectedPower || 0;
-  const targetVal        = parseFloat((draft as any).targetRefr || '0');
+  const targetVal = parseFloat((draft as any).targetRefr || '0');
 
   const bestByTarget = mainResults.length > 0
     ? mainResults.reduce((prev: any, curr: any) =>
-        Math.abs((curr.refraction ?? curr.ref ?? 0) - targetVal) <
+      Math.abs((curr.refraction ?? curr.ref ?? 0) - targetVal) <
         Math.abs((prev.refraction ?? prev.ref ?? 0) - targetVal) ? curr : prev)
     : null;
 
@@ -54,7 +54,7 @@ export function CalcTab() {
     || (selectedPowerNum === 0 ? bestByTarget : null);
 
   const displayPower = selectedResult?.power;
-  const predSE       = selectedResult ? (selectedResult.refraction ?? selectedResult.ref ?? 0) : null;
+  const predSE = selectedResult ? (selectedResult.refraction ?? selectedResult.ref ?? 0) : null;
 
   const disabledEyes: ('od' | 'os')[] = [];
   if (draft.eye === 'OD') disabledEyes.push('os');
@@ -107,7 +107,7 @@ export function CalcTab() {
             <div style={{ width: '100%', textAlign: 'center', fontSize: 6.5, fontWeight: 900, color: C.muted3, textTransform: 'uppercase', letterSpacing: '0.04em' }}>{label}</div>
           )}
         </div>
-        
+
         <div onClick={() => { if (!readOnly) { setTempValue(String(val || '')); setEditingField(field); } }} style={{ cursor: readOnly ? 'default' : 'text', width: '100%', textAlign: 'center' }}>
           {isEd ? (
             <input
@@ -253,27 +253,26 @@ export function CalcTab() {
                   let label = 'PRED SE';
                   let valDisplay = predSE != null ? (predSE > 0 ? '+' : '') + predSE.toFixed(2) : '—';
                   let valSize = 16;
-                  
+
                   if (draft.toricMode && toricResults?.[activeEye]) {
                     const tr = toricResults[activeEye];
                     const eyeRes = (iolResult as any)?.[activeEye] || {};
                     const selectedModel = eyeRes.selectedToricModel || tr.best_model;
                     const match = tr.table.find((s: any) => s.model === selectedModel);
-                    
+
                     if (match && match.model !== 'None' && predSE != null) {
                       const residual = Math.abs(match.residual || 0);
-                      // User treats predSE as the base Sphere.
-                      // Cylinder is minus-cylinder: -residual.
-                      // Calculated SE = Sphere + (Cyl / 2) = predSE - (residual / 2)
-                      const calculatedSE = predSE - (residual / 2);
+                      const predSph = predSE + (residual / 2);
+                      const finalVal = predSph - residual; // S + C
+                      const valStr = (finalVal > 0 ? '+' : '') + finalVal.toFixed(2);
                       const axis = match.res_axis || tr.total_steep_axis;
-                      
-                      label = 'PRED REFR';
-                      valDisplay = `${(calculatedSE > 0 ? '+' : '')}${calculatedSE.toFixed(2)} @ ${axis}°`;
-                      valSize = 15;
+
+                      label = 'PRED SE';
+                      valDisplay = `${valStr} @ ${axis}°`;
+                      valSize = 16;
                     }
                   }
-                  
+
                   return (
                     <>
                       <span style={{ fontSize: 8, fontWeight: 900, color: C.green, textTransform: 'uppercase', letterSpacing: '0.04em' }}>{label}</span>
@@ -294,9 +293,9 @@ export function CalcTab() {
 
           {/* Biometry strip — compact chips spread across width */}
           <div style={{ display: 'flex', gap: 6, marginTop: 10, paddingBottom: 2 }}>
-            <EditChip field="bio_al"  label="AL"   val={bio.al}     unit="mm" isBio readOnly />
-            <EditChip field="bio_acd" label="ACD"  val={bio.acd}    unit="mm" isBio readOnly />
-            <EditChip field="bio_lt"  label="LT"   val={bio.lt}     unit="mm" isBio readOnly />
+            <EditChip field="bio_al" label="AL" val={bio.al} unit="mm" isBio readOnly />
+            <EditChip field="bio_acd" label="ACD" val={bio.acd} unit="mm" isBio readOnly />
+            <EditChip field="bio_lt" label="LT" val={bio.lt} unit="mm" isBio readOnly />
           </div>
         </div>
       </div>
@@ -309,16 +308,16 @@ export function CalcTab() {
           const fColor = isMain ? ec.color : C.indigo;
 
           return (
-            <div key={fName} style={{ 
-              flex: formulasToShow.length === 2 ? '0 0 49%' : (formulasToShow.length > 2 ? '0 0 85%' : '1 1 100%'), 
-              background: C.card, borderRadius: 20, border: `1px solid ${isMain ? C.border : fColor + '30'}`, overflow: 'hidden' 
+            <div key={fName} style={{
+              flex: formulasToShow.length === 2 ? '0 0 49%' : (formulasToShow.length > 2 ? '0 0 85%' : '1 1 100%'),
+              background: C.card, borderRadius: 20, border: `1px solid ${isMain ? C.border : fColor + '30'}`, overflow: 'hidden'
             }}>
               {/* Table header */}
-              <div style={{ 
-                display: 'grid', gridTemplateColumns: '1fr 1fr', 
-                padding: '9px 12px', alignItems: 'center', 
-                background: isMain ? C.surface : fColor + '08', 
-                borderBottom: `1px solid ${C.border}` 
+              <div style={{
+                display: 'grid', gridTemplateColumns: '1fr 1fr',
+                padding: '9px 12px', alignItems: 'center',
+                background: isMain ? C.surface : fColor + '08',
+                borderBottom: `1px solid ${C.border}`
               }}>
                 <span style={{ fontSize: 9, fontWeight: 900, color: fColor }}>{fName.toUpperCase()}</span>
                 <span style={{ textAlign: 'right', fontSize: 7, fontWeight: 900, color: C.muted3, letterSpacing: '0.04em' }}>DEV.</span>
@@ -327,10 +326,10 @@ export function CalcTab() {
               {fResults.length > 0 ? (
                 <div style={{ overflowY: 'auto', scrollbarWidth: 'none', maxHeight: 320 }}>
                   {fResults.map((r: any, i: number) => {
-                    const rRef      = r.refraction ?? r.ref ?? 0;
-                    const isSug     = isMain && !selectedPowerNum && bestByTarget?.power === r.power;
-                    const isSel     = isMain && (Math.abs(r.power - selectedPowerNum) < 0.01 || isSug);
-                    const diff      = rRef - targetVal;
+                    const rRef = r.refraction ?? r.ref ?? 0;
+                    const isSug = isMain && !selectedPowerNum && bestByTarget?.power === r.power;
+                    const isSel = isMain && (Math.abs(r.power - selectedPowerNum) < 0.01 || isSug);
+                    const diff = rRef - targetVal;
                     const diffColor = Math.abs(diff) < 0.25 ? C.green : Math.abs(diff) < 0.5 ? C.amber : C.muted3;
 
                     return (
@@ -402,11 +401,11 @@ export function CalcTab() {
 
       {/* ── TORIC SECTION (compact) ─────────────────────────────────────────── */}
       {draft.toricMode && toricResults?.[activeEye] && (() => {
-        const tr   = toricResults[activeEye];
+        const tr = toricResults[activeEye];
         const eyeRes = (iolResult as any)?.[activeEye] || {};
         const selectedModel = eyeRes.selectedToricModel ?? tr.best_model;
         const best = tr.table.find((s: any) => s.model === selectedModel) || tr.table.find((s: any) => s.model === tr.best_model);
-        
+
         return (
           <div style={{ background: C.card, borderRadius: 20, border: `1px solid ${C.indigo}30`, overflow: 'hidden' }}>
             {/* Header */}
@@ -437,11 +436,11 @@ export function CalcTab() {
             {/* Toric table — compact rows */}
             {tr.table.filter((s: any) => s.model !== 'None').map((row: any, idx: number) => {
               const currentSelectedModel = (iolResult as any)?.[activeEye]?.selectedToricModel ?? tr.best_model;
-              const isSel      = row.model === currentSelectedModel;
-              const resColor   = row.residual < 0.5 ? C.green : row.residual < 0.75 ? C.amber : C.muted3;
+              const isSel = row.model === currentSelectedModel;
+              const resColor = row.residual < 0.5 ? C.green : row.residual < 0.75 ? C.amber : C.muted3;
               return (
-                <div 
-                  key={idx} 
+                <div
+                  key={idx}
                   onClick={() => {
                     haptic.selection();
                     const eyeRes = (iolResult as any)?.[activeEye] || {};

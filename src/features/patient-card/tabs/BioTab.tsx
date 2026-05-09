@@ -20,13 +20,13 @@ const getVAColor = (va?: string) => {
   return C.red;
 };
 
-const EntryCell = ({ 
-  field, label, color, val, isAx, unit, stepOverride, onStep, onStartEdit, isEditing, tempValue, onTempChange, onFinish, inputRef, fontSize = 24 
+const EntryCell = ({
+  field, label, color, val, isAx, unit, stepOverride, onStep, onStartEdit, isEditing, tempValue, onTempChange, onFinish, inputRef, fontSize = 24
 }: any) => {
   const step = stepOverride || (isAx ? 5 : (field.includes('sph') || field.includes('cyl') ? 0.25 : (field.includes('va') ? 0.05 : 0.1)));
 
   return (
-    <div 
+    <div
       onClick={() => onStartEdit(field, val)}
       style={{ background: C.surface, borderRadius: 14, padding: '4px 4px 6px', border: `1px solid ${C.border}`, textAlign: 'center', cursor: 'text', boxShadow: '0 4px 12px rgba(0,0,0,0.05)', userSelect: 'none', WebkitUserSelect: 'none' }}
     >
@@ -37,10 +37,10 @@ const EntryCell = ({
       </div>
       <div style={{ width: '100%', fontSize: fontSize, fontWeight: 800, color: color, fontFamily: F.mono }}>
         {isEditing ? (
-          <input 
+          <input
             ref={inputRef}
-            value={tempValue} 
-            onChange={e => onTempChange(e.target.value)} 
+            value={tempValue}
+            onChange={e => onTempChange(e.target.value)}
             onBlur={onFinish}
             onKeyDown={e => e.key === 'Enter' && onFinish()}
             inputMode="decimal"
@@ -55,16 +55,16 @@ const EntryCell = ({
                 const isPenta = field.startsWith('p_');
                 return isPenta ? n.toFixed(1) : Math.round(n).toString();
               }
-              if (n > 25) return n.toFixed(2); 
+              if (n > 25) return n.toFixed(2);
               // No plus for visual acuity, axis, bio fields, or SIA
               const showPlus = !isAx && !field.includes('va') && !field.includes('k') && !field.includes('bio') && field !== 'sia' && n >= 0;
               return (showPlus ? '+' : '') + n.toFixed(2);
             })()}
             {unit && (
-              <span style={{ 
-                fontSize: unit === '°' ? 12 : 8, 
-                color: C.muted3, 
-                fontWeight: 700, 
+              <span style={{
+                fontSize: unit === '°' ? 12 : 8,
+                color: C.muted3,
+                fontWeight: 700,
                 marginLeft: 1,
                 alignSelf: unit === '°' ? 'flex-start' : 'baseline',
                 marginTop: unit === '°' ? 2 : 0
@@ -79,22 +79,22 @@ const EntryCell = ({
   );
 };
 
-const DiagnosticCell = ({ 
-  field, color, val, isAx, onStartEdit, isEditing, tempValue, onTempChange, onFinish, inputRef, fontSize = 13 
+const DiagnosticCell = ({
+  field, color, val, isAx, onStartEdit, isEditing, tempValue, onTempChange, onFinish, inputRef, fontSize = 13
 }: any) => {
   return (
-    <div 
+    <div
       onClick={() => onStartEdit(field, val)}
-      style={{ 
-        textAlign: 'center', fontSize: fontSize, fontFamily: F.mono, fontWeight: 800, color: color, 
-        cursor: 'text', minHeight: 20, display: 'flex', alignItems: 'center', justifyContent: 'center' 
+      style={{
+        textAlign: 'center', fontSize: fontSize, fontFamily: F.mono, fontWeight: 800, color: color,
+        cursor: 'text', minHeight: 20, display: 'flex', alignItems: 'center', justifyContent: 'center'
       }}
     >
       {isEditing ? (
-        <input 
-          ref={inputRef} value={tempValue} onChange={e => onTempChange(e.target.value)} 
+        <input
+          ref={inputRef} value={tempValue} onChange={e => onTempChange(e.target.value)}
           onBlur={onFinish} onKeyDown={e => e.key === 'Enter' && onFinish()} inputMode="decimal"
-          style={{ width: '100%', background: 'none', border: 'none', textAlign: 'center', color: color, fontSize: fontSize, fontWeight: 800, fontFamily: F.mono, outline: 'none', padding: 0 }} 
+          style={{ width: '100%', background: 'none', border: 'none', textAlign: 'center', color: color, fontSize: fontSize, fontWeight: 800, fontFamily: F.mono, outline: 'none', padding: 0 }}
         />
       ) : (
         <>
@@ -104,7 +104,7 @@ const DiagnosticCell = ({
             const isK = field.includes('k') && !isAx;
             if (isAx) return Math.round(n).toString() + '°';
             if (isK) return n.toFixed(2);
-            if (n > 25) return n.toFixed(0); 
+            if (n > 25) return n.toFixed(0);
             const showPlus = !field.includes('va') && !isK && n >= 0;
             return (showPlus ? '+' : '') + n.toFixed(2);
           })()}
@@ -114,8 +114,8 @@ const DiagnosticCell = ({
   );
 };
 
-const CompactInput = ({ 
-  field, color, val, isAx, isK, label, onStartEdit, isEditing, tempValue, onTempChange, onFinish, inputRef, onStep, fontSize = 12 
+const CompactInput = ({
+  field, color, val, isAx, isK, label, onStartEdit, isEditing, tempValue, onTempChange, onFinish, inputRef, onStep, fontSize = 12
 }: any) => {
   const step = isAx ? 5 : (field.includes('va') ? 0.05 : 0.25);
   return (
@@ -133,7 +133,7 @@ const CompactInput = ({
                 const n = parseFloat(String(val));
                 if (isNaN(n)) return '—';
                 if (isAx) return Math.round(n).toString();
-                if (n > 25) return n.toFixed(2); 
+                if (n > 25) return n.toFixed(2);
                 const showPlus = !field.includes('va') && !field.includes('k') && n >= 0;
                 return (showPlus ? '+' : '') + n.toFixed(2);
               })()}
@@ -150,7 +150,7 @@ const CompactInput = ({
 // CompactInput Component
 
 export function BioTab({ onSave, isSaving }: { onSave?: () => void, isSaving?: boolean }) {
-  const { 
+  const {
     draft, setDraft, iolResult, setIOLResult, setEyeField, setBioField, toggleSurgicalEye,
     formulaResults, setFormulaResults, iolLoading: isCalculating, setIOLLoading: setIsCalculating,
     iolError: calcError, setIOLError: setCalcError, toricResults, setToricResults
@@ -167,22 +167,22 @@ export function BioTab({ onSave, isSaving }: { onSave?: () => void, isSaving?: b
   useEffect(() => {
     if (!draft || !draft[activeEye]) return;
     const eye = draft[activeEye] as any;
-    
+
     // Считаем Total автоматически из ANT и POST
     const ac = parseFloat(eye.p_ant_c || '0');
     const aa = parseFloat(eye.p_ant_a || '0');
     const pc = parseFloat(eye.p_post_c || '0');
     const pa = parseFloat(eye.p_post_a || '0');
-    
+
     if (ac !== 0 || pc !== 0) {
       // ПРИМЕЧАНИЕ: Передняя поверхность — собирающая (плюс-цилиндр), 
       // Задняя — рассеивающая (минус-цилиндр).
       // Результат в минусовой нотации (ось слабого меридиана).
       const res = sumCylinders(Math.abs(ac), aa, -Math.abs(pc), pa);
-      
+
       const tc = (res.cyl > 0 ? '+' : '') + res.cyl.toFixed(2);
       const ta = res.ax.toFixed(1);
-      
+
       // Автоматический Km (среднее K1/K2)
       const k1 = parseFloat(eye.k1 || '0');
       const k2 = parseFloat(eye.k2 || '0');
@@ -201,7 +201,7 @@ export function BioTab({ onSave, isSaving }: { onSave?: () => void, isSaving?: b
       }
     }
   }, [
-    draft[activeEye]?.p_ant_c, draft[activeEye]?.p_ant_a, 
+    draft[activeEye]?.p_ant_c, draft[activeEye]?.p_ant_a,
     draft[activeEye]?.p_post_c, draft[activeEye]?.p_post_a,
     draft[activeEye]?.k1, draft[activeEye]?.k2,
     activeEye, editingField
@@ -249,21 +249,21 @@ export function BioTab({ onSave, isSaving }: { onSave?: () => void, isSaving?: b
     const latestDraft = useSessionStore.getState().draft;
     if (!latestDraft) return;
     const latestEye = latestDraft[activeEye] || {};
-    
+
     const val = (latestEye as any)[field];
-    
+
     // Default 400 for CCT if empty
     let cur = parseFloat(val);
     if (isNaN(cur)) {
       if (field === 'cct') cur = 400;
       else cur = (field.includes('k') && !field.includes('ax') ? 43 : 0);
     }
-    
+
     let n = cur + (dir * step);
     if (field === 'cct') n = Math.max(0, n);
     const isAx = field.includes('ax') || field.endsWith('_a');
     if (isAx && field.startsWith('p_')) step = 0.1;
-    
+
     // Pentacam notation logic
     const isPentaCyl = field.startsWith('p_') && field.endsWith('_c');
     if (isPentaCyl) {
@@ -290,7 +290,7 @@ export function BioTab({ onSave, isSaving }: { onSave?: () => void, isSaving?: b
   const runRealCalculation = async (formula: string) => {
     if (!draft) return;
     const bio = draft[`bio_${activeEye}` as 'bio_od' | 'bio_os'] || {};
-    
+
     // ПРОВЕРКА ДАННЫХ
     if (!bio.al || !bio.k1 || !bio.k2) {
       setCalcError("MISSING AL/K1/K2");
@@ -331,10 +331,10 @@ export function BioTab({ onSave, isSaving }: { onSave?: () => void, isSaving?: b
       if (res.status === 'ok' && rawResults) {
         // If results is a list, just map it to the active formula. 
         // If it's a map (Haigis/Barrett/Kane), ingest EVERYTHING.
-        const updatedFormulaMap = Array.isArray(rawResults) 
+        const updatedFormulaMap = Array.isArray(rawResults)
           ? { ...(formulaResults[activeEye] || {}), [formula]: rawResults }
           : { ...(formulaResults[activeEye] || {}), ...rawResults };
-        
+
         const newResults = {
           ...formulaResults,
           [activeEye]: updatedFormulaMap
@@ -350,7 +350,7 @@ export function BioTab({ onSave, isSaving }: { onSave?: () => void, isSaving?: b
         }
 
         const currentResults = Array.isArray(rawResults) ? rawResults : (rawResults[formula] || []);
-        
+
         // Получаем актуальный iolResult из стора
         const st = useSessionStore.getState();
         const latestIOL = st.iolResult;
@@ -361,19 +361,19 @@ export function BioTab({ onSave, isSaving }: { onSave?: () => void, isSaving?: b
           const emmetropia = currentResults.find((r: any) => r.is_emmetropia);
           if (emmetropia) {
             const eyeRes = (latestIOL as any)?.[activeEye] || {};
-            st.setIOLResult({ 
-              ...(latestIOL || { 
-                lens: currentLens, 
-                aConst: currentA, 
-                targetRefr: parseFloat(draft.targetRefr || '0'), 
-                timestamp: new Date().toISOString(), 
-                source: 'api' 
-              }), 
+            st.setIOLResult({
+              ...(latestIOL || {
+                lens: currentLens,
+                aConst: currentA,
+                targetRefr: parseFloat(draft.targetRefr || '0'),
+                timestamp: new Date().toISOString(),
+                source: 'api'
+              }),
               power: (emmetropia.power > 0 ? '+' : '') + emmetropia.power.toFixed(2),
-              [activeEye]: { 
-                ...eyeRes, 
-                selectedPower: emmetropia.power, 
-                expectedRefr: emmetropia.refraction ?? emmetropia.ref ?? 0 
+              [activeEye]: {
+                ...eyeRes,
+                selectedPower: emmetropia.power,
+                expectedRefr: emmetropia.refraction ?? emmetropia.ref ?? 0
               }
             } as any);
           }
@@ -414,7 +414,7 @@ export function BioTab({ onSave, isSaving }: { onSave?: () => void, isSaving?: b
           {draft.type === 'cataract' ? (language === 'ru' ? 'БИОМЕТРИЯ' : 'BIOMETRY') : (language === 'ru' ? 'ДИАГНОСТИКА' : 'DIAGNOSTICS')}
         </SectionLabel>
       </div>
-      
+
       {draft.type === 'cataract' ? (
         <div style={{ background: C.card, borderRadius: 24, padding: '12px 14px', border: `1px solid ${C.border}`, boxShadow: '0 12px 40px rgba(0,0,0,0.1)' }}>
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, padding: '0 4px' }}>
@@ -426,7 +426,7 @@ export function BioTab({ onSave, isSaving }: { onSave?: () => void, isSaving?: b
               ].map(f => {
                 const bio = draft[`bio_${activeEye}` as 'bio_od' | 'bio_os'] || {};
                 return (
-                  <EntryCell 
+                  <EntryCell
                     key={f.label}
                     field={`bio_${f.field}`}
                     label={f.label}
@@ -463,7 +463,7 @@ export function BioTab({ onSave, isSaving }: { onSave?: () => void, isSaving?: b
               ].map(f => {
                 const bio = draft[`bio_${activeEye}` as 'bio_od' | 'bio_os'] || {};
                 return (
-                  <EntryCell 
+                  <EntryCell
                     key={f.label}
                     field={`bio_${f.field}`}
                     label={f.label}
@@ -503,7 +503,7 @@ export function BioTab({ onSave, isSaving }: { onSave?: () => void, isSaving?: b
                 ].map(f => {
                   const bio = draft[`bio_${activeEye}` as 'bio_od' | 'bio_os'] || {};
                   return (
-                    <EntryCell 
+                    <EntryCell
                       key={f.label}
                       field={`bio_${f.field}`}
                       label={f.label}
@@ -540,7 +540,7 @@ export function BioTab({ onSave, isSaving }: { onSave?: () => void, isSaving?: b
                 ].map(f => {
                   const bio = draft[`bio_${activeEye}` as 'bio_od' | 'bio_os'] || {};
                   let val = bio[f.field];
-                  
+
                   // Fallback for K2 Axis if it's missing but K1 Axis is present
                   if (f.field === 'k2_ax' && !val && bio.k1_ax) {
                     const v = parseFloat(bio.k1_ax);
@@ -553,7 +553,7 @@ export function BioTab({ onSave, isSaving }: { onSave?: () => void, isSaving?: b
 
                   const isRO = false;
                   return (
-                    <EntryCell 
+                    <EntryCell
                       key={f.label}
                       field={`bio_${f.field}`}
                       label={f.label}
@@ -584,21 +584,21 @@ export function BioTab({ onSave, isSaving }: { onSave?: () => void, isSaving?: b
               </div>
             </div>
           </div>
-          
+
           <div style={{ marginTop: 16, display: 'flex', flexDirection: 'column', gap: 10 }}>
             <div style={{ display: 'flex', alignItems: 'flex-end', gap: 10 }}>
               <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 4 }}>
-                <label style={{ 
-                  fontFamily: F.mono, fontSize: 9, fontWeight: 600, color: C.indigo, 
-                  letterSpacing: '0.08em', textTransform: 'uppercase', paddingLeft: 4, opacity: 0.8 
+                <label style={{
+                  fontFamily: F.mono, fontSize: 9, fontWeight: 600, color: C.indigo,
+                  letterSpacing: '0.08em', textTransform: 'uppercase', paddingLeft: 4, opacity: 0.8
                 }}>
                   Lens Model
                 </label>
-                <div 
-                  onClick={() => { haptic.success(); setIsLensModalOpen(true); }} 
-                  style={{ 
-                    background: C.surface, borderRadius: 20, padding: '10px 14px', 
-                    border: `1px solid ${C.border}`, display: 'flex', alignItems: 'center', 
+                <div
+                  onClick={() => { haptic.success(); setIsLensModalOpen(true); }}
+                  style={{
+                    background: C.surface, borderRadius: 20, padding: '10px 14px',
+                    border: `1px solid ${C.border}`, display: 'flex', alignItems: 'center',
                     justifyContent: 'space-between', cursor: 'pointer', height: 40, boxSizing: 'border-box'
                   }}
                 >
@@ -608,7 +608,7 @@ export function BioTab({ onSave, isSaving }: { onSave?: () => void, isSaving?: b
                   </div>
                 </div>
               </div>
-              
+
               <div style={{ width: 100 }}>
                 <WheelField
                   label="Target"
@@ -683,13 +683,13 @@ export function BioTab({ onSave, isSaving }: { onSave?: () => void, isSaving?: b
               const k2 = parseFloat(data.k2 || '0');
               const cyl = Math.abs(k1 - k2);
               const isSignificant = cyl >= 1.0;
-              
+
               return (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-                  <div 
+                  <div
                     onClick={() => { haptic.success(); setDraft({ toricMode: !draft.toricMode }); }}
-                    style={{ 
-                      marginTop: 4, padding: '10px 12px', background: draft.toricMode ? `${C.indigo}10` : C.surface, 
+                    style={{
+                      marginTop: 4, padding: '10px 12px', background: draft.toricMode ? `${C.indigo}10` : C.surface,
                       borderRadius: 16, border: `1px solid ${draft.toricMode ? `${C.indigo}40` : C.border}`,
                       display: 'flex', alignItems: 'center', justifyContent: 'space-between', cursor: 'pointer',
                       transition: 'all 0.2s'
@@ -707,12 +707,12 @@ export function BioTab({ onSave, isSaving }: { onSave?: () => void, isSaving?: b
                         </span>
                       )}
                     </div>
-                    <div style={{ 
-                      width: 36, height: 20, borderRadius: 10, background: draft.toricMode ? C.indigo : C.border, 
-                      position: 'relative', transition: 'background 0.2s' 
+                    <div style={{
+                      width: 36, height: 20, borderRadius: 10, background: draft.toricMode ? C.indigo : C.border,
+                      position: 'relative', transition: 'background 0.2s'
                     }}>
-                      <div style={{ 
-                        position: 'absolute', top: 2, left: draft.toricMode ? 18 : 2, width: 16, height: 16, 
+                      <div style={{
+                        position: 'absolute', top: 2, left: draft.toricMode ? 18 : 2, width: 16, height: 16,
                         borderRadius: 8, background: '#fff', transition: 'left 0.2s cubic-bezier(0.4, 0, 0.2, 1)',
                         boxShadow: '0 1px 3px rgba(0,0,0,0.2)'
                       }} />
@@ -722,11 +722,11 @@ export function BioTab({ onSave, isSaving }: { onSave?: () => void, isSaving?: b
                   {draft.toricMode && (
                     <div style={{ display: 'flex', gap: 10, padding: '0 2px' }}>
                       <div style={{ flex: 1 }}>
-                        <EntryCell 
-                          field="sia" 
-                          label="SIA" 
-                          color={C.indigo} 
-                          val={draft.sia || '0.10'} 
+                        <EntryCell
+                          field="sia"
+                          label="SIA"
+                          color={C.indigo}
+                          val={draft.sia || '0.10'}
                           unit="D"
                           stepOverride={0.05}
                           onStep={(f: string, dir: number, step: number) => {
@@ -749,11 +749,11 @@ export function BioTab({ onSave, isSaving }: { onSave?: () => void, isSaving?: b
                         />
                       </div>
                       <div style={{ flex: 1 }}>
-                        <EntryCell 
-                          field="incAx" 
-                          label="INCISION" 
-                          color={C.indigo} 
-                          val={draft.incAx || '90'} 
+                        <EntryCell
+                          field="incAx"
+                          label="INCISION"
+                          color={C.indigo}
+                          val={draft.incAx || '90'}
                           unit="°"
                           isAx
                           stepOverride={5}
@@ -819,12 +819,14 @@ export function BioTab({ onSave, isSaving }: { onSave?: () => void, isSaving?: b
           </div>
 
           <div style={{ display: 'grid', gridTemplateColumns: '24px 1fr 1fr 1fr 64px', columnGap: 6, rowGap: 8, alignItems: 'center' }}>
-            <div style={{ fontSize: 16, fontWeight: 900, color: ec.color, textAlign: 'center', borderRight: `1px solid ${C.border}20`, paddingRight: 4 }}>M</div>
+            <div style={{ fontSize: 16, fontWeight: 900, color: ec.color, textAlign: 'center', borderRight: `1px solid ${C.border}20`, paddingRight: 4 }}>
+              {language === 'ru' ? 'М' : 'M'}
+            </div>
 
             <EntryCell field="man_sph" label="SPH" color={ec.color} val={data.man_sph} onStep={handleStep} onStartEdit={handleStartEdit} isEditing={editingField === 'man_sph'} tempValue={tempValue} onTempChange={setTempValue} onFinish={handleFinishEdit} inputRef={inputRef} />
             <EntryCell field="man_cyl" label="CYL" color={ec.color} val={data.man_cyl} onStep={handleStep} onStartEdit={handleStartEdit} isEditing={editingField === 'man_cyl'} tempValue={tempValue} onTempChange={setTempValue} onFinish={handleFinishEdit} inputRef={inputRef} />
             <EntryCell field="man_ax" label="AX" color={ec.color} val={data.man_ax} isAx onStep={handleStep} onStartEdit={handleStartEdit} isEditing={editingField === 'man_ax'} tempValue={tempValue} onTempChange={setTempValue} onFinish={handleFinishEdit} inputRef={inputRef} />
-            
+
             <div style={{ gridColumn: 5, gridRow: '1 / 5', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'flex-start', paddingLeft: 4, gap: 2, marginTop: -10 }}>
               <div style={{ textAlign: 'center', lineHeight: 1 }}>
                 <div style={{ fontSize: 7, fontWeight: 900, color: C.muted3, textTransform: 'uppercase', letterSpacing: '0.08em' }}>Astig.</div>
@@ -848,7 +850,7 @@ export function BioTab({ onSave, isSaving }: { onSave?: () => void, isSaving?: b
                 const k1 = parseFloat(data.k1 || '0');
                 const k2 = parseFloat(data.k2 || '0');
                 const cylVal = data.p_tot_c ? Math.abs(parseFloat(data.p_tot_c)) : (k1 && k2 ? Math.abs(k1 - k2) : 0);
-                
+
                 // Classification based on STEEP meridian (90 deg from minus-cyl axis)
                 const steep = (kAx + 90) % 180;
                 let type = 'Oblique';
@@ -867,20 +869,26 @@ export function BioTab({ onSave, isSaving }: { onSave?: () => void, isSaving?: b
               })()}
             </div>
 
-            <div style={{ fontSize: 16, fontWeight: 900, color: C.amber, textAlign: 'center', borderRight: `1px solid ${C.border}20`, paddingRight: 4 }}>K</div>
-            <DiagnosticCell field="k1" color={C.amber} val={data.k1} onStartEdit={handleStartEdit} isEditing={editingField === 'k1'} tempValue={tempValue} onTempChange={setTempValue} onFinish={handleFinishEdit} inputRef={inputRef} />
-            <DiagnosticCell field="k2" color={C.amber} val={data.k2} onStartEdit={handleStartEdit} isEditing={editingField === 'k2'} tempValue={tempValue} onTempChange={setTempValue} onFinish={handleFinishEdit} inputRef={inputRef} />
-            <DiagnosticCell field="k_ax" color={C.amber} val={data.k_ax} isAx onStartEdit={handleStartEdit} isEditing={editingField === 'k_ax'} tempValue={tempValue} onTempChange={setTempValue} onFinish={handleFinishEdit} inputRef={inputRef} />
-
-            <div style={{ fontSize: 16, fontWeight: 900, color: C.slate, textAlign: 'center', borderRight: `1px solid ${C.border}20`, paddingRight: 4 }}>N</div>
+            <div style={{ fontSize: 16, fontWeight: 900, color: C.slate, textAlign: 'center', borderRight: `1px solid ${C.border}20`, paddingRight: 4 }}>
+              {language === 'ru' ? 'У' : 'N'}
+            </div>
             <DiagnosticCell field="n_sph" color={C.slate} val={data.n_sph} onStartEdit={handleStartEdit} isEditing={editingField === 'n_sph'} tempValue={tempValue} onTempChange={setTempValue} onFinish={handleFinishEdit} inputRef={inputRef} />
             <DiagnosticCell field="n_cyl" color={C.slate} val={data.n_cyl} onStartEdit={handleStartEdit} isEditing={editingField === 'n_cyl'} tempValue={tempValue} onTempChange={setTempValue} onFinish={handleFinishEdit} inputRef={inputRef} />
             <DiagnosticCell field="n_ax" color={C.slate} val={data.n_ax} isAx onStartEdit={handleStartEdit} isEditing={editingField === 'n_ax'} tempValue={tempValue} onTempChange={setTempValue} onFinish={handleFinishEdit} inputRef={inputRef} />
 
-            <div style={{ fontSize: 16, fontWeight: 900, color: C.muted2, textAlign: 'center', borderRight: `1px solid ${C.border}20`, paddingRight: 4 }}>W</div>
+            <div style={{ fontSize: 16, fontWeight: 900, color: C.muted2, textAlign: 'center', borderRight: `1px solid ${C.border}20`, paddingRight: 4 }}>
+              {language === 'ru' ? 'Ш' : 'W'}
+            </div>
             <DiagnosticCell field="c_sph" color={C.muted2} val={data.c_sph} onStartEdit={handleStartEdit} isEditing={editingField === 'c_sph'} tempValue={tempValue} onTempChange={setTempValue} onFinish={handleFinishEdit} inputRef={inputRef} />
             <DiagnosticCell field="c_cyl" color={C.muted2} val={data.c_cyl} onStartEdit={handleStartEdit} isEditing={editingField === 'c_cyl'} tempValue={tempValue} onTempChange={setTempValue} onFinish={handleFinishEdit} inputRef={inputRef} />
             <DiagnosticCell field="c_ax" color={C.muted2} val={data.c_ax} isAx onStartEdit={handleStartEdit} isEditing={editingField === 'c_ax'} tempValue={tempValue} onTempChange={setTempValue} onFinish={handleFinishEdit} inputRef={inputRef} />
+
+            <div style={{ fontSize: 16, fontWeight: 900, color: C.amber, textAlign: 'center', borderRight: `1px solid ${C.border}20`, paddingRight: 4 }}>
+              {language === 'ru' ? 'К' : 'K'}
+            </div>
+            <DiagnosticCell field="k1" color={C.amber} val={data.k1} onStartEdit={handleStartEdit} isEditing={editingField === 'k1'} tempValue={tempValue} onTempChange={setTempValue} onFinish={handleFinishEdit} inputRef={inputRef} />
+            <DiagnosticCell field="k2" color={C.amber} val={data.k2} onStartEdit={handleStartEdit} isEditing={editingField === 'k2'} tempValue={tempValue} onTempChange={setTempValue} onFinish={handleFinishEdit} inputRef={inputRef} />
+            <DiagnosticCell field="k_ax" color={C.amber} val={data.k_ax} isAx onStartEdit={handleStartEdit} isEditing={editingField === 'k_ax'} tempValue={tempValue} onTempChange={setTempValue} onFinish={handleFinishEdit} inputRef={inputRef} />
           </div>
         </div>
       )}
@@ -899,45 +907,45 @@ export function BioTab({ onSave, isSaving }: { onSave?: () => void, isSaving?: b
                 ))}
               </div>
             </div>
-            <div style={{ 
-              display: 'grid', 
-              gridTemplateColumns: pMode === 'TOTAL' ? 'repeat(3, 1fr)' : 'repeat(2, 1fr)', 
-              gap: 6, alignItems: 'center', marginBottom: 10 
+            <div style={{
+              display: 'grid',
+              gridTemplateColumns: pMode === 'TOTAL' ? 'repeat(3, 1fr)' : 'repeat(2, 1fr)',
+              gap: 6, alignItems: 'center', marginBottom: 10
             }}>
               {(() => {
                 const prefix = pMode === 'ANT' ? 'p_ant' : pMode === 'POST' ? 'p_post' : 'p_tot';
                 const fK = `${prefix}_k`;
                 const fC = `${prefix}_c`;
                 const fA = `${prefix}_a`;
-                
+
                 return (
                   <>
                     {pMode === 'TOTAL' && (
-                      <EntryCell 
-                        field={fK} label="TOTAL KM" color={C.purple} val={data[fK]} stepOverride={0.1} 
-                        onStep={handleStep} onStartEdit={handleStartEdit} isEditing={editingField === fK} 
-                        tempValue={tempValue} onTempChange={setTempValue} onFinish={handleFinishEdit} inputRef={inputRef} 
+                      <EntryCell
+                        field={fK} label="TOTAL KM" color={C.purple} val={data[fK]} stepOverride={0.1}
+                        onStep={handleStep} onStartEdit={handleStartEdit} isEditing={editingField === fK}
+                        tempValue={tempValue} onTempChange={setTempValue} onFinish={handleFinishEdit} inputRef={inputRef}
                       />
                     )}
-                    <EntryCell 
-                      field={fC} label={`${pMode}-CYL`} color={C.purple} val={data[fC]} 
-                      onStep={handleStep} onStartEdit={handleStartEdit} isEditing={editingField === fC} 
-                      tempValue={tempValue} onTempChange={setTempValue} onFinish={handleFinishEdit} inputRef={inputRef} 
+                    <EntryCell
+                      field={fC} label={`${pMode}-CYL`} color={C.purple} val={data[fC]}
+                      onStep={handleStep} onStartEdit={handleStartEdit} isEditing={editingField === fC}
+                      tempValue={tempValue} onTempChange={setTempValue} onFinish={handleFinishEdit} inputRef={inputRef}
                     />
-                    <EntryCell 
-                      field={fA} label={`${pMode}-AX`} color={C.purple} val={data[fA]} isAx 
-                      onStep={handleStep} onStartEdit={handleStartEdit} isEditing={editingField === fA} 
-                      tempValue={tempValue} onTempChange={setTempValue} onFinish={handleFinishEdit} inputRef={inputRef} 
+                    <EntryCell
+                      field={fA} label={`${pMode}-AX`} color={C.purple} val={data[fA]} isAx
+                      onStep={handleStep} onStartEdit={handleStartEdit} isEditing={editingField === fA}
+                      tempValue={tempValue} onTempChange={setTempValue} onFinish={handleFinishEdit} inputRef={inputRef}
                     />
                   </>
                 );
               })()}
             </div>
             <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: 6, alignItems: 'center' }}>
-              <EntryCell 
+              <EntryCell
                 field="cct" label="PACHY (CCT)" color={C.amber} val={data.cct} stepOverride={10} fontSize={22}
-                onStep={handleStep} onStartEdit={handleStartEdit} isEditing={editingField === 'cct'} 
-                tempValue={tempValue} onTempChange={setTempValue} onFinish={handleFinishEdit} inputRef={inputRef} 
+                onStep={handleStep} onStartEdit={handleStartEdit} isEditing={editingField === 'cct'}
+                tempValue={tempValue} onTempChange={setTempValue} onFinish={handleFinishEdit} inputRef={inputRef}
               />
             </div>
           </div>
