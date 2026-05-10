@@ -230,6 +230,31 @@ class IolCalcRequest(BaseModel):
 class MeasurementUpdate(BaseModel):
     data: Dict[str, Any]
 
+# ── IOL Маркетплейс ───────────────────────────────────────────────────────────
+
+@app.get("/api/inventory")
+def get_inventory(lens: str = "", power: float = 0.0, tolerance: float = 0.5):
+    """Найти линзу у дистрибьюторов. lens — модель (частичное совпадение), power — диоптрия."""
+    if not lens or power == 0.0:
+        return {"status": "error", "detail": "lens and power required"}
+    results = master_db.query_stock(lens, power, tolerance)
+    return {
+        "status": "ok",
+        "items": [
+            {
+                "distributor": r["distributor_name"],
+                "contact":     r["contact"],
+                "region":      r["region"],
+                "lens_model":  r["lens_model"],
+                "power":       r["power"],
+                "quantity":    r["quantity"],
+                "price":       r["price"],
+                "updated_at":  r["updated_at"],
+            }
+            for r in results
+        ]
+    }
+
 # ──────────────────────────────────────────────────────────────────────────────
 # Статика
 # ──────────────────────────────────────────────────────────────────────────────

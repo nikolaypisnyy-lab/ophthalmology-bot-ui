@@ -6,6 +6,7 @@ import datetime
 import fcntl
 import html
 import threading
+import secrets
 from pathlib import Path
 from typing import Dict, Any, Optional, List, Tuple
 
@@ -103,6 +104,7 @@ def main_menu_markup(uid: int):
             kb.row("👥 Управление доступом")
             kb.row("⚙️ Управление клиниками", "🛡️ Бэкап прав")
             kb.row("📦 Бэкап базы")
+            kb.row("🔗 Пригласить дистрибьютора")
     
     kb.row("ℹ️ Инфо")
     return kb
@@ -111,14 +113,47 @@ def main_menu_markup(uid: int):
 @bot.message_handler(commands=['start', 'menu'])
 def start_cmd(message):
     uid = message.from_user.id
+
+    # Проверяем инвайт-токен дистрибьютора: /start dist_XXXXXXXX
+    parts = message.text.split(None, 1)
+    if len(parts) > 1 and parts[1].startswith("dist_"):
+        token = parts[1].strip()
+        if token in DIST_TOKENS:
+            # Токен разовый — удаляем после использования
+            DIST_TOKENS.pop(token, None)
+            dist = master_db.get_distributor(uid)
+            if dist:
+                bot.send_message(uid, f"✅ Вы уже зарегистрированы. Используйте /distributor.")
+                return
+            DIST_REG[uid] = {"step": "name"}
+            bot.send_message(uid,
+                "📦 <b>Регистрация в IOL Marketplace RefMaster</b>\n\n"
+                "Введите <b>название вашей компании</b>:"
+            )
+            return
+        else:
+            bot.send_message(uid, "❌ Ссылка недействительна или уже использована.")
+            return
+
     ctx = get_ctx(uid)
     cid = ctx.get("cid")
     
     if not cid:
+        # Проверяем — возможно это уже одобренный дистрибьютор
+        dist = master_db.get_distributor(uid)
+        if dist:
+            bot.send_message(uid,
+                f"👋 Добро пожаловать в <b>IOL Marketplace RefMaster</b>!\n\n"
+                f"Компания: <b>{html.escape(dist['name'])}</b>\n\n"
+                "Используйте /distributor для управления складом.",
+                reply_markup=types.ReplyKeyboardRemove()
+            )
+            return
+
         text = (
             "👋 Добро пожаловать в <b>RefMaster</b>.\n\n"
-            "Вы еще не авторизованы. Для получения доступа к вашей клинике, пожалуйста, "
-            "нажмите кнопку ниже, чтобы отправить запрос администратору."
+            "Вы ещё не авторизованы. Нажмите кнопку ниже, чтобы "
+            "отправить запрос администратору клиники."
         )
         kb = types.InlineKeyboardMarkup()
         kb.add(types.InlineKeyboardButton("📝 Запросить доступ", callback_data=f"req_access:{uid}"))
@@ -617,13 +652,32 @@ def _acc_clinics_keyboard() -> types.InlineKeyboardMarkup:
         ))
     return kb
 
+def _acc_main_keyboard() -> types.InlineKeyboardMarkup:
+    kb = types.InlineKeyboardMarkup(row_width=1)
+    # Клиники
+    clinics = _get_clinics()
+    all_users = master_db.get_all_users() or []
+    for cl in clinics:
+        cnt = sum(1 for u in all_users if u.get("clinic_id") == cl["clinic_id"])
+        kb.add(types.InlineKeyboardButton(
+            f"🏥 {cl['name']}  · {cnt} чел.",
+            callback_data=f"acc_cl:{cl['clinic_id']}"
+        ))
+    # Дистрибьюторы
+    dists = master_db.get_all_distributors()
+    kb.add(types.InlineKeyboardButton(
+        f"📦 Дистрибьюторы IOL  · {len(dists)} чел.",
+        callback_data="acc_dists"
+    ))
+    return kb
+
 @bot.message_handler(func=lambda m: m.text == "👥 Управление доступом")
 def admin_users(message):
     if message.from_user.id not in ADMIN_IDS: return
     bot.send_message(
         message.chat.id,
-        "🏥 <b>Управление доступом</b>\n\nВыберите клинику:",
-        reply_markup=_acc_clinics_keyboard()
+        "🏥 <b>Управление доступом</b>\n\nВыберите раздел:",
+        reply_markup=_acc_main_keyboard()
     )
 
 # ── Клиника → список врачей ───────────────────────────────────────────────────
@@ -656,14 +710,101 @@ def acc_show_doctors(c):
     text += f"Сотрудников: {len(doctors)}" if doctors else "Нет сотрудников."
     bot.edit_message_text(text, c.message.chat.id, c.message.message_id, reply_markup=kb)
 
+@bot.callback_query_handler(func=lambda c: c.data == "acc_dists")
+def acc_show_distributors(c):
+    if c.from_user.id not in ADMIN_IDS: return
+    bot.answer_callback_query(c.id)
+    dists = master_db.get_all_distributors()
+    kb = types.InlineKeyboardMarkup(row_width=1)
+    for d in dists:
+        stock = master_db.get_stock_by_distributor(d['telegram_id'])
+        kb.add(types.InlineKeyboardButton(
+            f"📦 {d['name']}  · {d.get('region') or '—'}  · {len(stock)} поз.",
+            callback_data=f"acc_dist:{d['telegram_id']}"
+        ))
+    kb.add(types.InlineKeyboardButton("← Назад", callback_data="acc_back"))
+    text = f"📦 <b>Дистрибьюторы IOL</b>\n\nВсего: {len(dists)}"
+    if not dists:
+        text += "\n\nНет зарегистрированных дистрибьюторов."
+    bot.edit_message_text(text, c.message.chat.id, c.message.message_id, reply_markup=kb)
+
+@bot.callback_query_handler(func=lambda c: c.data.startswith("acc_dist:"))
+def acc_dist_detail(c):
+    if c.from_user.id not in ADMIN_IDS: return
+    bot.answer_callback_query(c.id)
+    dist_id = int(c.data.split(":", 1)[1])
+    d = master_db.get_distributor(dist_id)
+    if not d:
+        bot.edit_message_text("Дистрибьютор не найден.", c.message.chat.id, c.message.message_id)
+        return
+    stock = master_db.get_stock_by_distributor(dist_id)
+    kb = types.InlineKeyboardMarkup(row_width=1)
+    kb.add(
+        types.InlineKeyboardButton("✉️ Написать в Telegram", url=f"tg://user?id={dist_id}"),
+        types.InlineKeyboardButton("❌ Отозвать доступ", callback_data=f"acc_dist_rev:{dist_id}"),
+        types.InlineKeyboardButton("← Назад к дистрибьюторам", callback_data="acc_dists"),
+    )
+    text = (
+        f"📦 <b>{html.escape(d['name'])}</b>\n\n"
+        f"Регион: {html.escape(d.get('region') or '—')}\n"
+        f"Контакт: {html.escape(d.get('contact') or '—')}\n"
+        f"Telegram ID: <code>{dist_id}</code>\n"
+        f"Позиций на складе: {len(stock)}\n"
+        f"Зарегистрирован: {(d.get('created_at') or '')[:10]}"
+    )
+    bot.edit_message_text(text, c.message.chat.id, c.message.message_id, reply_markup=kb)
+
+@bot.callback_query_handler(func=lambda c: c.data.startswith("acc_dist_rev:"))
+def acc_dist_revoke(c):
+    if c.from_user.id not in ADMIN_IDS: return
+    bot.answer_callback_query(c.id)
+    dist_id = int(c.data.split(":", 1)[1])
+    d = master_db.get_distributor(dist_id)
+    if not d:
+        bot.edit_message_text("Не найдено.", c.message.chat.id, c.message.message_id)
+        return
+    kb = types.InlineKeyboardMarkup(row_width=2)
+    kb.add(
+        types.InlineKeyboardButton("✅ Да, отозвать", callback_data=f"acc_dist_rev_ok:{dist_id}"),
+        types.InlineKeyboardButton("❌ Отмена", callback_data=f"acc_dist:{dist_id}"),
+    )
+    bot.edit_message_text(
+        f"⚠️ Отозвать доступ дистрибьютора <b>{html.escape(d['name'])}</b>?\n"
+        f"Склад также будет очищен.",
+        c.message.chat.id, c.message.message_id, reply_markup=kb
+    )
+
+@bot.callback_query_handler(func=lambda c: c.data.startswith("acc_dist_rev_ok:"))
+def acc_dist_revoke_confirm(c):
+    if c.from_user.id not in ADMIN_IDS: return
+    bot.answer_callback_query(c.id)
+    dist_id = int(c.data.split(":", 1)[1])
+    d = master_db.get_distributor(dist_id)
+    name = d['name'] if d else str(dist_id)
+    master_db.delete_distributor(dist_id)
+    bot.edit_message_text(
+        f"✅ Доступ дистрибьютора <b>{html.escape(name)}</b> отозван.",
+        c.message.chat.id, c.message.message_id,
+        reply_markup=types.InlineKeyboardMarkup().add(
+            types.InlineKeyboardButton("← К дистрибьюторам", callback_data="acc_dists")
+        )
+    )
+    try:
+        bot.send_message(dist_id,
+            "⚠️ Ваш доступ к IOL Marketplace RefMaster был отозван администратором.\n"
+            "Для восстановления обратитесь к администратору."
+        )
+    except Exception:
+        pass
+
 @bot.callback_query_handler(func=lambda c: c.data == "acc_back")
 def acc_back_to_clinics(c):
     if c.from_user.id not in ADMIN_IDS: return
     bot.answer_callback_query(c.id)
     bot.edit_message_text(
-        "🏥 <b>Управление доступом</b>\n\nВыберите клинику:",
+        "🏥 <b>Управление доступом</b>\n\nВыберите раздел:",
         c.message.chat.id, c.message.message_id,
-        reply_markup=_acc_clinics_keyboard()
+        reply_markup=_acc_main_keyboard()
     )
 
 # ── Врач → действия ───────────────────────────────────────────────────────────
@@ -686,6 +827,7 @@ def acc_show_doctor(c):
         f"🎭 {role_label}  ·  🆔 <code>{doc_uid}</code>"
     )
     kb = types.InlineKeyboardMarkup(row_width=1)
+    kb.add(types.InlineKeyboardButton("✉️ Написать в Telegram",         url=f"tg://user?id={doc_uid}"))
     kb.add(types.InlineKeyboardButton("🔄 Перенести в другую клинику", callback_data=f"acc_mv:{doc_uid}:{cid}"))
     kb.add(types.InlineKeyboardButton("🗑 Отозвать доступ",            callback_data=f"acc_rev:{doc_uid}:{cid}"))
     kb.add(types.InlineKeyboardButton("← Назад",                       callback_data=f"acc_cl:{cid}"))
@@ -1047,15 +1189,394 @@ def acbk_restore_process(message):
         bot.send_message(message.chat.id, f"❌ Ошибка восстановления: {e}")
 
 
+# ═══════════════════════════════════════════════════════════════
+# IOL МАРКЕТПЛЕЙС — блок дистрибьютора
+# ═══════════════════════════════════════════════════════════════
+
+import io
+import csv
+
+def _dist_menu(uid: int) -> types.InlineKeyboardMarkup:
+    kb = types.InlineKeyboardMarkup(row_width=1)
+    kb.add(
+        types.InlineKeyboardButton("📦 Загрузить остатки (CSV)", callback_data="dist_upload"),
+        types.InlineKeyboardButton("📋 Мой склад", callback_data="dist_view"),
+        types.InlineKeyboardButton("🗑 Очистить склад", callback_data="dist_clear"),
+        types.InlineKeyboardButton("ℹ️ Формат файла", callback_data="dist_format"),
+    )
+    return kb
+
+# Хранилище ожидающих заявок дистрибьюторов: {uid: {"step": ..., "name": ..., "region": ..., "contact": ...}}
+DIST_REG: Dict[int, Dict[str, Any]] = {}
+
+# Активные инвайт-токены для дистрибьюторов: {token: created_at}
+DIST_TOKENS: Dict[str, datetime.datetime] = {}
+
+def _send_dist_invite(uid: int):
+    """Генерирует и отправляет одноразовую инвайт-ссылку."""
+    token = "dist_" + secrets.token_urlsafe(8)
+    DIST_TOKENS[token] = datetime.datetime.now()
+    bot_info = bot.get_me()
+    link = f"https://t.me/{bot_info.username}?start={token}"
+    bot.send_message(uid,
+        f"🔗 <b>Инвайт-ссылка для дистрибьютора:</b>\n\n"
+        f"<code>{link}</code>\n\n"
+        f"⚠️ Одноразовая — сгорит после первого использования."
+    )
+
+@bot.message_handler(func=lambda m: m.text == "🔗 Пригласить дистрибьютора")
+def invite_dist_btn(message):
+    if message.from_user.id not in ADMIN_IDS: return
+    _send_dist_invite(message.from_user.id)
+
+@bot.message_handler(commands=['gen_dist_link'])
+def gen_dist_link_cmd(message):
+    if message.from_user.id not in ADMIN_IDS: return
+    _send_dist_invite(message.from_user.id)
+
+@bot.callback_query_handler(func=lambda c: c.data == "join_as_dist")
+def cb_join_as_dist(c):
+    bot.answer_callback_query(c.id)
+    bot.delete_message(c.message.chat.id, c.message.message_id)
+    # Запускаем тот же флоу что и /join
+    uid = c.from_user.id
+    if master_db.get_distributor(uid):
+        bot.send_message(uid, "✅ Вы уже зарегистрированы. Используйте /distributor.")
+        return
+    DIST_REG[uid] = {"step": "name"}
+    bot.send_message(uid,
+        "📦 <b>Регистрация как дистрибьютор IOL</b>\n\n"
+        "Введите <b>название вашей компании</b>:"
+    )
+
+@bot.message_handler(commands=['join'])
+def join_as_distributor_cmd(message):
+    """Дистрибьютор сам инициирует регистрацию."""
+    uid = message.from_user.id
+    if master_db.get_distributor(uid):
+        bot.send_message(uid, "✅ Вы уже зарегистрированы как дистрибьютор. Используйте /distributor.")
+        return
+    # Проверяем, не является ли пользователь уже клиникой
+    DIST_REG[uid] = {"step": "name"}
+    bot.send_message(uid,
+        "📦 <b>Регистрация как дистрибьютор IOL</b>\n\n"
+        "Введите <b>название вашей компании</b>:"
+    )
+
+@bot.message_handler(func=lambda m: m.from_user.id in DIST_REG and DIST_REG[m.from_user.id].get("step") == "name")
+def dist_reg_name(message):
+    uid = message.from_user.id
+    name = message.text.strip()
+    if len(name) < 2:
+        bot.send_message(uid, "Слишком короткое название. Попробуйте ещё раз:")
+        return
+    DIST_REG[uid]["name"] = name
+    DIST_REG[uid]["step"] = "region"
+    bot.send_message(uid, f"Компания: <b>{html.escape(name)}</b>\n\nВведите <b>регион работы</b> (город/страна):")
+
+@bot.message_handler(func=lambda m: m.from_user.id in DIST_REG and DIST_REG[m.from_user.id].get("step") == "region")
+def dist_reg_region(message):
+    uid = message.from_user.id
+    region = message.text.strip()
+    DIST_REG[uid]["region"] = region
+    DIST_REG[uid]["step"] = "contact"
+    bot.send_message(uid, f"Регион: <b>{html.escape(region)}</b>\n\nВведите <b>контакт</b> для хирургов (Telegram @username или телефон):")
+
+@bot.message_handler(func=lambda m: m.from_user.id in DIST_REG and DIST_REG[m.from_user.id].get("step") == "contact")
+def dist_reg_contact(message):
+    uid = message.from_user.id
+    contact = message.text.strip()
+    data = DIST_REG[uid]
+    data["contact"] = contact
+    data["step"] = "done"
+
+    # Показываем итог пользователю
+    bot.send_message(uid,
+        f"📋 <b>Заявка на регистрацию:</b>\n\n"
+        f"Компания: <b>{html.escape(data['name'])}</b>\n"
+        f"Регион: {html.escape(data['region'])}\n"
+        f"Контакт: {html.escape(contact)}\n\n"
+        "⏳ Заявка отправлена на рассмотрение. Вы получите уведомление после одобрения."
+    )
+
+    # Уведомляем всех админов с кнопками одобрить/отклонить
+    tg_username = f"@{message.from_user.username}" if message.from_user.username else f"ID:{uid}"
+    kb = types.InlineKeyboardMarkup(row_width=2)
+    kb.add(
+        types.InlineKeyboardButton("✅ Одобрить", callback_data=f"dist_approve:{uid}"),
+        types.InlineKeyboardButton("❌ Отклонить", callback_data=f"dist_reject:{uid}"),
+    )
+    for admin_id in ADMIN_IDS:
+        try:
+            bot.send_message(admin_id,
+                f"🆕 <b>Заявка дистрибьютора:</b>\n\n"
+                f"Пользователь: {tg_username} (ID: {uid})\n"
+                f"Компания: <b>{html.escape(data['name'])}</b>\n"
+                f"Регион: {html.escape(data['region'])}\n"
+                f"Контакт: {html.escape(contact)}",
+                reply_markup=kb
+            )
+        except Exception:
+            pass
+
+@bot.callback_query_handler(func=lambda c: c.data.startswith("dist_approve:") or c.data.startswith("dist_reject:"))
+def handle_dist_approval(c):
+    admin_id = c.from_user.id
+    if admin_id not in ADMIN_IDS:
+        bot.answer_callback_query(c.id, "Нет прав")
+        return
+
+    action, dist_id_str = c.data.split(":", 1)
+    dist_id = int(dist_id_str)
+    data = DIST_REG.get(dist_id, {})
+
+    if action == "dist_approve":
+        if not data.get("name"):
+            bot.answer_callback_query(c.id, "Данные заявки не найдены")
+            return
+        master_db.register_distributor(dist_id, data["name"], data.get("contact"), data.get("region"))
+        DIST_REG.pop(dist_id, None)
+        bot.answer_callback_query(c.id, "✅ Одобрено")
+        bot.edit_message_reply_markup(c.message.chat.id, c.message.message_id, reply_markup=None)
+        bot.send_message(c.message.chat.id, f"✅ Дистрибьютор <b>{html.escape(data['name'])}</b> одобрен.")
+        try:
+            bot.send_message(dist_id,
+                f"✅ <b>Ваша заявка одобрена!</b>\n\n"
+                f"Добро пожаловать в <b>IOL Marketplace RefMaster</b> 🎉\n\n"
+                f"Используйте /distributor для управления складом.\n"
+                f"📎 Отправьте CSV-файл с остатками чтобы начать."
+            )
+        except Exception:
+            pass
+
+    else:  # reject
+        DIST_REG.pop(dist_id, None)
+        bot.answer_callback_query(c.id, "❌ Отклонено")
+        bot.edit_message_reply_markup(c.message.chat.id, c.message.message_id, reply_markup=None)
+        bot.send_message(c.message.chat.id, "❌ Заявка отклонена.")
+        try:
+            bot.send_message(dist_id,
+                "❌ К сожалению, ваша заявка на регистрацию дистрибьютора отклонена.\n"
+                "Свяжитесь с администратором для уточнения."
+            )
+        except Exception:
+            pass
+
+@bot.message_handler(commands=['distributor', 'dist'])
+def distributor_cmd(message):
+    uid = message.from_user.id
+    dist = master_db.get_distributor(uid)
+    if not dist:
+        if uid in ADMIN_IDS:
+            # Админ может зарегистрировать сам себя для теста
+            bot.send_message(uid, "Вы не зарегистрированы как дистрибьютор.\nИспользуйте /add_dist @username Название для добавления.")
+        else:
+            bot.send_message(uid, "⛔ У вас нет доступа дистрибьютора.\nОбратитесь к администратору системы.")
+        return
+    bot.send_message(
+        uid,
+        f"🏭 <b>{html.escape(dist['name'])}</b>\n"
+        f"Регион: {html.escape(dist.get('region') or '—')}\n"
+        f"Контакт: {html.escape(dist.get('contact') or '—')}\n\n"
+        "Управление складом IOL-линз:",
+        reply_markup=_dist_menu(uid)
+    )
+
+@bot.message_handler(commands=['add_dist'])
+def add_distributor_cmd(message):
+    uid = message.from_user.id
+    if uid not in ADMIN_IDS:
+        return
+    # Формат: /add_dist 123456789 Название Компании | регион | @contact
+    parts = message.text.split(None, 2)
+    if len(parts) < 3:
+        bot.send_message(uid, "Формат: /add_dist <telegram_id> <Название> [| регион | @контакт]")
+        return
+    try:
+        dist_id = int(parts[1])
+    except ValueError:
+        bot.send_message(uid, "❌ Неверный Telegram ID")
+        return
+    rest = parts[2].split("|")
+    name = rest[0].strip()
+    region = rest[1].strip() if len(rest) > 1 else ""
+    contact = rest[2].strip() if len(rest) > 2 else ""
+    master_db.register_distributor(dist_id, name, contact, region)
+    bot.send_message(uid, f"✅ Дистрибьютор <b>{html.escape(name)}</b> (ID: {dist_id}) зарегистрирован.")
+    try:
+        bot.send_message(dist_id,
+            f"✅ Вы зарегистрированы как дистрибьютор IOL в системе MedEye.\n"
+            f"Компания: <b>{html.escape(name)}</b>\n\n"
+            "Используйте /distributor для управления складом."
+        )
+    except Exception:
+        pass
+
+@bot.message_handler(commands=['list_dist'])
+def list_distributors_cmd(message):
+    uid = message.from_user.id
+    if uid not in ADMIN_IDS:
+        return
+    dists = master_db.get_all_distributors()
+    if not dists:
+        bot.send_message(uid, "Дистрибьюторов нет.")
+        return
+    lines = ["<b>📦 Дистрибьюторы:</b>"]
+    for d in dists:
+        stock = master_db.get_stock_by_distributor(d['telegram_id'])
+        lines.append(f"• <b>{html.escape(d['name'])}</b> (ID: {d['telegram_id']}) — {len(stock)} позиций")
+    bot.send_message(uid, "\n".join(lines))
+
+@bot.callback_query_handler(func=lambda c: c.data.startswith("dist_"))
+def handle_dist_callback(c):
+    uid = c.from_user.id
+    dist = master_db.get_distributor(uid)
+    if not dist:
+        bot.answer_callback_query(c.id, "Нет доступа")
+        return
+
+    if c.data == "dist_format":
+        bot.answer_callback_query(c.id)
+        bot.send_message(uid,
+            "📄 <b>Формат CSV-файла:</b>\n\n"
+            "Кодировка: UTF-8\n"
+            "Разделитель: запятая или точка с запятой\n\n"
+            "<code>lens_model,power,quantity,price\n"
+            "AcrySof IQ SN60WF,20.0,5,\n"
+            "AcrySof IQ SN60WF,20.5,3,120\n"
+            "AcrySof IQ SN60WF,21.0,8,120\n"
+            "J&J ZCB00,19.5,2,</code>\n\n"
+            "• <b>lens_model</b> — название линзы\n"
+            "• <b>power</b> — диоптрия (через точку)\n"
+            "• <b>quantity</b> — количество штук\n"
+            "• <b>price</b> — цена (необязательно)\n\n"
+            "Отправьте CSV-файл в этот чат."
+        )
+
+    elif c.data == "dist_view":
+        bot.answer_callback_query(c.id)
+        stock = master_db.get_stock_by_distributor(uid)
+        if not stock:
+            bot.send_message(uid, "Склад пуст. Загрузите CSV-файл с остатками.")
+            return
+        # Группируем по модели
+        from collections import defaultdict
+        by_model = defaultdict(list)
+        for item in stock:
+            by_model[item['lens_model']].append(item)
+        lines = [f"📦 <b>Склад: {html.escape(dist['name'])}</b>", f"Позиций: {len(stock)}\n"]
+        for model, items in sorted(by_model.items()):
+            total = sum(i['quantity'] for i in items)
+            powers = ", ".join(f"{i['power']:.2f}×{i['quantity']}" for i in sorted(items, key=lambda x: x['power']))
+            lines.append(f"<b>{html.escape(model)}</b> [{total} шт]\n  {powers}")
+        # Отправляем по частям если много
+        text = "\n".join(lines)
+        if len(text) > 4000:
+            text = text[:4000] + "\n... (обрезано)"
+        bot.send_message(uid, text)
+
+    elif c.data == "dist_clear":
+        bot.answer_callback_query(c.id)
+        kb = types.InlineKeyboardMarkup()
+        kb.add(
+            types.InlineKeyboardButton("✅ Да, очистить", callback_data="dist_clear_confirm"),
+            types.InlineKeyboardButton("❌ Отмена", callback_data="dist_cancel"),
+        )
+        bot.send_message(uid, "⚠️ Очистить весь склад?", reply_markup=kb)
+
+    elif c.data == "dist_clear_confirm":
+        bot.answer_callback_query(c.id)
+        master_db.update_stock(uid, [])
+        bot.send_message(uid, "✅ Склад очищен.", reply_markup=_dist_menu(uid))
+
+    elif c.data == "dist_cancel":
+        bot.answer_callback_query(c.id, "Отменено")
+        bot.delete_message(uid, c.message.message_id)
+
+    elif c.data == "dist_upload":
+        bot.answer_callback_query(c.id)
+        bot.send_message(uid, "📎 Отправьте CSV-файл с остатками склада.")
+
+# Обработка CSV-файла от дистрибьютора
+@bot.message_handler(content_types=['document'])
+def handle_distributor_csv(message):
+    uid = message.from_user.id
+    dist = master_db.get_distributor(uid)
+    if not dist:
+        return  # Не дистрибьютор — игнорируем
+
+    doc = message.document
+    if not doc.file_name.endswith(('.csv', '.CSV')):
+        bot.send_message(uid, "❌ Нужен файл формата .csv\nИспользуйте /dist_format для инструкции.")
+        return
+
+    bot.send_message(uid, "⏳ Обрабатываю файл...")
+    try:
+        file_info = bot.get_file(doc.file_id)
+        file_bytes = bot.download_file(file_info.file_path)
+        text = file_bytes.decode('utf-8-sig')  # utf-8-sig снимает BOM от Excel
+
+        # Парсим CSV
+        reader = csv.DictReader(io.StringIO(text), skipinitialspace=True)
+        # Нормализуем заголовки (убираем лишние пробелы, приводим к нижнему регистру)
+        reader.fieldnames = [f.strip().lower().replace(' ', '_') for f in (reader.fieldnames or [])]
+
+        items = []
+        errors = []
+        for i, row in enumerate(reader, 1):
+            try:
+                model = (row.get('lens_model') or row.get('model') or row.get('линза') or '').strip()
+                power_raw = (row.get('power') or row.get('диоптрия') or row.get('d') or '').strip().replace(',', '.')
+                qty_raw = (row.get('quantity') or row.get('qty') or row.get('количество') or '').strip()
+                price_raw = (row.get('price') or row.get('цена') or '').strip().replace(',', '.')
+
+                if not model or not power_raw or not qty_raw:
+                    errors.append(f"Строка {i}: пропущены обязательные поля")
+                    continue
+
+                power = float(power_raw)
+                qty = int(qty_raw)
+                price = float(price_raw) if price_raw else None
+
+                if qty < 0 or power < 0 or power > 50:
+                    errors.append(f"Строка {i}: некорректные значения")
+                    continue
+
+                items.append({"lens_model": model, "power": power, "quantity": qty, "price": price})
+            except (ValueError, KeyError) as e:
+                errors.append(f"Строка {i}: {e}")
+
+        if not items:
+            bot.send_message(uid, f"❌ Не удалось распознать ни одной позиции.\n" +
+                           ("\n".join(errors[:5]) if errors else "Проверьте формат файла (/dist_format)"))
+            return
+
+        master_db.update_stock(uid, items)
+
+        msg = (f"✅ <b>Склад обновлён!</b>\n"
+               f"Загружено позиций: {len(items)}\n"
+               f"Уникальных моделей: {len(set(i['lens_model'] for i in items))}")
+        if errors:
+            msg += f"\n\n⚠️ Пропущено строк: {len(errors)}\n" + "\n".join(errors[:3])
+        bot.send_message(uid, msg, reply_markup=_dist_menu(uid))
+
+    except UnicodeDecodeError:
+        bot.send_message(uid, "❌ Ошибка кодировки. Сохраните файл в UTF-8 и попробуйте снова.")
+    except Exception as e:
+        bot.send_message(uid, f"❌ Ошибка обработки: {e}")
+
+
 if __name__ == "__main__":
     acquire_lock()
     print("Bot SLIM v2.6.2 is running...")
-    
+
     bot.set_my_commands([
-        types.BotCommand("start", "🚀 Главное меню"),
-        types.BotCommand("menu",  "♻️ Обновить кнопки (если пропали)"),
-        types.BotCommand("clinics", "🏥 Сменить клинику"),
-        types.BotCommand("info", "ℹ️ Информация"),
+        types.BotCommand("start",       "🚀 Главное меню"),
+        types.BotCommand("menu",        "♻️ Обновить кнопки"),
+        types.BotCommand("clinics",     "🏥 Сменить клинику"),
+        types.BotCommand("distributor", "📦 Кабинет дистрибьютора"),
+        types.BotCommand("join",        "📝 Стать дистрибьютором IOL"),
+        types.BotCommand("info",        "ℹ️ Информация"),
     ])
-    
+
     bot.infinity_polling()

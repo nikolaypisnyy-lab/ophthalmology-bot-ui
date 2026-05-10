@@ -138,4 +138,87 @@ class MasterDB:
             commit=True
         )
 
+    # ── IOL Marketplace ───────────────────────────────────────────────────────
+
+    def _init_marketplace(self):
+        self.execute("""
+            CREATE TABLE IF NOT EXISTS distributors (
+                telegram_id INTEGER PRIMARY KEY,
+                name        TEXT NOT NULL,
+                contact     TEXT,
+                region      TEXT,
+                verified    INTEGER DEFAULT 0,
+                created_at  TEXT
+            )
+        """, commit=True)
+        self.execute("""
+            CREATE TABLE IF NOT EXISTS iol_stock (
+                id          INTEGER PRIMARY KEY AUTOINCREMENT,
+                distributor_id INTEGER NOT NULL,
+                lens_model  TEXT NOT NULL,
+                power       REAL NOT NULL,
+                quantity    INTEGER NOT NULL DEFAULT 0,
+                price       REAL,
+                updated_at  TEXT NOT NULL,
+                FOREIGN KEY (distributor_id) REFERENCES distributors(telegram_id)
+            )
+        """, commit=True)
+        self.execute(
+            "CREATE INDEX IF NOT EXISTS idx_stock_lens ON iol_stock(lens_model, power)",
+            commit=True
+        )
+
+    def register_distributor(self, telegram_id: int, name: str, contact: str = None, region: str = None):
+        self.execute(
+            "INSERT OR REPLACE INTO distributors (telegram_id, name, contact, region, verified, created_at) VALUES (?, ?, ?, ?, 1, ?)",
+            (telegram_id, name, contact or "", region or "", datetime.datetime.now().isoformat()),
+            commit=True
+        )
+
+    def get_distributor(self, telegram_id: int) -> dict:
+        row = self.execute("SELECT * FROM distributors WHERE telegram_id = ?", (telegram_id,)).fetchone()
+        return dict(row) if row else None
+
+    def get_all_distributors(self) -> list:
+        rows = self.execute("SELECT * FROM distributors ORDER BY name").fetchall()
+        return [dict(r) for r in rows]
+
+    def update_stock(self, distributor_id: int, items: list):
+        """items = [{"lens_model": str, "power": float, "quantity": int, "price": float|None}]"""
+        now = datetime.datetime.now().isoformat()
+        self.execute("DELETE FROM iol_stock WHERE distributor_id = ?", (distributor_id,), commit=False)
+        for item in items:
+            self.execute(
+                "INSERT INTO iol_stock (distributor_id, lens_model, power, quantity, price, updated_at) VALUES (?, ?, ?, ?, ?, ?)",
+                (distributor_id, item["lens_model"], item["power"], item["quantity"], item.get("price"), now),
+                commit=False
+            )
+        self.conn.commit()
+
+    def get_stock_by_distributor(self, distributor_id: int) -> list:
+        rows = self.execute(
+            "SELECT * FROM iol_stock WHERE distributor_id = ? ORDER BY lens_model, power",
+            (distributor_id,)
+        ).fetchall()
+        return [dict(r) for r in rows]
+
+    def query_stock(self, lens_model: str, power: float, tolerance: float = 0.5) -> list:
+        """Найти линзу у всех дистрибьюторов с допуском ±tolerance диоптрий"""
+        rows = self.execute("""
+            SELECT s.*, d.name as distributor_name, d.contact, d.region
+            FROM iol_stock s
+            JOIN distributors d ON s.distributor_id = d.telegram_id
+            WHERE d.verified = 1
+              AND s.quantity > 0
+              AND lower(s.lens_model) LIKE lower(?)
+              AND abs(s.power - ?) <= ?
+            ORDER BY abs(s.power - ?), s.quantity DESC
+        """, (f"%{lens_model}%", power, tolerance, power)).fetchall()
+        return [dict(r) for r in rows]
+
+    def delete_distributor(self, telegram_id: int):
+        self.execute("DELETE FROM iol_stock WHERE distributor_id = ?", (telegram_id,), commit=False)
+        self.execute("DELETE FROM distributors WHERE telegram_id = ?", (telegram_id,), commit=True)
+
 master_db = MasterDB(DEFAULT_DB_PATH)
+master_db._init_marketplace()
