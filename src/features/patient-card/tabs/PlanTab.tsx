@@ -559,8 +559,11 @@ function RefractionPlanTab() {
           const rsb = cctNum - actualFlap - finalAbl;
           const kpost = parseFloat(data.kavg || '43.5') + (plan.sph + plan.cyl * 0.5) * 0.8;
           return (
-            <div style={{ marginTop: 6 }}>
-              <CorneaSafetyCard eye={planEye} cct={cctNum || 550} flap={actualFlap} abl={finalAbl} rsb={rsb} pta={Math.round((actualFlap + finalAbl) / (cctNum || 550) * 100)} kpost={kpost} isPRK={isPRK} />
+            <div style={{ marginTop: 7 }}>
+              <SectionHeader title={language === 'ru' ? 'Профиль абляции · Безопасность' : 'Ablation Profile · Safety'} />
+              <div style={{ marginTop: 6 }}>
+                <CorneaSafetyCard eye={planEye} cct={cctNum || 550} flap={actualFlap} abl={finalAbl} rsb={rsb} pta={Math.round((actualFlap + finalAbl) / (cctNum || 550) * 100)} kpost={kpost} isPRK={isPRK} />
+              </div>
             </div>
           );
         })()}
@@ -592,8 +595,8 @@ function RefractionPlanTab() {
         </div>
 
         {!isPRK && (
-          <div style={{ marginTop: 24 }}>
-            <SectionHeader title={language === 'ru' ? 'Профиль абляции · Безопасность' : 'Ablation Profile · Safety'} />
+          <div style={{ marginTop: 12 }}>
+            <SectionHeader title={language === 'ru' ? 'Параметры лоскута' : 'Flap Parameters'} />
             <div style={{ background: C.card, borderRadius: 24, padding: '16px 20px', border: `1px solid ${C.border}`, display: 'flex', flexDirection: 'column', gap: 12 }}>
               <div style={{ display: 'flex', gap: 16 }}>
                 <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 6 }}>

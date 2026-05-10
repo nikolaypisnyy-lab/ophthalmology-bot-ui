@@ -120,16 +120,34 @@ export function ManualModal({ isOpen, onClose }: ManualModalProps) {
 
           <Section title={isRu ? 'Методы коррекции (Астигматизм)' : 'Correction Methods (Astigmatism)'}>
             <Bullet>
-              <b>Manifest:</b> {isRu ? 'Расчеты по данным манифестной (субъективной) рефракции.' : 'Calculations based on manifest (subjective) refraction.'}
+              <b style={{ color: C.indigo }}>Manifest:</b> {isRu ? 'Расчеты по данным манифестной (субъективной) рефракции.' : 'Calculations based on manifest (subjective) refraction.'}
             </Bullet>
             <Bullet>
-              <b>Corneal:</b> {isRu ? 'Ориентация на топографию роговицы для устранения неровностей.' : 'Focus on corneal topography to eliminate irregularities.'}
+              <b style={{ color: C.indigo }}>Corneal:</b> {isRu ? 'Ориентация на топографию роговицы для устранения неровностей.' : 'Focus on corneal topography to eliminate irregularities.'}
             </Bullet>
             <Bullet>
-              <b>Vector:</b> {isRu ? 'Комплексный анализ: объединяет оси манифеста, кератометрии и AR (узкий/широкий зрачок).' : 'Comprehensive analysis: combines manifest, keratometry, and AR (narrow/wide) axes.'}
+              <b style={{ color: C.indigo }}>Vector:</b> {isRu ? 'Комплексный анализ: объединяет оси манифеста, кератометрии и AR (узкий/широкий зрачок).' : 'Comprehensive analysis: combines manifest, keratometry, and AR (narrow/wide) axes.'}
             </Bullet>
             <Bullet>
-              <b>Wavefront:</b> {isRu ? 'Ручной ввод данных аберрометрии (Wavefront-guided) для точного отслеживания аберраций.' : 'Manual entry of wavefront-guided data for precise aberration tracking.'}
+              <b style={{ color: C.indigo }}>Wavefront:</b> {isRu ? 'Ручной ввод данных аберрометрии (Wavefront-guided) для точного отслеживания аберраций.' : 'Manual entry of wavefront-guided data for precise aberration tracking.'}
+            </Bullet>
+          </Section>
+
+          <Section title={isRu ? 'Операционный день' : 'Surgical Day'}>
+            <Bullet>
+              {isRu 
+                ? 'Назначайте дату операции в карте пациента, чтобы он попал в список «План».' 
+                : 'Set a surgery date in the patient card to add them to the "Plan" list.'}
+            </Bullet>
+            <Bullet>
+              {isRu 
+                ? <><b style={{ color: C.indigo }}>Очередь:</b> В списке «План» используйте долгое нажатие (long-press) на пациента, чтобы перетащить его и изменить порядок в очереди.</>
+                : <><b style={{ color: C.indigo }}>Queue:</b> In the "Plan" list, use long-press on a patient to drag and reorder them in the surgical queue.</>}
+            </Bullet>
+            <Bullet>
+              {isRu 
+                ? <><b style={{ color: C.indigo }}>Печать:</b> Нажмите иконку принтера в шапке списка «План», чтобы сформировать и распечатать бумажный список операций на день.</>
+                : <><b style={{ color: C.indigo }}>Print:</b> Tap the printer icon in the "Plan" list header to generate and print a physical surgery list for the day.</>}
             </Bullet>
           </Section>
 
@@ -141,13 +159,26 @@ export function ManualModal({ isOpen, onClose }: ManualModalProps) {
 
           <Section title={isRu ? 'Лайфхаки и Жесты' : 'Pro Tips & Gestures'}>
             <Bullet>
-              <b>{isRu ? 'Смена глаза' : 'Eye Switch'}:</b> {isRu ? 'Свайп влево/вправо в любой области экрана.' : 'Swipe left/right anywhere on the screen.'}
+              <b style={{ color: C.indigo }}>{isRu ? 'Смена глаза' : 'Eye Switch'}:</b> {isRu ? 'Свайп влево/вправо в любой области экрана.' : 'Swipe left/right anywhere on the screen.'}
             </Bullet>
             <Bullet>
-              <b>{isRu ? 'Деактивация' : 'Deactivate'}:</b> {isRu ? 'Зажмите (long-press) кнопку OD/OS в шапке.' : 'Long-press the OD/OS button in the header.'}
+              <b style={{ color: C.indigo }}>{isRu ? 'Деактивация' : 'Deactivate'}:</b> {isRu ? 'Зажмите (long-press) кнопку OD/OS в шапке.' : 'Long-press the OD/OS button in the header.'}
             </Bullet>
             <Bullet>
-              <b>{isRu ? 'Назад' : 'Back'}:</b> {isRu ? 'Свайп от левого края экрана.' : 'Swipe from the left edge of the screen.'}
+              <b style={{ color: C.indigo }}>{isRu ? 'Назад' : 'Back'}:</b> {isRu ? 'Свайп от левого края экрана.' : 'Swipe from the left edge of the screen.'}
+            </Bullet>
+          </Section>
+
+          <Section title={isRu ? 'Аналитика и Номограммы' : 'Analytics & Nomograms'}>
+            <p style={{ marginTop: 0 }}>
+              {isRu 
+                ? 'При достижении 100 выполненных операций (статус Done) система автоматически активирует аналитический блок.' 
+                : 'Upon reaching 100 completed operations (status Done), the system automatically activates the analytical engine.'}
+            </p>
+            <Bullet>
+              {isRu 
+                ? 'RefMaster начнет выдавать персональные подсказки по номограммам для ИОЛ и лазерной коррекции на основе ваших реальных результатов.' 
+                : 'RefMaster will begin providing personalized nomogram tips for IOL and laser correction based on your actual surgical outcomes.'}
             </Bullet>
           </Section>
 

@@ -50,12 +50,9 @@ export function CorneaSafetyCard({
       gap: '16px',
       boxShadow: '0 8px 32px rgba(0,0,0,0.2)',
     }}>
-      {/* Header with Status Badge */}
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-        <span style={{ fontSize: '10px', fontWeight: 700, letterSpacing: '0.14em', textTransform: 'uppercase', color: C.indigo }}>
-          {language === 'ru' ? 'Профиль абляции · Безопасность' : 'Ablation profile · Safety'}
-        </span>
-        {isWarnRSB && (
+      {/* Header with Status Badge (Only shows badge now) */}
+      {isWarnRSB && (
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end' }}>
           <div style={{
             display: 'flex', alignItems: 'center', gap: '6px',
             background: 'rgba(245, 158, 11, 0.12)', border: `1px solid ${C.yellow}40`,
@@ -68,8 +65,8 @@ export function CorneaSafetyCard({
             }} />
             {language === 'ru' ? 'RSB НИЗКИЙ' : 'RSB LOW'}
           </div>
-        )}
-      </div>
+        </div>
+      )}
 
       {/* Corneal Stack Viz */}
       <div style={{
