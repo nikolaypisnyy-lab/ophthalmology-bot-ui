@@ -408,22 +408,46 @@ export function OperationsPage() {
               const plan = isEnhancement ? (p as any).savedEnhancement : (p as any).savedPlan;
               const odPlan = plan?.od;
               const osPlan = plan?.os;
-              const flapDepth = (p as any).capOrFlap;
-              const isPRK = (p as any).isPRK;
+              
               const details_prefix = isEnhancement ? (language === 'ru' ? '[ДОКОРРЕКЦИЯ] ' : '[ENHANCEMENT] ') : '';
-              const flapSuffix = isEnhancement ? (language === 'ru' ? ' [NO FLAP]' : ' [NO FLAP]') : (!isPRK && flapDepth ? ` flap ${flapDepth}µm` : '');
               const parts: string[] = [];
+              
               const fmtPlan = (side: string, pl: any) => {
+                if (!pl && !isEnhancement) return '';
                 const s = parseFloat(String(pl?.sph ?? '0')) || 0;
                 const c = parseFloat(String(pl?.cyl ?? '0')) || 0;
                 const a = parseInt(String(pl?.ax ?? '0')) || 0;
+                
+                // Resolving Flap per eye
+                const eyeKey = side.toLowerCase() as 'od' | 'os';
+                const eyeFlapDepth = eyeKey === 'os' 
+                  ? ((p as any).capOrFlapOS || (p as any).capOrFlap) 
+                  : (p as any).capOrFlap;
+                
+                const eyeFlapDiam = eyeKey === 'os'
+                  ? ((p as any).flapDiamOS || (p as any).flapDiam || '8.8')
+                  : ((p as any).flapDiamOD || (p as any).flapDiam || '8.8');
+                
+                const isSidePRK = pl?.flap === 0 || (!isEnhancement && String(eyeFlapDepth) === '0');
+                
+                let flapSuffix = '';
+                if (isEnhancement) {
+                  flapSuffix = language === 'ru' ? ' [БЕЗ ФЛЕПА]' : ' [NO FLAP]';
+                } else if (isSidePRK) {
+                  flapSuffix = ' [PRK]';
+                } else if (eyeFlapDepth) {
+                  flapSuffix = ` (flap ${eyeFlapDepth}µm, Ø${eyeFlapDiam})`;
+                }
+
                 return `${side}: ${s >= 0 ? '+' : ''}${s.toFixed(2)} ${c.toFixed(2)} x${a}°${flapSuffix}`;
               };
+
               if ((eye === 'OD' || eye === 'OU') && (odPlan || isEnhancement))
                 parts.push(fmtPlan('OD', odPlan));
               if ((eye === 'OS' || eye === 'OU') && (osPlan || isEnhancement))
                 parts.push(fmtPlan('OS', osPlan));
-              details = details_prefix + parts.join('  ');
+              
+              details = details_prefix + parts.join('\n');
             }
 
             return {
@@ -436,6 +460,7 @@ export function OperationsPage() {
               details: details || '—',
             };
           }),
+          lang: language,
         };
         await apiPost('/send_surgical_pdf', payload);
         tg.showAlert(language === 'ru' ? 'PDF отправлен в Telegram!' : 'PDF sent to Telegram!');

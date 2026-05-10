@@ -45,6 +45,7 @@ function CataractPlanTab() {
   try {
     const { draft, iolResult, formulaResults, iolResults, toricResults } = useSessionStore();
     const { planEye } = useUIStore();
+    const { language } = useClinicStore();
     if (!draft) return null;
 
     const ec = eyeColors(planEye);
@@ -83,7 +84,7 @@ function CataractPlanTab() {
         {isToric && (
           <div style={{ background: C.card, borderRadius: 24, padding: '20px 16px', border: `1px solid ${C.border}`, boxShadow: '0 8px 30px rgba(0,0,0,0.1)' }}>
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: 16 }}>
-                <div style={{ fontSize: 9, fontWeight: 900, color: C.amber, textTransform: 'uppercase', letterSpacing: '0.12em', background: 'rgba(255,191,0,0.1)', padding: '4px 12px', borderRadius: 20 }}>TORIC PLANNING</div>
+                <div style={{ fontSize: 9, fontWeight: 900, color: C.amber, textTransform: 'uppercase', letterSpacing: '0.12em', background: 'rgba(255,191,0,0.1)', padding: '4px 12px', borderRadius: 20 }}>{language === 'ru' ? 'ТОРИЧЕСКОЕ ПЛАНИРОВАНИЕ' : 'TORIC PLANNING'}</div>
             </div>
 
             {/* BIG SCHEMATIC */}
@@ -100,14 +101,14 @@ function CataractPlanTab() {
             {/* PRIMARY PARAMETERS: INCISION & PLACEMENT */}
             <div style={{ display: 'flex', gap: 10, marginBottom: 12 }}>
               <div style={{ flex: 1, padding: '12px 14px', background: 'rgba(255,255,255,0.03)', borderRadius: 16, border: `1px solid ${C.border}40`, textAlign: 'center' }}>
-                <div style={{ fontSize: 7, fontWeight: 900, color: C.muted3, textTransform: 'uppercase', marginBottom: 6 }}>Incision Axis</div>
+                <div style={{ fontSize: 7, fontWeight: 900, color: C.muted3, textTransform: 'uppercase', marginBottom: 6 }}>{language === 'ru' ? 'Ось разреза' : 'Incision Axis'}</div>
                 <div style={{ fontSize: 20, fontWeight: 900, color: C.text, fontFamily: F.mono, lineHeight: 1 }}>{incisionAx}°</div>
                 <div style={{ fontSize: 8, fontWeight: 800, color: C.amber, marginTop: 4, fontFamily: F.mono }}>SIA {siaVal}D</div>
               </div>
               <div style={{ flex: 1, padding: '12px 14px', background: 'rgba(255,255,255,0.03)', borderRadius: 16, border: `1px solid ${C.border}40`, textAlign: 'center' }}>
-                <div style={{ fontSize: 7, fontWeight: 900, color: C.muted3, textTransform: 'uppercase', marginBottom: 6 }}>IOL Placement</div>
+                <div style={{ fontSize: 7, fontWeight: 900, color: C.muted3, textTransform: 'uppercase', marginBottom: 6 }}>{language === 'ru' ? 'Положение ИОЛ' : 'IOL Placement'}</div>
                 <div style={{ fontSize: 20, fontWeight: 900, color: C.amber, fontFamily: F.mono, lineHeight: 1 }}>{iolAx || '—'}°</div>
-                <div style={{ fontSize: 8, fontWeight: 800, color: C.muted2, marginTop: 4 }}>AXIS</div>
+                <div style={{ fontSize: 8, fontWeight: 800, color: C.muted2, marginTop: 4 }}>{language === 'ru' ? 'ОСЬ' : 'AXIS'}</div>
               </div>
             </div>
 
@@ -115,7 +116,7 @@ function CataractPlanTab() {
             <div style={{ padding: '14px', background: `${C.indigo}08`, borderRadius: 16, border: `1px solid ${C.indigo}20`, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
               <div>
                 <div style={{ fontSize: 8, fontWeight: 900, color: C.indigo, textTransform: 'uppercase', marginBottom: 2 }}>
-                  {selectedToricModel || 'Selected Toric Cyl'}
+                  {selectedToricModel || (language === 'ru' ? 'Выбранная модель' : 'Selected Toric Cyl')}
                 </div>
                 {(() => {
                   const residual = toricRow?.residual ?? toricRow?.res_cyl;
@@ -123,7 +124,7 @@ function CataractPlanTab() {
                   const resOk = parseFloat(String(residual)) < 0.5;
                   return (
                     <div style={{ fontSize: 8, fontWeight: 800, color: resOk ? C.green : C.amber, marginTop: 2 }}>
-                      Residual {parseFloat(String(residual)).toFixed(2)} D
+                      {language === 'ru' ? 'Ост. Аст' : 'Residual'} {parseFloat(String(residual)).toFixed(2)} D
                     </div>
                   );
                 })()}
@@ -144,11 +145,11 @@ function CataractPlanTab() {
 
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 20 }}>
             <div style={{ flex: 1 }}>
-              <div style={{ fontFamily: F.sans, fontSize: 8, fontWeight: 900, color: C.muted2, textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 6 }}>SELECTED MODEL</div>
+              <div style={{ fontFamily: F.sans, fontSize: 8, fontWeight: 900, color: C.muted2, textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 6 }}>{language === 'ru' ? 'ВЫБРАННАЯ МОДЕЛЬ' : 'SELECTED MODEL'}</div>
               <div style={{ fontFamily: F.sans, fontSize: 20, fontWeight: 900, color: C.text, lineHeight: 1.2 }}>{String(selectedLens).replace('Toric', '').trim()}</div>
             </div>
             <div style={{ textAlign: 'right', marginLeft: 12 }}>
-              <div style={{ fontFamily: F.sans, fontSize: 8, fontWeight: 900, color: ec.color, textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 6 }}>POWER</div>
+              <div style={{ fontFamily: F.sans, fontSize: 8, fontWeight: 900, color: ec.color, textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 6 }}>{language === 'ru' ? 'СИЛА ИОЛ' : 'POWER'}</div>
               <div style={{ fontFamily: F.mono, fontSize: 36, fontWeight: 900, color: ec.color }}>
                 {parseFloat(String(selectedPower || '0')).toFixed(2)}
               </div>
@@ -163,14 +164,23 @@ function CataractPlanTab() {
               const match = fResults.find((x: any) => Math.abs(x.power - pVal) < 0.01);
               const predVal = activeResult.expectedRefr ?? match?.refraction ?? match?.ref;
               
+              const residual = toricRow?.residual ?? toricRow?.res_cyl;
+              let displayVal = predVal != null ? (predVal > 0 ? '+' : '') + parseFloat(String(predVal)).toFixed(2) : '—';
+              
+              if (isToric && residual != null && predVal != null) {
+                const finalVal = parseFloat(String(predVal)) - Math.abs(parseFloat(String(residual))) / 2;
+                const axis = toricRow?.res_axis || iolAx;
+                displayVal = `${(finalVal > 0 ? '+' : '') + finalVal.toFixed(2)} @ ${axis}°`;
+              }
+
               return [
-                { label: 'TARGET', val: draft.targetRefr || '0.00', color: ec.color },
-                { label: 'FORMULA', val: activeFormula.toUpperCase(), color: C.indigo },
-                { label: 'PRED. REF', val: predVal != null ? (predVal > 0 ? '+' : '') + parseFloat(String(predVal)).toFixed(2) : '—', color: C.green },
+                { label: language === 'ru' ? 'ЦЕЛЬ' : 'TARGET', val: draft.targetRefr || '0.00', color: ec.color },
+                { label: language === 'ru' ? 'ФОРМУЛА' : 'FORMULA', val: activeFormula.toUpperCase(), color: C.indigo },
+                { label: language === 'ru' ? 'ПРОГНОЗ' : 'PRED. REF', val: displayVal, color: C.green },
               ].map(l => (
                 <div key={l.label} style={{ background: 'rgba(255,255,255,0.02)', borderRadius: 12, padding: '10px 4px', border: `1px solid ${C.border}40`, textAlign: 'center' }}>
                   <div style={{ fontSize: 7, fontWeight: 900, color: C.muted3, textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 4 }}>{l.label}</div>
-                  <div style={{ fontFamily: F.mono, fontSize: 13, fontWeight: 800, color: l.color }}>{l.val}</div>
+                  <div style={{ fontFamily: F.mono, fontSize: l.val.includes('@') ? 10.5 : 13, fontWeight: 800, color: l.color }}>{l.val}</div>
                 </div>
               ));
             })()}
@@ -189,7 +199,7 @@ function RefractionPlanTab() {
   try {
     const { draft, setDraft, refPlan, setPlanField, planTweaked, isRounding, toggleRounding } = useSessionStore();
     const { planEye, editingField, setEditingField, tempValue, setTempValue } = useUIStore();
-    const { activeRefNomo, activeRefNomoCyl, defaultFlap } = useClinicStore();
+    const { activeRefNomo, activeRefNomoCyl, defaultFlap, language } = useClinicStore();
     const { haptic } = useTelegram();
     
     const inputRef = useRef<HTMLInputElement>(null);
@@ -197,7 +207,8 @@ function RefractionPlanTab() {
     useEffect(() => {
       if (editingField && inputRef.current) {
         inputRef.current.focus();
-        inputRef.current.select();
+        const val = String(useUIStore.getState().tempValue || '');
+        inputRef.current.setSelectionRange(val.length, val.length);
       }
     }, [editingField]);
 
@@ -219,7 +230,12 @@ function RefractionPlanTab() {
     }, [planEye, editingField, tempValue, setPlanField, setEditingField]);
 
     const handleStartEdit = (field: string, val: any) => {
-      setTempValue(String(val || ''));
+      let str = String(val || '');
+      const isRefr = field === 'sph' || field === 'cyl';
+      if (isRefr && (!str || str === '0' || str === '0.00' || str === '—')) {
+        str = '-';
+      }
+      setTempValue(str);
       setEditingField(field);
     };
 
@@ -354,7 +370,7 @@ function RefractionPlanTab() {
 
     return (
       <div style={{ display: 'flex', flexDirection: 'column', gap: 2, paddingBottom: 10 }}>
-        <SectionHeader title="Diagnostics" />
+        <SectionHeader title={language === 'ru' ? 'Диагностика' : 'Diagnostics'} />
         <div style={{ background: C.card, borderRadius: 24, padding: '10px 12px', border: `1px solid ${C.border}`, boxShadow: '0 8px 30px rgba(0,0,0,0.12)', display: 'flex', alignItems: 'center', gap: 12 }}>
           <div style={{ flex: 1 }}>
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', paddingBottom: 6, borderBottom: `1px solid ${C.border}20`, marginBottom: 8 }}>
@@ -373,7 +389,7 @@ function RefractionPlanTab() {
                 const ax = hasP ? data.p_tot_a : (data.k1_ax || data.k_ax || '0');
                 return (
                   <div style={{ display: 'grid', gridTemplateColumns: '70px 1fr 1fr 1fr', gap: 8, alignItems: 'center' }}>
-                    <span style={{ fontSize: 9, fontWeight: 900, color: C.amber, textTransform: 'uppercase' }}>{hasP ? 'PENTA' : 'KERAT'}</span>
+                    <span style={{ fontSize: 9, fontWeight: 900, color: C.amber, textTransform: 'uppercase' }}>{hasP ? 'PENTA' : (language === 'ru' ? 'КЕРАТО' : 'KERAT')}</span>
                     <div style={{ textAlign: 'center', fontFamily: F.mono, fontSize: 13, fontWeight: 800, color: C.amber }}>{kavg || '—'}</div>
                     <div style={{ textAlign: 'center', fontFamily: F.mono, fontSize: 13, fontWeight: 800, color: C.amber }}>{cyl}</div>
                     <div style={{ textAlign: 'center', fontFamily: F.mono, fontSize: 13, fontWeight: 800, color: C.amber }}>{ax}°</div>
@@ -382,14 +398,14 @@ function RefractionPlanTab() {
               })()}
 
               <div style={{ display: 'grid', gridTemplateColumns: '70px 1fr 1fr 1fr', gap: 8, alignItems: 'center' }}>
-                <span style={{ fontSize: 9, fontWeight: 900, color: C.slate, textTransform: 'uppercase' }}>NARROW</span>
+                <span style={{ fontSize: 9, fontWeight: 900, color: C.slate, textTransform: 'uppercase' }}>{language === 'ru' ? 'УЗКИЙ' : 'NARROW'}</span>
                 <div style={{ textAlign: 'center', fontFamily: F.mono, fontSize: 13, fontWeight: 700, color: C.slate }}>{fmt(data.n_sph)}</div>
                 <div style={{ textAlign: 'center', fontFamily: F.mono, fontSize: 13, fontWeight: 700, color: C.slate }}>{fmt(data.n_cyl)}</div>
                 <div style={{ textAlign: 'center', fontFamily: F.mono, fontSize: 13, fontWeight: 700, color: C.slate }}>{data.n_ax || '0'}°</div>
               </div>
 
               <div style={{ display: 'grid', gridTemplateColumns: '70px 1fr 1fr 1fr', gap: 8, alignItems: 'center' }}>
-                <span style={{ fontSize: 9, fontWeight: 900, color: C.muted2, textTransform: 'uppercase' }}>WIDE</span>
+                <span style={{ fontSize: 9, fontWeight: 900, color: C.muted2, textTransform: 'uppercase' }}>{language === 'ru' ? 'ШИРОКИЙ' : 'WIDE'}</span>
                 <div style={{ textAlign: 'center', fontFamily: F.mono, fontSize: 13, color: C.muted2 }}>{fmt(data.c_sph)}</div>
                 <div style={{ textAlign: 'center', fontFamily: F.mono, fontSize: 13, color: C.muted2 }}>{fmt(data.c_cyl)}</div>
                 <div style={{ textAlign: 'center', fontFamily: F.mono, fontSize: 13, color: C.muted2 }}>{data.c_ax || '0'}°</div>
@@ -403,25 +419,36 @@ function RefractionPlanTab() {
                 const k2 = parseFloat(data.k2 || '0');
                 const cylVal = data.p_tot_c ? Math.abs(parseFloat(data.p_tot_c)) : (k1 && k2 ? Math.abs(k1 - k2) : 0);
                 const steep = (kAx + 90) % 180;
-                let type = 'Oblique';
-                if ((steep >= 0 && steep <= 30) || (steep >= 150 && steep <= 180)) type = 'ATR';
-                else if (steep >= 60 && steep <= 120) type = 'WTR';
+                let type = language === 'ru' ? 'Косой' : 'Oblique';
+                if ((steep >= 0 && steep <= 30) || (steep >= 150 && steep <= 180)) type = language === 'ru' ? 'Обратный' : 'ATR';
+                else if (steep >= 60 && steep <= 120) type = language === 'ru' ? 'Прямой' : 'WTR';
                 
                 return (
                   <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 6, flexShrink: 0, marginTop: 0 }}>
+                    <div style={{ textAlign: 'center', lineHeight: 1, marginBottom: -2 }}>
+                      <div style={{ fontSize: 6, fontWeight: 900, color: C.muted3, textTransform: 'uppercase' }}>
+                        {language === 'ru' ? 'Ось' : 'Astig.'}
+                      </div>
+                      <div style={{ fontSize: 6, fontWeight: 900, color: C.muted3, textTransform: 'uppercase' }}>
+                        {language === 'ru' ? 'астигм. (крутой)' : 'Axis'}
+                      </div>
+                    </div>
                     <div style={{ width: 44, height: 44, borderRadius: '50%', background: C.surface, display: 'flex', alignItems: 'center', justifyContent: 'center', border: `1px solid ${C.border}`, flexShrink: 0 }}>
                       <AxisDial axis={safeAx(data.man_ax)} kAxis={safeAx(data.p_tot_a || data.k1_ax || data.k_ax)} size={36} color={ec.color} tickWidth={1.5} />
                     </div>
                     <div style={{ textAlign: 'center', lineHeight: 1.2 }}>
                       <div style={{ fontSize: 9, fontWeight: 900, color: C.text, textTransform: 'uppercase' }}>{type}</div>
                       <div style={{ fontSize: 9, fontWeight: 800, color: C.amber, fontFamily: F.mono }}>{cylVal.toFixed(2)}D</div>
+                      <div style={{ fontSize: 8, fontWeight: 800, color: C.muted2, fontFamily: F.mono, opacity: 0.8 }}>
+                        {language === 'ru' ? 'ось' : 'ax'} {steep}°
+                      </div>
                     </div>
                   </div>
                 );
               })()}
         </div>
 
-        <SectionHeader title="Laser Parameters" />
+        <SectionHeader title={language === 'ru' ? 'Параметры лазера' : 'Laser Parameters'} />
         <div style={{ background: C.card, borderRadius: 24, padding: '8px 10px', border: `1px solid ${C.border}` }}>
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 12, marginBottom: 8 }}>
               <div style={{ display: 'flex', gap: 4, background: C.surface, padding: 2, borderRadius: 10 }}>
@@ -446,17 +473,42 @@ function RefractionPlanTab() {
               </button>
             </div>
 
+            {/* STRATEGY DESCRIPTION */}
+            <div style={{ padding: '0 4px 10px', minHeight: 34, display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
+              {(() => {
+                const s = (data as any)?.astigStrategy || (draft as any)?.astigStrategy || 'manifest';
+                const descMap: any = {
+                  manifest: language === 'ru' ? 'Номограммы по манифестной рефракции' : 'Manifest refraction nomograms',
+                  corneal: language === 'ru' ? 'Устранение топографических неровностей (Corneal)' : 'Ablation based on corneal topography',
+                  vector: language === 'ru' ? 'Совокупность векторных осей: манифест, кератометрия, узкий/широкий зрачок' : 'Vector analysis: manifest, keratometry, AR data',
+                  wavefront: language === 'ru' ? 'Ручной ввод данных аберрометра (Wavefront-guided)' : 'Manual entry of wavefront-guided data'
+                };
+                return (
+                  <>
+                    <div style={{ fontSize: 8, fontWeight: 800, color: C.indigo, opacity: 0.8, textAlign: 'center', textTransform: 'uppercase', letterSpacing: '0.04em', lineHeight: 1.3 }}>
+                      {descMap[s]}
+                    </div>
+                    {isRounding && (
+                      <div style={{ fontSize: 8, fontWeight: 800, color: C.green, opacity: 0.9, textAlign: 'center', marginTop: 2, textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+                        {language === 'ru' ? '• Округлять до 0.25 диоптрий •' : '• Rounding to 0.25 diopters •'}
+                      </div>
+                    )}
+                  </>
+                );
+              })()}
+            </div>
+
             <div style={{ display: 'flex', gap: 8 }}>
               {[
                 { label: 'SPH', field: 'sph', step: 0.25, val: plan.sph, color: ec.color, fmt: (v:any)=> (v>0?'+':'')+v.toFixed(2) },
                 { label: 'CYL', field: 'cyl', step: 0.25, val: plan.cyl, color: ec.color, fmt: (v:any)=> v.toFixed(2) },
-                { label: 'AXIS', field: 'ax', step: 5,    val: plan.ax, color: ec.color, fmt: (v:any)=> (v||0)+'°' },
+                { label: 'AXIS', field: 'ax', step: 1,    val: plan.ax, color: ec.color, fmt: (v:any)=> (v||0)+'°' },
               ].map((f:any) => (
-                <div key={f.label} style={{ flex: 1, background: C.surface, borderRadius: 16, padding: '10px 4px', border: `1px solid ${C.border}`, textAlign: 'center', position: 'relative' }}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '0 8px 6px', borderBottom: `1px solid ${C.border}40`, marginBottom: 10 }}>
-                    <AutoRepeatButton onTrigger={() => updatePower(f.field, false, f.step)} style={{ background: 'none', border: 'none', color: C.muted3, fontSize: 20 }}>−</AutoRepeatButton>
+                <div key={f.label} style={{ flex: 1, background: C.surface, borderRadius: 16, padding: '8px 4px', border: `1px solid ${C.border}`, textAlign: 'center', position: 'relative' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '0 4px 4px', borderBottom: `1px solid ${C.border}40`, marginBottom: 8 }}>
+                    <AutoRepeatButton onTrigger={() => updatePower(f.field, false, f.step)} style={{ background: 'none', border: 'none', color: C.muted3, fontSize: 20, padding: '10px 14px', margin: '-10px -14px' }}>−</AutoRepeatButton>
                     <div style={{ fontSize: 7, fontWeight: 900, color: C.muted2, textTransform: 'uppercase' }}>{f.label}</div>
-                    <AutoRepeatButton onTrigger={() => updatePower(f.field, true, f.step)} style={{ background: 'none', border: 'none', color: C.muted3, fontSize: 20 }}>+</AutoRepeatButton>
+                    <AutoRepeatButton onTrigger={() => updatePower(f.field, true, f.step)} style={{ background: 'none', border: 'none', color: C.muted3, fontSize: 20, padding: '10px 14px', margin: '-10px -14px' }}>+</AutoRepeatButton>
                   </div>
                   <div onClick={() => handleStartEdit(f.field, f.val)} style={{ fontSize: 22, fontWeight: 900, color: `${f.color} !important`, fontFamily: F.mono, lineHeight: 1 }}>
                     {editingField === f.field ? (
@@ -483,13 +535,13 @@ function RefractionPlanTab() {
               ))}
             </div>
 
-            <div style={{ display: 'flex', justifyContent: 'center', marginTop: 12 }}>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 6, width: '60%' }}>
-                <span style={{ fontSize: 8, fontWeight: 900, color: C.muted2, textTransform: 'uppercase', textAlign: 'center' }}>Opt Zone (6.0 - 7.0)</span>
-                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: C.surface, borderRadius: 14, padding: '6px 12px', border: `1px solid ${C.border}` }}>
-                  <AutoRepeatButton onTrigger={() => updatePower('oz', false, 0.1)} style={{ background: 'none', border: 'none', color: C.muted3, fontSize: 24 }}>−</AutoRepeatButton>
+            <div style={{ display: 'flex', justifyContent: 'center', marginTop: 10 }}>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 4, width: '60%' }}>
+                <span style={{ fontSize: 8, fontWeight: 900, color: C.muted2, textTransform: 'uppercase', textAlign: 'center' }}>{language === 'ru' ? 'Зона абляции (6.0 - 7.0)' : 'Opt Zone (6.0 - 7.0)'}</span>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: C.surface, borderRadius: 14, padding: '4px 12px', border: `1px solid ${C.border}` }}>
+                  <AutoRepeatButton onTrigger={() => updatePower('oz', false, 0.1)} style={{ background: 'none', border: 'none', color: C.muted3, fontSize: 24, padding: '10px 20px', margin: '-10px -20px' }}>−</AutoRepeatButton>
                   <span style={{ fontFamily: F.mono, fontSize: 16, fontWeight: 900, color: ec.color }}>{plan.oz.toFixed(1)}</span>
-                  <AutoRepeatButton onTrigger={() => updatePower('oz', true, 0.1)} style={{ background: 'none', border: 'none', color: C.muted3, fontSize: 24 }}>+</AutoRepeatButton>
+                  <AutoRepeatButton onTrigger={() => updatePower('oz', true, 0.1)} style={{ background: 'none', border: 'none', color: C.muted3, fontSize: 24, padding: '10px 20px', margin: '-10px -20px' }}>+</AutoRepeatButton>
                 </div>
               </div>
             </div>
@@ -514,23 +566,35 @@ function RefractionPlanTab() {
         })()}
 
         <div style={{ marginTop: 12 }}>
-          <SectionHeader title="Surgical Method" />
+          <SectionHeader title={language === 'ru' ? 'Метод коррекции' : 'Surgical Method'} />
           <div style={{ display: 'flex', gap: 10, background: C.card, borderRadius: 24, padding: '12px', border: `1px solid ${C.border}`, boxShadow: '0 8px 30px rgba(0,0,0,0.12)' }}>
             <button 
               onClick={() => { haptic.selection(); setPlanField(planEye, 'flap', 110); }} 
-              style={{ flex: 1, padding: '12px 0', borderRadius: 16, border: `1px solid ${!isPRK ? C.indigo : C.border}40`, background: !isPRK ? `${C.indigo}15` : C.surface, color: !isPRK ? C.indigo : C.text, fontSize: 13, fontWeight: 900, cursor: 'pointer', transition: 'all 0.2s' }}
+              style={{ 
+                flex: 1, padding: '12px 0', borderRadius: 16, 
+                border: `2px solid ${!isPRK ? C.indigo : 'transparent'}`, 
+                background: !isPRK ? `${C.indigo}15` : C.surface, 
+                color: !isPRK ? C.text : C.muted2, 
+                fontSize: 13, fontWeight: 900, cursor: 'pointer', transition: 'all 0.2s' 
+              }}
             >LASIK</button>
             <button 
               onClick={() => { haptic.selection(); setPlanField(planEye, 'flap', 0); }} 
-              style={{ flex: 1, padding: '12px 0', borderRadius: 16, border: `1px solid ${isPRK ? C.indigo : C.border}40`, background: isPRK ? `${C.indigo}15` : C.surface, color: isPRK ? C.indigo : C.text, fontSize: 13, fontWeight: 900, cursor: 'pointer', transition: 'all 0.2s' }}
+              style={{ 
+                flex: 1, padding: '12px 0', borderRadius: 16, 
+                border: `2px solid ${isPRK ? C.indigo : 'transparent'}`, 
+                background: isPRK ? `${C.indigo}15` : C.surface, 
+                color: isPRK ? C.text : C.muted2, 
+                fontSize: 13, fontWeight: 900, cursor: 'pointer', transition: 'all 0.2s' 
+              }}
             >PRK</button>
           </div>
         </div>
 
         {!isPRK && (
-          <div style={{ marginTop: 6 }}>
-            <SectionHeader title="Flap Parameters" />
-            <div style={{ background: C.card, borderRadius: 24, padding: '12px 16px', border: `1px solid ${C.border}`, boxShadow: '0 8px 30px rgba(0,0,0,0.12)' }}>
+          <div style={{ marginTop: 24 }}>
+            <SectionHeader title={language === 'ru' ? 'Профиль абляции · Безопасность' : 'Ablation Profile · Safety'} />
+            <div style={{ background: C.card, borderRadius: 24, padding: '16px 20px', border: `1px solid ${C.border}`, display: 'flex', flexDirection: 'column', gap: 12 }}>
               <div style={{ display: 'flex', gap: 16 }}>
                 <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 6 }}>
                   <span style={{ fontSize: 8, fontWeight: 900, color: C.muted2, textTransform: 'uppercase', textAlign: 'center' }}>{language === 'ru' ? 'Диаметр' : 'Diameter'}</span>
@@ -549,7 +613,9 @@ function RefractionPlanTab() {
                   </div>
                 </div>
                 <div style={{ flex: 1.2, display: 'flex', flexDirection: 'column', gap: 6 }}>
-                  <span style={{ fontSize: 8, fontWeight: 900, color: C.muted2, textTransform: 'uppercase', textAlign: 'center' }}>Depth</span>
+                  <span style={{ fontSize: 8, fontWeight: 900, color: C.muted2, textTransform: 'uppercase', textAlign: 'center' }}>
+                    {language === 'ru' ? 'Глубина' : 'Depth'}
+                  </span>
                   <div style={{ display: 'flex', gap: 4, background: C.surface, padding: 2, borderRadius: 14, border: `1px solid ${C.border}` }}>
                     {['90', '100', '110'].map(d => {
                       const eyeDepth = planEye === 'os'
@@ -592,7 +658,7 @@ export function PlanTab({ onSave, isSaving }: { onSave?: () => void, isSaving?: 
   try {
     const { draft, setDraft, toggleSurgicalEye } = useSessionStore();
     const { planEye, setPlanEye } = useUIStore();
-    const { language } = useClinicStore();
+    const { defaultFlap, language } = useClinicStore();
     const { haptic } = useTelegram();
     const [showCalendar, setShowCalendar] = useState(false);
     
@@ -625,7 +691,7 @@ export function PlanTab({ onSave, isSaving }: { onSave?: () => void, isSaving?: 
         <div style={{ paddingBottom: 10 }}>
           <button onClick={() => { haptic.light(); setShowCalendar(!showCalendar); }} style={{ width: '100%', background: draft.date ? `${C.green}15` : C.accentLt, border: `1px solid ${draft.date ? C.green : C.accent}40`, borderRadius: 20, padding: '12px 16px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 10, color: draft.date ? C.green : C.accent, fontFamily: F.sans, fontSize: 12, fontWeight: 900, cursor: 'pointer' }}>
             <svg width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2.5"><path d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2-2v12a2 2 0 002 2z" /></svg>
-            {draft.date ? `SURGERY: ${dateStr}` : 'SCHEDULE SURGERY'}
+            {draft.date ? (language === 'ru' ? `ОПЕРАЦИЯ: ${dateStr}` : `SURGERY: ${dateStr}`) : (language === 'ru' ? 'НАЗНАЧИТЬ ОПЕРАЦИЮ' : 'SCHEDULE SURGERY')}
           </button>
           {showCalendar && <Calendar selectedDate={draft.date || null} onSelect={iso => { haptic.success(); setDraft({ date: iso, status: 'planned', isEnhancement: false }); setShowCalendar(false); }} />}
         </div>
@@ -655,7 +721,7 @@ export function PlanTab({ onSave, isSaving }: { onSave?: () => void, isSaving?: 
                   <svg width="20" height="20" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2.5">
                     <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
                   </svg>
-                  <span>SAVE PATIENT</span>
+                  <span>{language === 'ru' ? 'СОХРАНИТЬ' : 'SAVE PATIENT'}</span>
                 </>
               )}
             </button>

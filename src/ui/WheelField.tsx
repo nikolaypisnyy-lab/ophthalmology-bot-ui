@@ -88,7 +88,7 @@ export function WheelField({
             flex: mini ? 1 : undefined,
             background: C.surface,
             border: `1px solid ${isEditing ? (accentColor || C.indigo) : C.border}`,
-            borderRadius: R.md,
+            borderRadius: R.xxl,
             padding: mini ? '6px 4px' : '10px 6px',
             transition: 'all 0.2s',
           }}

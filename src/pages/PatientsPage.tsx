@@ -10,7 +10,7 @@ import type { PatientSummary } from '../types/patient';
 import { newEyeData } from '../types/refraction';
 import { newBiometryData } from '../types/iol';
 import { useClinicStore } from '../store/useClinicStore';
-import { T } from '../constants/translations';
+import { T, getAgeSuffix } from '../constants/translations';
 
 function PatientCard({
   patient,
@@ -50,15 +50,18 @@ function PatientCard({
   };
 
   return (
-    <div style={{ position: 'relative', borderRadius: 14, background: C.red, overflow: 'hidden' }}>
+    <div style={{ position: 'relative', borderRadius: 14, overflow: 'hidden' }}>
       {/* Delete Background */}
       <div 
         onClick={(e) => { e.stopPropagation(); haptic.medium(); onDelete(String(patient.id)); }}
         style={{
-          position: 'absolute', top: 0, bottom: 0, right: 0, width: 80,
+          position: 'absolute', top: 2, bottom: 2, right: 2, width: 100,
+          background: C.red,
+          borderRadius: 12,
           display: 'flex', alignItems: 'center', justifyContent: 'center',
           color: '#fff', fontFamily: F.sans, fontSize: 13, fontWeight: 700,
-          cursor: 'pointer'
+          cursor: 'pointer',
+          paddingLeft: 20
         }}
       >
         {t.delete}
@@ -100,21 +103,22 @@ function PatientCard({
               overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' 
             }}>{patient.name}</span>
             <span style={{
-              fontFamily: F.mono, fontSize: 9, fontWeight: 900, padding: '1px 6px', borderRadius: 4,
+              fontFamily: F.mono, fontSize: 11, fontWeight: 900, padding: '1px 5px', borderRadius: 4,
               background: (patient.sex?.startsWith('Ж') || patient.sex?.toUpperCase().startsWith('F')) ? '#f472b615' : 
                           (patient.sex?.startsWith('М') || patient.sex?.toUpperCase().startsWith('M')) ? `${C.od}15` : C.surface,
               color: (patient.sex?.startsWith('Ж') || patient.sex?.toUpperCase().startsWith('F')) ? '#f472b6' : 
                      (patient.sex?.startsWith('М') || patient.sex?.toUpperCase().startsWith('M')) ? C.od : C.muted2,
               border: `1px solid ${(patient.sex?.startsWith('Ж') || patient.sex?.toUpperCase().startsWith('F')) ? '#f472b630' : 
                           (patient.sex?.startsWith('М') || patient.sex?.toUpperCase().startsWith('M')) ? `${C.od}30` : C.border}`,
-              flexShrink: 0
-            }}>{(patient.sex?.startsWith('Ж') || patient.sex?.toUpperCase().startsWith('F') || patient.sex?.toUpperCase().startsWith('Ж')) ? 'F' : 
-                (patient.sex?.startsWith('М') || patient.sex?.toUpperCase().startsWith('M') || patient.sex?.toUpperCase().startsWith('М')) ? 'M' : 'P'}</span>
+              flexShrink: 0,
+              lineHeight: 1
+            }}>{(patient.sex?.startsWith('Ж') || patient.sex?.toUpperCase().startsWith('F') || patient.sex?.toUpperCase().startsWith('Ж')) ? '♀' : 
+                (patient.sex?.startsWith('М') || patient.sex?.toUpperCase().startsWith('M') || patient.sex?.toUpperCase().startsWith('М')) ? '♂' : 'P'}</span>
           </div>
           <div style={{ fontFamily: F.mono, fontSize: 10, color: C.muted2, marginTop: 3, display: 'flex', gap: 6, alignItems: 'center' }}>
             <span style={{ opacity: 0.6 }}>ID {patient.id}</span>
             <span style={{ width: 2, height: 2, borderRadius: '50%', background: C.border2 }} />
-            <span>{patient.age || '—'}{t.years}</span>
+            <span>{patient.age || '—'}{getAgeSuffix(patient.age, language)}</span>
             <span style={{ width: 2, height: 2, borderRadius: '50%', background: C.border2 }} />
             <span style={{ color: ec.color, fontWeight: 800 }}>{patient.eye}</span>
           </div>
@@ -124,11 +128,15 @@ function PatientCard({
           <div style={{
             background: tc.bg, color: tc.color, fontFamily: F.mono, fontSize: 9, fontWeight: 700,
             padding: '2px 8px', borderRadius: 6, textTransform: 'uppercase', border: `1px solid ${tc.color}40`,
-          }}>{patient.type === 'cataract' ? 'Cataract' : 'Refraction'}</div>
+          }}>{patient.type === 'cataract' ? t.cataract : t.refraction}</div>
           {patient.status === 'done' && (
             <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
                <div style={{ width: 5, height: 5, borderRadius: '50%', background: C.green, boxShadow: `0 0 6px ${C.green}` }} />
-               <span style={{ fontFamily: F.mono, fontSize: 9, color: C.green, fontWeight: 700, opacity: 0.8 }}>{t.operated}</span>
+               <span style={{ fontFamily: F.mono, fontSize: 9, color: C.green, fontWeight: 700, opacity: 0.8 }}>
+                 {language === 'ru' 
+                   ? ((patient.sex?.startsWith('Ж') || patient.sex?.toUpperCase().startsWith('F')) ? 'Оперирована' : 'Оперирован')
+                   : t.operated}
+               </span>
             </div>
           )}
         </div>

@@ -3,11 +3,14 @@ import { C, F } from '../../constants/design';
 import { useUIStore } from '../../store/useUIStore';
 import { useClinicStore } from '../../store/useClinicStore';
 import { API_BASE, TELEGRAM_ID, apiPost } from '../../api/client';
+import { useTelegram } from '../../hooks/useTelegram';
 import { LASERS } from '../../constants/lasers';
 import { T } from '../../constants/translations';
+import { ManualModal } from './ManualModal';
 
 export function SettingsModal() {
-  const { settingsOpen, closeSettings } = useUIStore();
+  const { haptic } = useTelegram();
+  const { settingsOpen, closeSettings, openManual } = useUIStore();
   const { 
     clinics, activeClinicId, activeName, activeLaser, switchClinic, setActiveLaser, 
     language, setLanguage, theme, setTheme, defaultFlap, setDefaultFlap,
@@ -20,10 +23,10 @@ export function SettingsModal() {
 
   const handleSwitchClinic = (id: string) => {
     if (id === activeClinicId) return;
-    switchClinic(id); // внутри уже вызывает window.location.reload()
+    switchClinic(id); 
   };
 
-  if (!settingsOpen) return null;
+  // if (!settingsOpen) return null; // Убираем внутреннюю проверку
 
   const handleExportTelegram = async () => {
     try {
@@ -91,12 +94,14 @@ export function SettingsModal() {
   };
 
   const OverlayStyles: React.CSSProperties = {
-    position: 'absolute', inset: 0, zIndex: 1000,
+    position: 'fixed', inset: 0, zIndex: 4000,
     background: 'rgba(5, 5, 10, 0.85)',
     backdropFilter: 'blur(12px)',
+    WebkitBackdropFilter: 'blur(12px)',
     display: 'flex', flexDirection: 'column',
-    animation: 'fadeIn 0.28s ease'
   };
+
+  if (!settingsOpen) return null;
 
   return (
     <div style={OverlayStyles} onClick={closeSettings}>
@@ -107,9 +112,10 @@ export function SettingsModal() {
           borderTopLeftRadius: 24, borderTopRightRadius: 24,
           padding: '24px 20px 48px',
           boxShadow: '0 -10px 40px rgba(0,0,0,0.5)',
-          animation: 'slideUp 0.3s cubic-bezier(0.16, 1, 0.3, 1)',
           maxHeight: '90vh', overflowY: 'auto',
           WebkitOverflowScrolling: 'touch',
+          position: 'relative', zIndex: 4100,
+          animation: 'slideUp 0.3s cubic-bezier(0.16, 1, 0.3, 1)',
         }}
         onClick={e => e.stopPropagation()}
       >
@@ -126,7 +132,6 @@ export function SettingsModal() {
           >✕</button>
         </div>
 
-        {/* Текущая клиника */}
         <div style={{
           display: 'flex', alignItems: 'center', gap: 12,
           background: `linear-gradient(135deg, ${C.accentLt}, rgba(91,79,212,0.08))`,
@@ -154,7 +159,6 @@ export function SettingsModal() {
           </div>
         </div>
 
-        {/* Сообщение */}
         {msg && (
           <div style={{
             padding: '12px 16px', borderRadius: 12, marginBottom: 20,
@@ -215,7 +219,6 @@ export function SettingsModal() {
             {t.uploadDb}
           </label>
 
-          {/* Переключатель клиник */}
           {clinics.length > 1 && (
             <div style={{ marginTop: 8 }}>
               <div style={{ paddingBottom: 8, borderBottom: `1px solid ${C.border}`, marginBottom: 8 }}>
@@ -251,7 +254,6 @@ export function SettingsModal() {
             </div>
           )}
 
-          {/* Тема */}
           <div style={{ marginTop: 8 }}>
             <div style={{ paddingBottom: 8, borderBottom: `1px solid ${C.border}`, marginBottom: 8 }}>
               <span style={{ fontSize: 11, fontWeight: 800, color: C.muted, textTransform: 'uppercase', letterSpacing: '.05em' }}>
@@ -283,7 +285,6 @@ export function SettingsModal() {
             </div>
           </div>
 
-          {/* Флеп по умолчанию */}
           <div style={{ marginTop: 8 }}>
             <div style={{ paddingBottom: 8, borderBottom: `1px solid ${C.border}`, marginBottom: 8 }}>
               <span style={{ fontSize: 11, fontWeight: 800, color: C.muted, textTransform: 'uppercase', letterSpacing: '.05em' }}>
@@ -313,7 +314,6 @@ export function SettingsModal() {
             </div>
           </div>
 
-          {/* Номограмма */}
           <div style={{ marginTop: 8 }}>
             <div style={{ paddingBottom: 8, borderBottom: `1px solid ${C.border}`, marginBottom: 8 }}>
               <span style={{ fontSize: 11, fontWeight: 800, color: C.muted, textTransform: 'uppercase', letterSpacing: '.05em' }}>
@@ -322,7 +322,6 @@ export function SettingsModal() {
             </div>
             
             <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-              {/* Sphere Offset */}
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '8px 12px', background: C.surface2, borderRadius: 12, border: `1px solid ${C.border}` }}>
                 <div style={{ flex: 1 }}>
                   <div style={{ fontSize: 8, fontWeight: 900, color: C.muted2, textTransform: 'uppercase', marginBottom: 2 }}>{t.sphereSE}</div>
@@ -347,7 +346,6 @@ export function SettingsModal() {
                 </div>
               </div>
 
-              {/* Cylinder Offset */}
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '8px 12px', background: C.surface2, borderRadius: 12, border: `1px solid ${C.border}` }}>
                 <div style={{ flex: 1 }}>
                   <div style={{ fontSize: 8, fontWeight: 900, color: C.muted2, textTransform: 'uppercase', marginBottom: 2 }}>{t.cylinder}</div>
@@ -372,7 +370,6 @@ export function SettingsModal() {
                 </div>
               </div>
 
-              {/* Reset Dismissal */}
               {nomoDismissed && (
                 <button 
                   onClick={() => {
@@ -389,7 +386,6 @@ export function SettingsModal() {
             </div>
           </div>
 
-          {/* Язык */}
           <div style={{ marginTop: 8 }}>
             <div style={{ paddingBottom: 8, borderBottom: `1px solid ${C.border}`, marginBottom: 8 }}>
               <span style={{ fontSize: 11, fontWeight: 800, color: C.muted, textTransform: 'uppercase', letterSpacing: '.05em' }}>{t.language}</span>
@@ -417,7 +413,6 @@ export function SettingsModal() {
             </div>
           </div>
 
-          {/* Настройки лазера */}
           {activeClinicId && (
             <div style={{ marginTop: 12 }}>
               <div style={{ paddingBottom: 8, borderBottom: `1px solid ${C.border}`, marginBottom: 8 }}>
@@ -446,6 +441,23 @@ export function SettingsModal() {
               </div>
             </div>
           )}
+
+          {/* Help & Manual */}
+          <div style={{ marginTop: 12 }}>
+            <button 
+              onClick={() => { haptic.light(); openManual(); }}
+              style={{
+                width: '100%', padding: '14px', borderRadius: 14, background: `${C.indigo}10`, border: `1px dashed ${C.indigo}40`,
+                color: C.indigo, fontFamily: F.sans, fontSize: 13, fontWeight: 700,
+                display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 10, cursor: 'pointer'
+              }}
+            >
+              <svg width="18" height="18" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2.5">
+                <path d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
+              </svg>
+              {language === 'ru' ? 'Руководство пользователя' : 'User Manual'}
+            </button>
+          </div>
 
           <div style={{ marginTop: 20, textAlign: 'center', color: C.muted, fontSize: 12, fontFamily: F.sans, opacity: 0.6 }}>
             RefMaster Surgical OCR v2.3.1

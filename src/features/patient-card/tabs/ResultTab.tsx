@@ -62,14 +62,21 @@ function ComparisonCard({ draft, odData, osData }: any) {
     return se == null ? '—' : fmtVal(se);
   };
 
+  const getKm = (k1: any, k2: any) => {
+    const v1 = parseFloat(String(k1 ?? ''));
+    const v2 = parseFloat(String(k2 ?? ''));
+    if (isNaN(v1) || isNaN(v2)) return null;
+    return (v1 + v2) / 2;
+  };
+
   const rows: { label: string; od: CompareData; os: CompareData; color?: string }[] = [
     { label: 'Sph', od: { pre: fmt(od.man_sph), plan: fmt(pOD?.sph), fact: fmt(odData.sph) }, os: { pre: fmt(os.man_sph), plan: fmt(pOS?.sph), fact: fmt(osData.sph) } },
     { label: 'Cyl', od: { pre: fmt(od.man_cyl), plan: fmt(pOD?.cyl), fact: fmt(odData.cyl) }, os: { pre: fmt(os.man_cyl), plan: fmt(pOS?.cyl), fact: fmt(osData.cyl) } },
     { label: 'Ax',  od: { pre: fmtA(od.man_ax), plan: fmtA(pOD?.ax), fact: fmtA(odData.ax) }, os: { pre: fmtA(os.man_ax), plan: fmtA(pOS?.ax), fact: fmtA(osData.ax) } },
     { label: 'SE',  od: { pre: fmtSE(od.man_sph, od.man_cyl), plan: fmtSE(pOD?.sph, pOD?.cyl), fact: fmtSE(odData.sph, odData.cyl) }, os: { pre: fmtSE(os.man_sph, os.man_cyl), plan: fmtSE(pOS?.sph, pOS?.cyl), fact: fmtSE(osData.sph, osData.cyl) }, color: C.green },
     { label: 'VA',  od: { pre: fmtV(od.uva), plan: null, fact: fmtV(odData.va) }, os: { pre: fmtV(os.uva), plan: null, fact: fmtV(osData.va) }, color: C.green },
-    { label: 'K1',  od: { pre: fmtK(od.k1), plan: null, fact: fmtK(odData.k1) }, os: { pre: fmtK(os.k1), plan: null, fact: fmtK(osData.k1) }, color: C.amber },
-    { label: 'K2',  od: { pre: fmtK(od.k2), plan: null, fact: fmtK(odData.k2) }, os: { pre: fmtK(os.k2), plan: null, fact: fmtK(osData.k2) }, color: C.amber },
+    { label: 'Km',  od: { pre: fmtK(getKm(od.k1, od.k2)), plan: null, fact: fmtK(getKm(odData.k1, odData.k2)) }, os: { pre: fmtK(getKm(os.k1, os.k2)), plan: null, fact: fmtK(getKm(osData.k1, osData.k2)) }, color: C.amber },
+    { label: 'Kax', od: { pre: fmtA(od.k_ax || od.k1_ax), plan: null, fact: fmtA(odData.k_ax) }, os: { pre: fmtA(os.k_ax || os.k1_ax), plan: null, fact: fmtA(osData.k_ax) }, color: C.amber },
   ];
 
   const grid = '28px 1fr 1fr 1fr 6px 1fr 1fr 1fr';
@@ -283,7 +290,7 @@ export function ResultTab({ onSave, isSaving }: { onSave: () => void; isSaving: 
           return (
             <button key={p} onClick={() => { haptic.selection(); setActivePeriod(p); }}
               style={{ flex: 1, minWidth: 44, padding: '5px 2px', borderRadius: 12, border: `2px solid ${active ? C.indigo : hasData ? `${C.indigo}40` : C.border}`, background: active ? `${C.indigo}15` : 'transparent', color: active ? C.indigo : hasData ? C.text : C.muted3, fontSize: 9.5, fontWeight: 900, cursor: 'pointer', transition: 'all 0.2s', position: 'relative' }}>
-              {PERIOD_LABELS[p]}
+              {language === 'ru' ? p.replace('d','Д').replace('w','Н').replace('m','М').replace('y','Г').toUpperCase() : PERIOD_LABELS[p]}
               {hasData && !active && <span style={{ position: 'absolute', top: 2, right: 3, width: 3.5, height: 3.5, borderRadius: '50%', background: C.indigo }} />}
             </button>
           );
@@ -296,9 +303,35 @@ export function ResultTab({ onSave, isSaving }: { onSave: () => void; isSaving: 
           <div>
             <div style={{ fontSize: 8, fontWeight: 900, color: C.muted2, textTransform: 'uppercase', marginBottom: 2 }}>{t.implantedIOL}</div>
             <div style={{ fontSize: 14, fontWeight: 900, color: C.text }}>{iolResult?.lens || '—'}</div>
-            {toricResults?.[opEye === 'OS' ? 'os' : 'od']?.best_model && (
-              <div style={{ fontSize: 9, color: C.indigo, fontWeight: 700 }}>T: {toricResults[opEye === 'OS' ? 'os' : 'od'].best_model}</div>
-            )}
+            {(() => {
+              const ek = opEye === 'OS' ? 'os' : 'od';
+              const eyeRes = (iolResult as any)?.[ek] || {};
+              const toricData = (toricResults as any)?.[ek];
+              const selectedToricModel = eyeRes.selectedToricModel ?? toricData?.best_model;
+              const toricMatch = toricData?.table?.find((s: any) => s.model === selectedToricModel);
+              
+              const predSE = eyeRes.expectedRefr ?? eyeRes.refraction ?? eyeRes.ref;
+              let predDisplay = predSE != null ? (predSE > 0 ? '+' : '') + parseFloat(String(predSE)).toFixed(2) : '—';
+              
+              if (toricMatch && toricMatch.model !== 'None' && predSE != null) {
+                const residual = Math.abs(toricMatch.residual || 0);
+                const predSph = parseFloat(String(predSE)) + (residual / 2);
+                const finalVal = predSph - residual;
+                const axis = toricMatch.res_axis || toricData.total_steep_axis;
+                predDisplay = `${selectedToricModel} (${finalVal > 0 ? '+' : ''}${finalVal.toFixed(2)} @ ${axis}°)`;
+                return (
+                  <div style={{ fontSize: 9, color: C.indigo, fontWeight: 700, marginTop: 2 }}>
+                    {language === 'ru' ? 'Прогноз:' : 'Pred:'} {predDisplay}
+                  </div>
+                );
+              }
+              
+              return predSE != null ? (
+                <div style={{ fontSize: 9, color: C.green, fontWeight: 700, marginTop: 2 }}>
+                  {language === 'ru' ? 'Прогноз SE:' : 'Pred SE:'} {predDisplay}
+                </div>
+              ) : null;
+            })()}
           </div>
           <div style={{ background: `${C.indigo}15`, borderRadius: 12, padding: '8px 14px', textAlign: 'center', border: `1px solid ${C.indigo}30` }}>
             <div style={{ fontSize: 7, fontWeight: 900, color: C.indigo, textTransform: 'uppercase', marginBottom: 2 }}>{t.power}</div>

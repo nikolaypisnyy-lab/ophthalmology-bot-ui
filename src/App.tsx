@@ -11,6 +11,7 @@ import { PatientCard } from './features/patient-card/PatientCard';
 import { OCRModal } from './features/ocr/OCRModal';
 import { SettingsModal } from './features/settings/SettingsModal';
 import { NewPatientModal } from './features/patient-card/NewPatientModal';
+import { ManualModal } from './features/settings/ManualModal';
 import { useClinicStore } from './store/useClinicStore';
 import { T } from './constants/translations';
 import { DisclaimerModal, useDisclaimerAccepted } from './features/disclaimer/DisclaimerModal';
@@ -134,7 +135,7 @@ const getNavItems = (t: any) => [
 ];
 
 function AppHeader({ title }: { title: string }) {
-  const { openSettings } = useUIStore();
+  const { openSettings, openPatientId, settingsOpen } = useUIStore();
   const { activeName } = useClinicStore();
   const { haptic } = useTelegram();
   return (
@@ -169,22 +170,22 @@ function AppHeader({ title }: { title: string }) {
           {title}
         </div>
       </div>
-      <div 
-        onClick={() => { haptic.light(); openSettings(); }}
-        style={{
-          width: 42, height: 42, borderRadius: 14,
-          background: C.surface,
-          border: `1px solid ${C.border}`,
-          display: 'flex', alignItems: 'center', justifyContent: 'center',
-          cursor: 'pointer',
-          boxShadow: '0 4px 12px rgba(0,0,0,0.1)'
-        }}
-      >
-        <svg width="22" height="22" fill="none" viewBox="0 0 24 24" stroke={C.muted2} strokeWidth="2.5">
-          <path d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" strokeLinecap="round" strokeLinejoin="round" />
-          <circle cx="12" cy="12" r="3" />
-        </svg>
-      </div>
+      {!openPatientId && !settingsOpen && (
+        <div 
+          onClick={() => { haptic.light(); openSettings(); }}
+          style={{
+            width: 42, height: 42, borderRadius: 14,
+            background: C.surface,
+            border: `1px solid ${C.border}`,
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            cursor: 'pointer',
+            boxShadow: '0 4px 12px rgba(0,0,0,0.1)',
+            position: 'relative', zIndex: 100001
+          }}
+        >
+          <svg width="22" height="22" fill="none" stroke="currentColor" strokeWidth="2.2" viewBox="0 0 24 24"><path d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" strokeLinecap="round" strokeLinejoin="round"/><circle cx="12" cy="12" r="3" strokeLinecap="round" strokeLinejoin="round"/></svg>
+        </div>
+      )}
     </div>
   );
 }
@@ -306,10 +307,16 @@ function CardSkeleton({ onBack, t }: { onBack: () => void; t: any }) {
 // ── Root App ──────────────────────────────────────────────────────────────────
 
 export function App() {
-  const {
-    navTab, openPatientId, ocrOpen, settingsOpen,
-    showNewPatientModal, closeNewPatient, closeSettings, closeOCR, closePatient,
-    setActiveEye, setPlanEye, setResultEye,
+  const navTab = useUIStore(s => s.navTab);
+  const openPatientId = useUIStore(s => s.openPatientId);
+  const ocrOpen = useUIStore(s => s.ocrOpen);
+  const settingsOpen = useUIStore(s => s.settingsOpen);
+  const manualOpen = useUIStore(s => s.manualOpen);
+  const showNewPatientModal = useUIStore(s => s.showNewPatientModal);
+  
+  const { 
+    closeNewPatient, closeSettings, closeOCR, closePatient, closeManual,
+    setActiveEye, setPlanEye, setResultEye 
   } = useUIStore();
   
   const { patients, fetchPatients, fullData, fetchPatientFull } = usePatientStore();
@@ -327,11 +334,12 @@ export function App() {
       const state = useUIStore.getState();
       if (state.ocrOpen) state.closeOCR();
       else if (state.settingsOpen) state.closeSettings();
+      else if (state.manualOpen) state.closeManual();
       else if (state.showNewPatientModal) state.closeNewPatient();
       else if (state.openPatientId) state.closePatient();
     };
 
-    const shouldShowBack = ocrOpen || settingsOpen || !!openPatientId || showNewPatientModal;
+    const shouldShowBack = ocrOpen || settingsOpen || manualOpen || !!openPatientId || showNewPatientModal;
     
     if (tg && tg.isVersionAtLeast('6.1') && tg.BackButton) {
       if (shouldShowBack) tg.BackButton.show(); else tg.BackButton.hide();
@@ -466,7 +474,7 @@ export function App() {
           </div>
         ) : (
           <>
-            {(ocrOpen || settingsOpen || !!openPatientId || showNewPatientModal) && (
+            {(ocrOpen || settingsOpen || manualOpen || !!openPatientId || showNewPatientModal) && (
               <div 
                 style={{ position: 'fixed', top: 100, left: 0, width: 30, height: 'calc(100% - 100px)', zIndex: 99999, touchAction: 'none' }} 
                 onTouchStart={handleEdgeTouchStart} 
@@ -484,7 +492,7 @@ export function App() {
               {navTab === 'results'    && <ResultsPage />}
             </div>
 
-            {!(openPatientId || ocrOpen || settingsOpen || showNewPatientModal) && (
+            {!(openPatientId || ocrOpen || settingsOpen || manualOpen || showNewPatientModal) && (
               <KeyboardHidden>
                 <BottomNav />
               </KeyboardHidden>
@@ -495,6 +503,7 @@ export function App() {
             {!disclaimerAccepted && <DisclaimerModal onAccept={() => setDisclaimerAccepted(true)} />}
             {showNewPatientModal && <NewPatientModal />}
             {ocrOpen && <OCRModal />}
+            {manualOpen && <ManualModal isOpen={manualOpen} onClose={closeManual} />}
             {cardLoading && <CardSkeleton onBack={handleBack} t={t} />}
           </>
         )}

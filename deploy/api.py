@@ -29,6 +29,7 @@ class PdfRequest(BaseModel):
     clinic_name: Optional[str] = "Clinic"
     date: str
     patients: List[PdfPatient]
+    lang: Optional[str] = "en"
 
 try:
     from dotenv import load_dotenv
@@ -98,6 +99,37 @@ LOG_DIR.mkdir(parents=True, exist_ok=True)
 
 TOKEN = str(os.getenv("BOT_TOKEN") or os.getenv("TELEGRAM_TOKEN") or "").strip()
 master_db = MasterDB(str(DB_DIR / "master.db"))
+
+def get_age_suffix(age_str: Optional[str], lang: str) -> str:
+    if not age_str: return ""
+    try:
+        age = int(age_str)
+        if lang != "ru": return " y.o."
+        
+        if 11 <= age % 100 <= 14:
+            return " лет"
+        last_digit = age % 10
+        if last_digit == 1:
+            return " год"
+        if 2 <= last_digit <= 4:
+            return " года"
+        return " лет"
+    except:
+        return " y.o." if lang != "ru" else " лет"
+
+def format_date_localized(iso_date: str, lang: str) -> str:
+    try:
+        y, m, d = iso_date.split("-")
+        if lang != "ru":
+            return iso_date # Keep ISO or standard for EN
+        
+        months = [
+            "января", "февраля", "марта", "апреля", "мая", "июня",
+            "июля", "августа", "сентября", "октября", "ноября", "декабря"
+        ]
+        return f"{int(d)} {months[int(m)-1]} {y}"
+    except:
+        return iso_date
 
 # ──────────────────────────────────────────────────────────────────────────────
 # Приложение
@@ -636,58 +668,86 @@ async def send_surgical_pdf(payload: PdfRequest, telegram_id: str = Header(None)
 
     # Header
     pdf.set_font(pdf.font_family, style="B" if not font_path else "", size=16)
-    pdf.cell(0, 10, payload.clinic_name, ln=True, align="L")
+    pdf.cell(0, 10, payload.clinic_name, ln=True, align="C")
     pdf.set_font(pdf.font_family, size=10)
-    pdf.cell(0, 8, f"Surgical Day: {payload.date}", ln=True, align="L")
+    label_day = "Surgical Day" if payload.lang != "ru" else "Операционный день"
+    pdf.cell(0, 8, f"{label_day}: {format_date_localized(payload.date, payload.lang)}", ln=True, align="C")
     pdf.ln(10)
 
     # Table Header
     pdf.set_fill_color(240, 240, 240)
     pdf.set_font(pdf.font_family, style="B" if not font_path else "", size=9)
     pdf.cell(10, 10, "#", border=1, align="C", fill=True)
-    pdf.cell(60, 10, "Patient", border=1, align="L", fill=True)
-    pdf.cell(20, 10, "Eye", border=1, align="C", fill=True)
-    pdf.cell(100, 10, "Surgical Details", border=1, align="L", fill=True)
+    
+    label_patient = "Patient" if payload.lang != "ru" else "Пациент"
+    label_eye = "Eye" if payload.lang != "ru" else "Глаз"
+    label_details = "Surgical Details" if payload.lang != "ru" else "Детали операции"
+    
+    pdf.cell(80, 10, label_patient, border=1, align="C", fill=True)
+    pdf.cell(15, 10, label_eye, border=1, align="C", fill=True)
+    pdf.cell(85, 10, label_details, border=1, align="C", fill=True)
     pdf.ln()
 
     # Table Rows
     pdf.set_font(pdf.font_family, size=9)
     for idx, p in enumerate(payload.patients):
-        # Очищаем детали от HTML тегов (<b> и т.д.)
-        clean_details = p.details.replace("<b>", "").replace("</b>", "").replace("<br>", " ").replace("<div class='detail-row'>", "").replace("</div>", "\n").strip()
+        clean_details = p.details.replace("<b>", "").replace("</b>", "").replace("<br>", "\n").replace("<div class='detail-row'>", "").replace("</div>", "\n").strip()
         
-        # Вычисляем высоту ячейки по контенту
-        row_height = 8
-        if "\n" in clean_details: row_height = 12
+        # Calculate dynamic height
+        # Details width is 85mm. 10pt/9pt font is ~45-50 chars per line.
+        lines = []
+        for line in clean_details.split("\n"):
+            if not line.strip(): continue
+            # Split line into chunks of ~50 chars to estimate wrapping
+            chunks = [line[i:i+50] for i in range(0, len(line), 50)]
+            lines.extend(chunks)
         
-        # Сохраняем текущую позицию
+        nb_lines = len(lines)
+        line_h = 5 # height of a single line
+        row_height = max(10, nb_lines * line_h)
+        
+        # Save current position
         x, y = pdf.get_x(), pdf.get_y()
+
+        # Check for page break
+        if y + row_height > 270:
+            pdf.add_page()
+            x, y = pdf.get_x(), pdf.get_y()
 
         pdf.cell(10, row_height, str(idx + 1), border=1, align="C")
 
         # Patient name + age
         pdf.set_font(pdf.font_family, style="B" if not font_path else "", size=10)
-        age_str = f"  {p.age} y.o." if p.age else ""
-        pdf.cell(60, row_height, (p.name[:22] + age_str)[:30], border=1)
+        age_str = f"  {p.age}{get_age_suffix(p.age, payload.lang)}" if p.age else ""
+        pdf.cell(80, row_height, (p.name + age_str)[:45], border=1, align="C")
         pdf.set_font(pdf.font_family, size=9)
 
-        pdf.cell(20, row_height, p.eye, border=1, align="C")
+        pdf.cell(15, row_height, p.eye, border=1, align="C")
 
         # Details (Multi-line)
-        pdf.multi_cell(100, row_height/2 if "\n" in clean_details else row_height, clean_details, border=1, align="L")
-
-        # Сбрасываем курсор на начало следующей строки
+        # multi_cell moves the cursor to the beginning of the next line
+        pdf.multi_cell(85, line_h if nb_lines > 1 else row_height, clean_details, border=1, align="C")
+        
+        # Reset cursor to start of next record
         pdf.set_xy(x, y + row_height)
         
     # Disclaimer footer
     pdf.ln(8)
     pdf.set_font(pdf.font_family, size=7)
     pdf.set_text_color(150, 150, 150)
-    pdf.multi_cell(0, 5,
+    
+    disclaimer_en = (
         "DISCLAIMER: This document was generated by RefMaster — a clinical decision support tool. "
         "It is not a medical device and does not replace professional medical judgment. "
-        "The treating physician bears full responsibility for all clinical decisions.",
-        align="L")
+        "The treating physician bears full responsibility for all clinical decisions."
+    )
+    disclaimer_ru = (
+        "ДИСКЛЕЙМЕР: Данный документ создан с помощью RefMaster — инструмента поддержки принятия клинических решений. "
+        "Приложение не является медицинским изделием и не заменяет профессиональное суждение врача. "
+        "Лечащий врач несет полную ответственность за все принимаемые клинические решения."
+    )
+    disclaimer = disclaimer_ru if payload.lang == "ru" else disclaimer_en
+    pdf.multi_cell(0, 5, disclaimer, align="L")
     pdf.set_text_color(0, 0, 0)
 
     # Save PDF to buffer
@@ -698,10 +758,11 @@ async def send_surgical_pdf(payload: PdfRequest, telegram_id: str = Header(None)
     import requests
     try:
         url = f"https://api.telegram.org/bot{TOKEN}/sendDocument"
+        caption_prefix = "Surgical Schedule" if payload.lang != "ru" else "Расписание операций"
         with open(out_path, "rb") as f:
             r = requests.post(
                 url,
-                data={"chat_id": telegram_id, "caption": f"Surgical Schedule: {payload.clinic_name} ({payload.date})"},
+                data={"chat_id": telegram_id, "caption": f"{caption_prefix}: {payload.clinic_name} ({payload.date})"},
                 files={"document": f},
                 timeout=30
             )

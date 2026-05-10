@@ -51,11 +51,14 @@ const EntryCell = ({
             {(() => {
               const n = parseFloat(String(val));
               if (isNaN(n)) return '—';
+              const isCCT = field === 'cct' || field.endsWith('_cct');
+              if (isCCT) return n.toFixed(0);
+              
               if (isAx) {
                 const isPenta = field.startsWith('p_');
                 return isPenta ? n.toFixed(1) : Math.round(n).toString();
               }
-              if (n > 25) return n.toFixed(2);
+              if (n > 400) return n.toFixed(0); // For very large values if any
               // No plus for visual acuity, axis, bio fields, or SIA
               const showPlus = !isAx && !field.includes('va') && !field.includes('k') && !field.includes('bio') && field !== 'sia' && n >= 0;
               return (showPlus ? '+' : '') + n.toFixed(2);
@@ -102,9 +105,10 @@ const DiagnosticCell = ({
             const n = parseFloat(String(val));
             if (isNaN(n)) return '—';
             const isK = field.includes('k') && !isAx;
+            const isCCT = field === 'cct' || field.endsWith('_cct');
+            if (isCCT) return n.toFixed(0);
             if (isAx) return Math.round(n).toString() + '°';
             if (isK) return n.toFixed(2);
-            if (n > 25) return n.toFixed(0);
             const showPlus = !field.includes('va') && !isK && n >= 0;
             return (showPlus ? '+' : '') + n.toFixed(2);
           })()}
@@ -132,8 +136,9 @@ const CompactInput = ({
               {(() => {
                 const n = parseFloat(String(val));
                 if (isNaN(n)) return '—';
+                const isCCT = field === 'cct' || field.endsWith('_cct');
+                if (isCCT) return n.toFixed(0);
                 if (isAx) return Math.round(n).toString();
-                if (n > 25) return n.toFixed(2);
                 const showPlus = !field.includes('va') && !field.includes('k') && n >= 0;
                 return (showPlus ? '+' : '') + n.toFixed(2);
               })()}
@@ -162,6 +167,26 @@ export function BioTab({ onSave, isSaving }: { onSave?: () => void, isSaving?: b
   const inputRef = useRef<HTMLInputElement>(null);
   const [lastCalc, setLastCalc] = useState<string | null>(null);
   const [pMode, setPMode] = useState<'ANT' | 'POST' | 'TOTAL'>('TOTAL');
+  const [progress, setProgress] = useState(0);
+
+  // Realistic Progress Simulation
+  useEffect(() => {
+    let interval: any;
+    if (isCalculating) {
+      setProgress(0);
+      interval = setInterval(() => {
+        setProgress(prev => {
+          if (prev < 40) return prev + 8; // Fast start
+          if (prev < 70) return prev + 3; // Slowing down
+          if (prev < 95) return prev + 0.5; // Final crawl
+          return prev;
+        });
+      }, 150);
+    } else {
+      setProgress(0);
+    }
+    return () => clearInterval(interval);
+  }, [isCalculating]);
 
   // --- ВЕКТОРНЫЙ СУММАРНЫЙ АСТИГМАТИЗМ (PENTACAM) ---
   useEffect(() => {
@@ -210,7 +235,9 @@ export function BioTab({ onSave, isSaving }: { onSave?: () => void, isSaving?: b
   useEffect(() => {
     if (editingField && inputRef.current) {
       inputRef.current.focus();
-      inputRef.current.select();
+      const val = String(useUIStore.getState().tempValue || '');
+      // Always place cursor at the end, no selection
+      inputRef.current.setSelectionRange(val.length, val.length);
     }
   }, [editingField]);
 
@@ -233,13 +260,22 @@ export function BioTab({ onSave, isSaving }: { onSave?: () => void, isSaving?: b
   const set = (f: string, v: string) => setEyeField(activeEye, f as any, v);
 
   const handleStartEdit = (field: string, val: any) => {
-    setTempValue(String(val || ''));
+    let str = String(val || '');
+    const isRefr = field.includes('sph') || field.includes('cyl');
+    // If it's a refraction field and current value is empty or zero, start with minus
+    if (isRefr && (!str || str === '0' || str === '0.00' || str === '—')) {
+      str = '-';
+    }
+    setTempValue(str);
     setEditingField(field);
   };
 
   const handleFinishEdit = () => {
     if (editingField) {
-      set(editingField, tempValue);
+      let finalVal = tempValue;
+      // If user left only a minus sign, treat it as empty/zero
+      if (finalVal === '-') finalVal = '';
+      set(editingField, finalVal);
     }
     setEditingField(null);
   };
@@ -535,8 +571,8 @@ export function BioTab({ onSave, isSaving }: { onSave?: () => void, isSaving?: b
               {/* KERAT: AX1 & AX2 */}
               <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
                 {[
-                  { label: 'AXIS K1', field: 'k1_ax', color: C.amber, step: 5, isAx: true },
-                  { label: 'AXIS K2', field: 'k2_ax', color: C.amber, step: 5, isAx: true },
+                  { label: language === 'ru' ? 'ОСЬ K1' : 'AXIS K1', field: 'k1_ax', color: C.amber, step: 5, isAx: true },
+                  { label: language === 'ru' ? 'ОСЬ K2' : 'AXIS K2', field: 'k2_ax', color: C.amber, step: 5, isAx: true },
                 ].map(f => {
                   const bio = draft[`bio_${activeEye}` as 'bio_od' | 'bio_os'] || {};
                   let val = bio[f.field];
@@ -592,7 +628,7 @@ export function BioTab({ onSave, isSaving }: { onSave?: () => void, isSaving?: b
                   fontFamily: F.mono, fontSize: 9, fontWeight: 600, color: C.indigo,
                   letterSpacing: '0.08em', textTransform: 'uppercase', paddingLeft: 4, opacity: 0.8
                 }}>
-                  Lens Model
+                  {language === 'ru' ? 'Модель ИОЛ' : 'Lens Model'}
                 </label>
                 <div
                   onClick={() => { haptic.success(); setIsLensModalOpen(true); }}
@@ -604,14 +640,14 @@ export function BioTab({ onSave, isSaving }: { onSave?: () => void, isSaving?: b
                 >
                   <span style={{ fontSize: 13, fontWeight: 800, color: C.text }}>{draft.iolResult?.lens || 'Select Lens...'}</span>
                   <div style={{ background: `${C.indigo}20`, borderRadius: 12, padding: '4px 10px', color: C.indigo, fontSize: 9, fontWeight: 900 }}>
-                    CHOOSE
+                    {language === 'ru' ? 'ВЫБРАТЬ' : 'CHOOSE'}
                   </div>
                 </div>
               </div>
 
               <div style={{ width: 100 }}>
                 <WheelField
-                  label="Target"
+                  label={language === 'ru' ? 'Цель рефракции' : 'Target'}
                   value={draft.targetRefr || '0.00'}
                   onChange={(v) => setDraft({ targetRefr: v })}
                   min={-3}
@@ -673,7 +709,7 @@ export function BioTab({ onSave, isSaving }: { onSave?: () => void, isSaving?: b
                     <path strokeLinecap="round" strokeLinejoin="round" d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
                   </svg>
                 )}
-                {isCalculating ? '...' : 'CALC'}
+                {isCalculating ? '...' : (language === 'ru' ? 'РАСЧЕТ' : 'CALC')}
               </button>
             </div>
 
@@ -696,7 +732,7 @@ export function BioTab({ onSave, isSaving }: { onSave?: () => void, isSaving?: b
                     }}
                   >
                     <div style={{ display: 'flex', flexDirection: 'column', paddingLeft: 4 }}>
-                      <span style={{ fontSize: 10, fontWeight: 900, color: C.text, letterSpacing: '0.04em', textTransform: 'uppercase' }}>Toric Calculator</span>
+                      <span style={{ fontSize: 10, fontWeight: 900, color: C.text, letterSpacing: '0.04em', textTransform: 'uppercase' }}>{language === 'ru' ? 'Торический компонент' : 'Toric Calculator'}</span>
                       {draft.toricMode && toricResults?.[activeEye] ? (
                         <span style={{ fontSize: 8, fontWeight: 900, color: C.indigo, textTransform: 'uppercase', letterSpacing: '0.04em' }}>
                           Recommended: {toricResults[activeEye].best_model} @ {toricResults[activeEye].total_steep_axis}°
@@ -790,10 +826,14 @@ export function BioTab({ onSave, isSaving }: { onSave?: () => void, isSaving?: b
             {isCalculating && (
               <div style={{ padding: '0 4px' }}>
                 <div style={{ height: 2, width: '100%', background: `${C.indigo}10`, borderRadius: 1, position: 'relative', overflow: 'hidden' }}>
-                  <div style={{ position: 'absolute', height: '100%', width: '40%', background: C.indigo, boxShadow: `0 0 10px ${C.indigo}`, animation: 'calculateProgress 1.2s infinite linear' }} />
+                  <div style={{ 
+                    position: 'absolute', height: '100%', width: `${progress}%`, 
+                    background: C.indigo, boxShadow: `0 0 10px ${C.indigo}`, 
+                    transition: 'width 0.3s cubic-bezier(0.4, 0, 0.2, 1)' 
+                  }} />
                 </div>
                 <div style={{ textAlign: 'center', fontSize: 7, fontWeight: 900, color: C.indigo, letterSpacing: '0.1em', marginTop: 6 }}>
-                  CALCULATING {(draft.activeFormula || 'Barrett').toUpperCase()}...
+                  {language === 'ru' ? 'РАССЧИТЫВАЮ' : 'CALCULATING'} {(draft.activeFormula || 'Barrett').toUpperCase()}...
                 </div>
               </div>
             )}
@@ -829,8 +869,12 @@ export function BioTab({ onSave, isSaving }: { onSave?: () => void, isSaving?: b
 
             <div style={{ gridColumn: 5, gridRow: '1 / 5', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'flex-start', paddingLeft: 4, gap: 2, marginTop: -10 }}>
               <div style={{ textAlign: 'center', lineHeight: 1 }}>
-                <div style={{ fontSize: 7, fontWeight: 900, color: C.muted3, textTransform: 'uppercase', letterSpacing: '0.08em' }}>Astig.</div>
-                <div style={{ fontSize: 7, fontWeight: 900, color: C.muted3, textTransform: 'uppercase', letterSpacing: '0.08em' }}>Axis</div>
+                <div style={{ fontSize: 7, fontWeight: 900, color: C.muted3, textTransform: 'uppercase', letterSpacing: '0.08em' }}>
+                  {language === 'ru' ? 'Ось' : 'Astig.'}
+                </div>
+                <div style={{ fontSize: 7, fontWeight: 900, color: C.muted3, textTransform: 'uppercase', letterSpacing: '0.02em' }}>
+                  {language === 'ru' ? 'астигм. (крутой)' : 'Axis'}
+                </div>
               </div>
               {/* Обёртка с паддингом для меток, выходящих за SVG */}
               <div style={{ padding: '16px 12px 6px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
@@ -853,16 +897,18 @@ export function BioTab({ onSave, isSaving }: { onSave?: () => void, isSaving?: b
 
                 // Classification based on STEEP meridian (90 deg from minus-cyl axis)
                 const steep = (kAx + 90) % 180;
-                let type = 'Oblique';
-                if ((steep >= 0 && steep <= 30) || (steep >= 150 && steep <= 180)) type = 'ATR';
-                else if (steep >= 60 && steep <= 120) type = 'WTR';
+                let type = language === 'ru' ? 'Косой' : 'Oblique';
+                if ((steep >= 0 && steep <= 30) || (steep >= 150 && steep <= 180)) type = language === 'ru' ? 'Обратный' : 'ATR';
+                else if (steep >= 60 && steep <= 120) type = language === 'ru' ? 'Прямой' : 'WTR';
 
                 return (
                   <div style={{ textAlign: 'center', lineHeight: 1.2 }}>
                     <div style={{ fontSize: 10, fontWeight: 900, color: data.p_tot_c ? C.purple : C.text, textTransform: 'uppercase', marginBottom: 2 }}>{type}</div>
                     <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
                       <div style={{ fontSize: 11, fontWeight: 900, color: data.p_tot_c ? C.purple : C.amber, fontFamily: F.mono }}>{cylVal.toFixed(2)}D</div>
-                      <div style={{ fontSize: 9, fontWeight: 800, color: data.p_tot_c ? C.purple : C.muted2, fontFamily: F.mono, opacity: 0.8 }}>ax {steep}°</div>
+                      <div style={{ fontSize: 9, fontWeight: 800, color: data.p_tot_c ? C.purple : C.muted2, fontFamily: F.mono, opacity: 0.8 }}>
+                        {language === 'ru' ? 'ось' : 'ax'} {steep}°
+                      </div>
                     </div>
                   </div>
                 );

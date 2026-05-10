@@ -52,9 +52,13 @@ export function PatientCard() {
     // 2. Switching Eyes (Свайп в середине экрана)
     // Влево (delta < 0) -> OS
     // Вправо (delta > 0) -> OD
-    haptic.light();
     const next = delta > 0 ? 'od' : 'os';
-    
+
+    // Не переключаем на деактивированный глаз (только для катаракты с одним глазом)
+    const eyeMode = (draft.eye || 'OU').toUpperCase();
+    if (eyeMode !== 'OU' && next !== eyeMode.toLowerCase()) return;
+
+    haptic.light();
     if (activeTab === 'bio') setActiveEye(next);
     if (activeTab === 'plan') setPlanEye(next);
     if (activeTab === 'result') setResultEye(next);

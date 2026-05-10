@@ -122,8 +122,8 @@ export function LensModal({ isOpen, onClose }: LensModalProps) {
 
         <div style={{ flex: 1, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: 10 }}>
           {filtered.map(l => (
-            <button 
-              key={l.id} 
+            <button
+              key={l.model}
               onClick={() => handleSelect(l)}
               style={{ 
                 background: C.card, borderRadius: 18, padding: '16px', border: `1px solid ${C.border}`, 

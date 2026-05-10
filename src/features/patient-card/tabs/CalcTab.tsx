@@ -17,8 +17,8 @@ export function CalcTab() {
   const {
     activeEye, setActiveEye,
     editingField, setEditingField, tempValue, setTempValue,
-    comparisonFormulas, toggleComparisonFormula
   } = useUIStore();
+  const { comparisonFormulas, toggleComparisonFormula } = useSessionStore();
   const { language } = useClinicStore();
   const t = T(language);
   const { haptic } = useTelegram();
@@ -33,10 +33,10 @@ export function CalcTab() {
   const activeFormula = draft.activeFormula || 'Barrett';
   const eyeResults = formulaResults[activeEye] || {};
 
-  // Formulas to show: active formula + any in comparisonFormulas that have results
+  // Показываем: активную формулу + формулы в comparison
   const formulasToShow = [
     activeFormula,
-    ...comparisonFormulas.filter(f => f !== activeFormula && eyeResults[f]?.length > 0)
+    ...comparisonFormulas.filter(f => f !== activeFormula && (eyeResults[f] || eyeResults[f.toLowerCase()])?.length > 0),
   ];
 
   const mainResults = eyeResults[activeFormula] || eyeResults[activeFormula.toLowerCase()] || [];
@@ -233,7 +233,7 @@ export function CalcTab() {
                       <span style={{ background: `${C.indigo}15`, padding: '4px 8px', borderRadius: 8, fontFamily: F.mono }}>{(match.cyl_iol > 0 ? '+' : '') + match.cyl_iol.toFixed(2)}D</span>
                     </div>
                     <div style={{ display: 'flex', gap: 4 }}>
-                      <span style={{ background: `${C.green}15`, color: C.green, padding: '4px 8px', borderRadius: 8, fontFamily: F.mono }}>Res: -{(Math.round((match.residual || 0) * 20) / 20).toFixed(2)}D</span>
+                      <span style={{ background: `${C.green}15`, color: C.green, padding: '4px 8px', borderRadius: 8, fontFamily: F.mono }}>{language === 'ru' ? 'Ост:' : 'Res:'} -{(Math.round((match.residual || 0) * 20) / 20).toFixed(2)}D</span>
                       <span style={{ background: `${C.surface}`, border: `1px solid ${C.border}`, padding: '4px 8px', borderRadius: 8, fontFamily: F.mono, color: C.text }}>{tr.total_steep_axis}°</span>
                     </div>
                   </div>
@@ -415,19 +415,19 @@ export function CalcTab() {
               </span>
               <div style={{ display: 'flex', gap: 12, alignItems: 'center' }}>
                 <div style={{ textAlign: 'center' }}>
-                  <div style={{ fontSize: 6.5, fontWeight: 900, color: C.muted3, textTransform: 'uppercase' }}>Model</div>
+                  <div style={{ fontSize: 6.5, fontWeight: 900, color: C.muted3, textTransform: 'uppercase' }}>{language === 'ru' ? 'Модель' : 'Model'}</div>
                   <div style={{ fontSize: 16, fontWeight: 900, color: C.indigo, fontFamily: F.mono }}>{best?.model}</div>
                 </div>
                 <div style={{ textAlign: 'center' }}>
-                  <div style={{ fontSize: 6.5, fontWeight: 900, color: C.muted3, textTransform: 'uppercase' }}>Axis</div>
+                  <div style={{ fontSize: 6.5, fontWeight: 900, color: C.muted3, textTransform: 'uppercase' }}>{language === 'ru' ? 'Ось' : 'Axis'}</div>
                   <div style={{ fontSize: 16, fontWeight: 900, color: C.text, fontFamily: F.mono }}>{tr.total_steep_axis}°</div>
                 </div>
                 <div style={{ textAlign: 'center' }}>
-                  <div style={{ fontSize: 6.5, fontWeight: 900, color: C.muted3, textTransform: 'uppercase' }}>IOL Cyl</div>
+                  <div style={{ fontSize: 6.5, fontWeight: 900, color: C.muted3, textTransform: 'uppercase' }}>{language === 'ru' ? 'ИОЛ Цил' : 'IOL Cyl'}</div>
                   <div style={{ fontSize: 16, fontWeight: 900, color: C.text, fontFamily: F.mono }}>{best?.cyl_iol.toFixed(2)}D</div>
                 </div>
                 <div style={{ textAlign: 'center' }}>
-                  <div style={{ fontSize: 6.5, fontWeight: 900, color: C.muted3, textTransform: 'uppercase' }}>Residual</div>
+                  <div style={{ fontSize: 6.5, fontWeight: 900, color: C.muted3, textTransform: 'uppercase' }}>{language === 'ru' ? 'Ост. Аст' : 'Residual'}</div>
                   <div style={{ fontSize: 16, fontWeight: 900, color: C.green, fontFamily: F.mono }}>-{(Math.round((best?.residual || 0) * 20) / 20).toFixed(2)}D</div>
                 </div>
               </div>

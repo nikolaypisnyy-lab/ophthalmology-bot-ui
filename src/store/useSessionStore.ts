@@ -8,17 +8,9 @@ import type { PeriodKey } from '../types/results';
 import type { PeriodEyeData } from '../types/results';
 import { sumCylinders } from '../calculators/astigmatism';
 
-// Fingerprint биометрии: при изменении AL/ACD/K1/K2 кэш формул инвалидируется
-function bioFingerprint(p: any): string {
-  const snap = (bio: any) =>
-    `${bio?.al ?? ''}_${bio?.acd ?? ''}_${bio?.k1 ?? ''}_${bio?.k2 ?? ''}`;
-  return `${snap(p?.bio_od)}_${snap(p?.bio_os)}`;
-}
-
-function loadCachedFormulas(patientId: string, p: any): { od: Record<string, any>; os: Record<string, any> } | null {
+function loadCachedFormulas(patientId: string): { od: Record<string, any>; os: Record<string, any> } | null {
   try {
-    const fp = bioFingerprint(p);
-    const raw = localStorage.getItem(`rm_fr_${patientId}_${fp}`);
+    const raw = localStorage.getItem(`rm_fr_${patientId}`);
     if (raw) return JSON.parse(raw);
   } catch {}
   return null;
@@ -31,6 +23,9 @@ interface SessionStore {
   planTweaked: boolean;
   iolResult: IOLResult | null;
   formulaResults: { od: Record<string, any>; os: Record<string, any> };
+  lastActiveFormula: string | null;
+  comparisonFormulas: string[];
+  toggleComparisonFormula: (f: string) => void;
   iolLoading: boolean;
   iolError: string | null;
   iolProgress: number;
@@ -68,6 +63,8 @@ export const useSessionStore = create<SessionStore>()(
       planTweaked: false,
       iolResult: null,
       formulaResults: { od: {}, os: {} },
+      lastActiveFormula: null,
+      comparisonFormulas: [],
       iolLoading: false,
       iolError: null,
       iolProgress: 0,
@@ -106,21 +103,41 @@ export const useSessionStore = create<SessionStore>()(
           (odRes?.cyl && parseFloat(String(odRes.cyl)) !== 0) ||
           (osRes?.cyl && parseFloat(String(osRes.cyl)) !== 0);
 
-        // Восстанавливаем результаты формул: сервер → localStorage-кэш (если биометрия не изменилась)
+        // Мёрджим формулы: localStorage-кэш + in-memory + сервер (сервер в приоритете для пересечений)
         const serverFormulas = (patient as any).formulaResults as { od: Record<string, any>; os: Record<string, any> } | undefined;
-        const hasServerFormulas = serverFormulas &&
-          (Object.keys(serverFormulas.od ?? {}).length > 0 || Object.keys(serverFormulas.os ?? {}).length > 0);
-        const formulaResults = hasServerFormulas
-          ? serverFormulas!
-          : (loadCachedFormulas(String(patient.id), patient) ?? { od: {}, os: {} });
+        const currentState = _get();
+        const inMemoryFormulas = currentState.formulaResults;
+        const cachedFormulas = loadCachedFormulas(String(patient.id));
+        const formulaResults = {
+          od: {
+            ...(cachedFormulas?.od ?? {}),
+            ...(inMemoryFormulas?.od ?? {}),
+            ...(serverFormulas?.od ?? {}),
+          },
+          os: {
+            ...(cachedFormulas?.os ?? {}),
+            ...(inMemoryFormulas?.os ?? {}),
+            ...(serverFormulas?.os ?? {}),
+          },
+        };
+
+        // lastActiveFormula — последнее что видел пользователь, приоритетнее сохранённого на сервере
+        const restoredFormula = _get().lastActiveFormula ?? patient.activeFormula ?? undefined;
+
+        // Авто-инициализируем comparisonFormulas из доступных результатов
+        const activeF = restoredFormula || 'Barrett';
+        const autoComparison = ['Haigis', 'Barrett', 'Kane'].filter(
+          f => f !== activeF && (formulaResults.od[f] || formulaResults.od[f.toLowerCase()])?.length > 0
+        );
 
         set({
-          draft: { ...patient, flapTech: patient.flapTech ?? 'fs', toricMode: !!hasToric },
+          draft: { ...patient, flapTech: patient.flapTech ?? 'fs', toricMode: !!hasToric, activeFormula: restoredFormula as any },
           refPlan: patient.savedPlan ? { od: patient.savedPlan.od as any, os: patient.savedPlan.os as any } : null,
           enhancementPlan: (patient as any).savedEnhancement ? { od: (patient as any).savedEnhancement.od as any, os: (patient as any).savedEnhancement.os as any } : null,
           planTweaked: (patient as any).planTweaked ?? false,
           iolResult: iolRes,
           formulaResults,
+          comparisonFormulas: autoComparison,
           toricResults: toricRes,
           iolLoading: false,
           iolError: null,
@@ -129,7 +146,13 @@ export const useSessionStore = create<SessionStore>()(
       },
 
       closeDraft: () => {
-        set({ draft: null, refPlan: null, enhancementPlan: null, planTweaked: false, iolResult: null, formulaResults: { od: {}, os: {} }, iolError: null });
+        // Сохраняем activeFormula перед закрытием — восстановим при следующем открытии
+        const currentDraft = _get().draft;
+        set({
+          draft: null, refPlan: null, enhancementPlan: null, planTweaked: false,
+          iolResult: null, iolError: null,
+          lastActiveFormula: (currentDraft as any)?.activeFormula ?? null,
+        });
       },
 
       setDraft: (patch) => {
@@ -268,12 +291,8 @@ export const useSessionStore = create<SessionStore>()(
           const draft = state.draft;
           // Авто-кэш в localStorage при каждом расчёте
           if (draft?.id) {
-            const fp = bioFingerprint(draft);
             try {
-              localStorage.setItem(
-                `rm_fr_${draft.id}_${fp}`,
-                JSON.stringify(results)
-              );
+              localStorage.setItem(`rm_fr_${draft.id}`, JSON.stringify(results));
             } catch {}
           }
           return {
@@ -282,6 +301,15 @@ export const useSessionStore = create<SessionStore>()(
           };
         });
       },
+
+      toggleComparisonFormula: (f) => set(state => {
+        const exists = state.comparisonFormulas.includes(f);
+        return {
+          comparisonFormulas: exists
+            ? state.comparisonFormulas.filter(x => x !== f)
+            : state.comparisonFormulas.length < 2 ? [...state.comparisonFormulas, f] : state.comparisonFormulas,
+        };
+      }),
 
       setIOLLoading: (loading, progress = 0) => set({ iolLoading: loading, iolProgress: progress }),
       setIOLError: (error) => set({ iolError: error }),

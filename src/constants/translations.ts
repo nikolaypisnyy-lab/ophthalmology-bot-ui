@@ -65,11 +65,11 @@ export const T = (lang: Language) => {
       rightEye: 'Right Eye (OD)',
       leftEye: 'Left Eye (OS)',
 
-      // Tabs
-      bio: 'Biometry',
-      calc: 'Calculation',
-      plan: 'Plan',
-      result: 'Result',
+      bio: 'EXAM',
+      calc: 'IOL',
+      plan: 'PLAN',
+      result: 'RESULT',
+      enhancement: 'ENH',
 
       // OCR
       ocrTitle: 'OCR Recognition',
@@ -163,11 +163,11 @@ export const T = (lang: Language) => {
       rightEye: 'Правый глаз (OD)',
       leftEye: 'Левый глаз (OS)',
 
-      // Tabs
-      bio: 'Биометрия',
-      calc: 'Расчёт',
-      plan: 'План',
-      result: 'Результат',
+      bio: 'БИО',
+      calc: 'ИОЛ',
+      plan: 'ПЛАН',
+      result: 'РЕЗУЛЬТАТ',
+      enhancement: 'ДОКОР',
 
       // OCR
       ocrTitle: 'OCR Распознавание',
@@ -201,4 +201,16 @@ export const T = (lang: Language) => {
   };
 
   return translations[lang];
+};
+
+export const getAgeSuffix = (age: number | string | undefined, lang: Language): string => {
+  if (!age) return '';
+  if (lang !== 'ru') return ' y.o.';
+  const n = Math.abs(parseInt(String(age)));
+  if (isNaN(n)) return ' лет';
+  const n10 = n % 10;
+  const n100 = n % 100;
+  if (n10 === 1 && n100 !== 11) return ' год';
+  if (n10 >= 2 && n10 <= 4 && (n100 < 10 || n100 >= 20)) return ' года';
+  return ' лет';
 };

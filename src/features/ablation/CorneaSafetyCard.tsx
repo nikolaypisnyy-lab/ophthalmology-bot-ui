@@ -18,19 +18,26 @@ interface CorneaSafetyCardProps {
 export function CorneaSafetyCard({
   eye, cct, flap, abl, rsb, pta, kpost, kpre, isWarnRSB, isPRK
 }: CorneaSafetyCardProps) {
-  void useClinicStore(s => s.theme);
+  const language = useClinicStore(s => s.language);
   const eyeColor = eye === 'od' ? C.od : C.os;
   const isDangerRSB = rsb < 300;
   const isWarnPTA = pta >= 40;
+  const isDangerPTA = pta >= 47;
   
   const rsbColor = isDangerRSB ? C.red : (rsb < 330 ? C.yellow : C.green);
-  const ptaColor = isWarnPTA ? C.red : C.green;
+  const ptaColor = isDangerPTA ? C.red : (isWarnPTA ? C.amber : C.green);
 
   // Percentage for progress bars
   const ablPct = Math.min(100, (abl / 150) * 100);
   const rsbPct = Math.min(100, (rsb / 550) * 100);
   const ptaPct = Math.min(100, (pta / 50) * 100);
   const kpostPct = Math.min(100, ((kpost - 30) / 20) * 100);
+
+  // Proportional heights for corneal stack (base: 140px total)
+  const stackBaseH = 140;
+  const hFlap = flap > 0 && !isPRK ? Math.max(24, (flap / (cct || 500)) * stackBaseH) : 0;
+  const hAbl  = Math.max(24, (abl / (cct || 500)) * stackBaseH);
+  const hRSB  = Math.max(44, (rsb / (cct || 500)) * stackBaseH);
 
   return (
     <div style={{
@@ -46,7 +53,7 @@ export function CorneaSafetyCard({
       {/* Header with Status Badge */}
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
         <span style={{ fontSize: '10px', fontWeight: 700, letterSpacing: '0.14em', textTransform: 'uppercase', color: C.indigo }}>
-          Ablation profile · Safety
+          {language === 'ru' ? 'Профиль абляции · Безопасность' : 'Ablation profile · Safety'}
         </span>
         {isWarnRSB && (
           <div style={{
@@ -59,7 +66,7 @@ export function CorneaSafetyCard({
               width: '6px', height: '6px', background: C.yellow, borderRadius: '50%',
               animation: 'pulse 2s infinite'
             }} />
-            RSB LOW
+            {language === 'ru' ? 'RSB НИЗКИЙ' : 'RSB LOW'}
           </div>
         )}
       </div>
@@ -71,42 +78,42 @@ export function CorneaSafetyCard({
         position: 'relative'
       }}>
         <div style={{ fontFamily: F.mono, fontSize: '9px', color: C.muted2, letterSpacing: '0.08em', textTransform: 'uppercase', marginBottom: '12px' }}>
-          Corneal stack · CCT {cct} µm
+          {language === 'ru' ? `РОГОВИЧНЫЙ СТЕК · ЦТР ${cct} µm` : `Corneal stack · CCT ${cct} µm`}
         </div>
         
         <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
           {/* Flap Layer (Blue, only if > 0 and not PRK) */}
           {flap > 0 && !isPRK && (
             <div style={{
-              height: '26px', borderRadius: '4px', display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+              height: `${hFlap}px`, borderRadius: '4px', display: 'flex', alignItems: 'center', justifyContent: 'space-between',
               padding: '0 12px', background: 'rgba(59, 130, 246, 0.2)', color: '#3b82f6',
               fontFamily: F.mono, fontSize: '10px', fontWeight: 700, border: '1px solid rgba(59, 130, 246, 0.3)'
             }}>
-              <span style={{ letterSpacing: '0.06em', textTransform: 'uppercase', fontSize: '9px' }}>Flap / Cap</span>
+              <span style={{ letterSpacing: '0.06em', textTransform: 'uppercase', fontSize: '9px' }}>{language === 'ru' ? 'Лоскут / Кэп' : 'Flap / Cap'}</span>
               <span>{flap} µm</span>
             </div>
           )}
-
+  
           {/* Ablation Layer (HIGH VISIBILITY YELLOW) */}
           <div style={{
-            height: '22px', borderRadius: '4px', display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+            height: `${hAbl}px`, borderRadius: '4px', display: 'flex', alignItems: 'center', justifyContent: 'space-between',
             padding: '0 12px', background: 'rgba(251, 191, 36, 0.25)', border: '1px solid rgba(251, 191, 36, 0.4)',
             color: '#fbbf24', fontFamily: F.mono, fontSize: '11px', fontWeight: 900,
             boxShadow: '0 0 15px rgba(251, 191, 36, 0.15)',
             textShadow: '0 0 8px rgba(251, 191, 36, 0.3)'
           }}>
-            <span style={{ letterSpacing: '0.06em', textTransform: 'uppercase', fontSize: '9px' }}>Ablation</span>
+            <span style={{ letterSpacing: '0.06em', textTransform: 'uppercase', fontSize: '9px' }}>{language === 'ru' ? 'Абляция' : 'Ablation'}</span>
             <span>{abl} µm · PTA {pta}%</span>
           </div>
-
+  
           {/* RSB Layer */}
           <div style={{
-            height: '48px', borderRadius: '4px', display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+            height: `${hRSB}px`, borderRadius: '4px', display: 'flex', alignItems: 'center', justifyContent: 'space-between',
             padding: '0 12px', background: isDangerRSB ? 'rgba(239, 68, 68, 0.25)' : (rsb < 330 ? 'rgba(245, 158, 11, 0.25)' : 'rgba(16, 185, 129, 0.25)'), 
             border: `1px solid ${isDangerRSB ? 'rgba(239, 68, 68, 0.4)' : (rsb < 330 ? 'rgba(245, 158, 11, 0.4)' : 'rgba(16, 185, 129, 0.4)')}`,
             color: rsbColor, fontFamily: F.mono, fontSize: '10px', fontWeight: 900
           }}>
-            <span style={{ letterSpacing: '0.06em', textTransform: 'uppercase', fontSize: '9.5px' }}>RSB · Residual Stroma</span>
+            <span style={{ letterSpacing: '0.06em', textTransform: 'uppercase', fontSize: '9.5px' }}>RSB · {language === 'ru' ? 'ОСТАТОЧНАЯ СТРОМА' : 'Residual Stroma'}</span>
             <span style={{ fontSize: '12px' }}>{rsb} µm</span>
           </div>
         </div>
@@ -114,15 +121,15 @@ export function CorneaSafetyCard({
         {/* Footer info inside viz */}
         <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: '14px', paddingTop: '10px', borderTop: `1px solid ${C.border}` }}>
           <div style={{ display: 'flex', flexDirection: 'column' }}>
-            <span style={{ fontFamily: F.mono, fontSize: '8.5px', color: C.muted, textTransform: 'uppercase' }}>Pre-op CCT</span>
+            <span style={{ fontFamily: F.mono, fontSize: '8.5px', color: C.muted, textTransform: 'uppercase' }}>{language === 'ru' ? 'Исходная ЦТР' : 'Pre-op CCT'}</span>
             <span style={{ fontFamily: F.mono, fontSize: '12px', color: C.text }}>{cct} µm</span>
           </div>
           <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
-            <span style={{ fontFamily: F.mono, fontSize: '8.5px', color: C.muted, textTransform: 'uppercase' }}>Post-op K</span>
+            <span style={{ fontFamily: F.mono, fontSize: '8.5px', color: C.muted, textTransform: 'uppercase' }}>{language === 'ru' ? 'К-постоп' : 'Post-op K'}</span>
             <span style={{ fontFamily: F.mono, fontSize: '12px', color: C.text }}>{kpost.toFixed(2)} D</span>
           </div>
           <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end' }}>
-            <span style={{ fontFamily: F.mono, fontSize: '8.5px', color: C.muted, textTransform: 'uppercase' }}>{flap > 0 ? 'Combined' : 'Total Abl'}</span>
+            <span style={{ fontFamily: F.mono, fontSize: '8.5px', color: C.muted, textTransform: 'uppercase' }}>{flap > 0 ? (language === 'ru' ? 'Комби' : 'Combined') : (language === 'ru' ? 'Всего абл.' : 'Total Abl')}</span>
             <span style={{ fontFamily: F.mono, fontSize: '12px', color: C.text }}>{flap + abl} µm</span>
           </div>
         </div>
@@ -132,7 +139,7 @@ export function CorneaSafetyCard({
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' }}>
         <MetricCard label="ABL" value={abl} unit="µm" sub={`per diopter ~${(abl/10 || 14).toFixed(0)}µm`} pct={ablPct} color="#fbbf24" />
         <MetricCard label="RSB" value={rsb} unit="µm" sub="min 300 · warning < 330" color={rsbColor} pct={rsbPct} mark={300/5.5} />
-        <MetricCard label="PTA" value={pta} unit="%" sub="limit 40% · ectasia" color={ptaColor} pct={ptaPct} mark={80} />
+        <MetricCard label="PTA" value={pta} unit="%" sub="risk > 47% · ectasia" color={ptaColor} pct={ptaPct} mark={47*2} />
         <MetricCard label="K-post" value={kpost.toFixed(2)} unit="D" sub={kpre ? `Δ from ${kpre.toFixed(2)}` : 'corneal k'} pct={kpostPct} barColor={C.indigo} />
       </div>
 
@@ -143,9 +150,13 @@ export function CorneaSafetyCard({
         }}>
           <span style={{ color: C.yellow, fontSize: '16px' }}>⚠</span>
           <div style={{ flex: 1 }}>
-            <div style={{ fontSize: '11px', fontWeight: 600, color: C.yellow, marginBottom: '2px' }}>RSB below comfort zone</div>
+            <div style={{ fontSize: '11px', fontWeight: 600, color: C.yellow, marginBottom: '2px' }}>
+              {language === 'ru' ? 'RSB ниже комфортной зоны' : 'RSB below comfort zone'}
+            </div>
             <div style={{ fontFamily: F.mono, fontSize: '10px', color: C.muted2, lineHeight: 1.4 }}>
-              {rsb} µm is safe but tight. Consider reducing OZ or switching to surface ablation (PRK) to spare stromal bed.
+              {language === 'ru' 
+                ? `${rsb} µm — это безопасно, но на пределе. Рассмотрите возможность уменьшения OZ или перехода на поверхностную абляцию (ФРК) для сохранения стромального ложа.`
+                : `${rsb} µm is safe but tight. Consider reducing OZ or switching to surface ablation (PRK) to spare stromal bed.`}
             </div>
           </div>
         </div>

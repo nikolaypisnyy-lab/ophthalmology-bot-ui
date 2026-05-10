@@ -62,9 +62,10 @@ interface UIStore {
   setCalendarOpen: (v: boolean) => void;
 
   // ── Настройки ────────────────────────────────────────────────────────────────
-  settingsOpen: boolean;
-  openSettings: () => void;
   closeSettings: () => void;
+  manualOpen: boolean;
+  openManual: () => void;
+  closeManual: () => void;
 
   // ── Модалка нового пациента ──────────────────────────────────────────────────
   showNewPatientModal: boolean;
@@ -145,6 +146,9 @@ export const useUIStore = create<UIStore>((set) => ({
   settingsOpen: false,
   openSettings: () => set({ settingsOpen: true }),
   closeSettings: () => set({ settingsOpen: false }),
+  manualOpen: false,
+  openManual: () => set({ manualOpen: true }),
+  closeManual: () => set({ manualOpen: false }),
 
   // Новый пациент
   showNewPatientModal: false,

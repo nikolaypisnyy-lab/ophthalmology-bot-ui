@@ -12,13 +12,7 @@ interface PatientHeaderProps {
   isSaving: boolean;
 }
 
-const TAB_LABELS: Record<TabKey, { ref: string; cat: string }> = {
-  bio: { ref: 'EXAM', cat: 'BIO' },
-  calc: { ref: 'IOL', cat: 'IOL' },
-  plan: { ref: 'PLAN', cat: 'PLAN' },
-  result: { ref: 'OUTCOME', cat: 'OUTCOME' },
-  enhancement: { ref: 'ENH', cat: 'ENH' },
-};
+// Labels are now retrieved from translations (t.bio, t.calc, etc.)
 
 export function PatientHeader({ onSave, isSaving }: PatientHeaderProps) {
   const { draft, setDraft } = useSessionStore();
@@ -78,13 +72,13 @@ export function PatientHeader({ onSave, isSaving }: PatientHeaderProps) {
         <button
           onClick={closePatient}
           style={{
-            width: 36, height: 36, borderRadius: 12,
-            background: C.surface2, border: `1px solid ${C.border}`,
+            width: 30, height: 30, borderRadius: '50%',
+            background: C.surface, border: 'none',
             display: 'flex', alignItems: 'center', justifyContent: 'center',
-            cursor: 'pointer', color: C.muted2, flexShrink: 0, marginTop: 4
+            cursor: 'pointer', color: C.text, flexShrink: 0, marginTop: 7, marginLeft: 2
           }}
         >
-          <svg width="20" height="20" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2.5">
+          <svg width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2.5">
             <polyline points="15 18 9 12 15 6" />
           </svg>
         </button>
@@ -94,13 +88,13 @@ export function PatientHeader({ onSave, isSaving }: PatientHeaderProps) {
           {/* AGE/SEX PILL (TOP) */}
           <div style={{
             display: 'flex', alignItems: 'center', gap: 8,
-            background: draft.sex === 'Ж' ? 'rgba(244, 114, 182, 0.1)' : draft.sex === 'М' ? 'rgba(37, 99, 235, 0.1)' : C.surface2,
+            background: (draft.sex === 'Ж' || draft.sex === 'F') ? 'rgba(244, 114, 182, 0.1)' : (draft.sex === 'М' || draft.sex === 'M') ? 'rgba(37, 99, 235, 0.1)' : C.surface2,
             padding: '4px 14px', borderRadius: 12,
-            border: `1px solid ${draft.sex === 'Ж' ? 'rgba(244, 114, 182, 0.2)' : draft.sex === 'М' ? 'rgba(37, 99, 235, 0.3)' : C.border}`,
+            border: `1px solid ${(draft.sex === 'Ж' || draft.sex === 'F') ? 'rgba(244, 114, 182, 0.2)' : (draft.sex === 'М' || draft.sex === 'M') ? 'rgba(37, 99, 235, 0.3)' : C.border}`,
             marginTop: 10
           }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
-              <span style={{ fontFamily: F.sans, fontSize: 9.5, fontWeight: 900, color: C.muted2 }}>A</span>
+              <span style={{ fontFamily: F.sans, fontSize: 9.5, fontWeight: 900, color: C.muted2 }}>{language === 'ru' ? 'В' : 'A'}</span>
               <input
                 type="number" value={draft.age ?? ''}
                 onChange={e => setDraft({ age: e.target.value })}
@@ -114,15 +108,15 @@ export function PatientHeader({ onSave, isSaving }: PatientHeaderProps) {
             </div>
             <div style={{ width: 1, height: 12, background: C.border }} />
             <button
-              onClick={() => setDraft({ sex: draft.sex === 'М' ? 'Ж' : draft.sex === 'Ж' ? undefined : 'М' })}
+              onClick={() => setDraft({ sex: (draft.sex === 'М' || draft.sex === 'M') ? 'Ж' : (draft.sex === 'Ж' || draft.sex === 'F') ? undefined : 'М' })}
               style={{
                 background: 'transparent', border: 'none',
                 fontFamily: F.sans, fontSize: 10.5, fontWeight: 900,
-                color: draft.sex === 'Ж' ? '#F472B6' : draft.sex === 'М' ? '#3B82F6' : C.muted2,
+                color: (draft.sex === 'Ж' || draft.sex === 'F') ? '#F472B6' : (draft.sex === 'М' || draft.sex === 'M') ? '#3B82F6' : C.muted2,
                 cursor: 'pointer', padding: 0, letterSpacing: '0.04em'
               }}
             >
-              {draft.sex === 'М' ? t.male : draft.sex === 'Ж' ? t.female : t.gender + '?'}
+              {(draft.sex === 'М' || draft.sex === 'M') ? t.male : (draft.sex === 'Ж' || draft.sex === 'F') ? t.female : t.gender + '?'}
             </button>
           </div>
 
@@ -148,15 +142,15 @@ export function PatientHeader({ onSave, isSaving }: PatientHeaderProps) {
       {/* Navigation Tabs */}
       <div style={{ display: 'flex', alignItems: 'flex-end', justifyContent: 'space-between', gap: 8 }}>
         <div style={{ display: 'flex', flex: 1, overflowX: 'auto', scrollbarWidth: 'none' }}>
-          {tabs.map(t => {
-            const active = activeTab === t;
-            const isEnh = t === 'enhancement';
+          {tabs.map(tabKey => {
+            const active = activeTab === tabKey;
+            const isEnh = tabKey === 'enhancement';
             const isLocked = isEnh && !enhUnlocked;
 
             return (
               <button
-                key={t}
-                onClick={() => handleTabPress(t)}
+                key={tabKey}
+                onClick={() => handleTabPress(tabKey)}
                 onPointerDown={isEnh ? startEnhPress : undefined}
                 onPointerUp={isEnh ? endEnhPress : undefined}
                 onPointerLeave={isEnh ? endEnhPress : undefined}
@@ -180,7 +174,7 @@ export function PatientHeader({ onSave, isSaving }: PatientHeaderProps) {
                     <path d="M7 11V7a5 5 0 0110 0v4" />
                   </svg>
                 )}
-                {TAB_LABELS[t][isCat ? 'cat' : 'ref']}
+                {(t as any)[tabKey] || tabKey.toUpperCase()}
               </button>
             );
           })}
