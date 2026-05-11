@@ -48,9 +48,10 @@ const IOL_DATABASE: IOLModel[] = IOL_DB
 interface LensModalProps {
   isOpen: boolean;
   onClose: () => void;
+  activeEye?: 'od' | 'os';
 }
 
-export function LensModal({ isOpen, onClose }: LensModalProps) {
+export function LensModal({ isOpen, onClose, activeEye = 'od' }: LensModalProps) {
   const { haptic } = useTelegram();
   const { setDraft } = useSessionStore();
   const [search, setSearch] = useState('');
@@ -70,18 +71,22 @@ export function LensModal({ isOpen, onClose }: LensModalProps) {
     const currentDraft = store.draft;
     if (!currentDraft) return;
 
-    // Обновляем iolResult внутри draft — это наш главный источник
+    const currentIOL = (currentDraft.iolResult || {}) as any;
     const updatedIOL = {
-      ...(currentDraft.iolResult || {}),
+      ...currentIOL,
+      // top-level fallback (для обратной совместимости)
       lens: lens.model,
       aConst: lens.const,
-    } as any;
+      // per-eye переопределение
+      [activeEye]: {
+        ...(currentIOL[activeEye] || {}),
+        lens: lens.model,
+        aConst: lens.const,
+      },
+    };
 
     store.setDraft({ iolResult: updatedIOL });
-    
-    // Также обновляем глобальный iolResult для синхронизации других вкладок
     store.setIOLResult(updatedIOL);
-    
     onClose();
   };
 

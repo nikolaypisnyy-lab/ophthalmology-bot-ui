@@ -34,6 +34,10 @@ export function NewPatientModal() {
       const s = String(data.sex || data.patient_sex || '').toUpperCase();
       if (s.startsWith('М') || s.startsWith('M')) setSex('М');
       else if (s.startsWith('Ж') || s.startsWith('F')) setSex('Ж');
+      const hasBiometry = data.od?.al != null || data.os?.al != null
+        || data.od?.acd != null || data.os?.acd != null
+        || data.od?.lt  != null || data.os?.lt  != null;
+      if (hasBiometry) setType('cataract');
     });
   };
 
@@ -126,7 +130,7 @@ export function NewPatientModal() {
           <label style={{ fontFamily: F.mono, fontSize: 10, color: C.muted2, fontWeight: 700, textTransform: 'uppercase', marginLeft: 4 }}>{t.fullName}</label>
           <input
             value={name} onChange={e => setName(e.target.value)}
-            placeholder="John Doe" autoFocus
+            placeholder="John Doe"
             style={{
               background: C.surface, border: `1px solid ${C.border}`,
               borderRadius: R.xxl, padding: '14px 16px',

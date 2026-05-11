@@ -34,9 +34,10 @@ export function CalcTab() {
   const eyeResults = formulaResults[activeEye] || {};
 
   // Показываем: активную формулу + формулы в comparison
+  const hasResults = (f: string) => (eyeResults[f] || eyeResults[f.toLowerCase()] || []).length > 0;
   const formulasToShow = [
     activeFormula,
-    ...comparisonFormulas.filter(f => f !== activeFormula && (eyeResults[f] || eyeResults[f.toLowerCase()])?.length > 0),
+    ...comparisonFormulas.filter(f => f !== activeFormula && hasResults(f)),
   ];
 
   const mainResults = eyeResults[activeFormula] || eyeResults[activeFormula.toLowerCase()] || [];
@@ -243,14 +244,14 @@ export function CalcTab() {
 
             {/* Lens name */}
             <div style={{ fontSize: 12, fontWeight: 800, color: C.secondary, maxWidth: '90%', textAlign: 'center' }}>
-              {(iolResult as any)?.lens || <span style={{ color: C.muted3, fontStyle: 'italic' }}>{t.noLensSelected}</span>}
+              {(iolResult as any)?.[activeEye]?.lens || (iolResult as any)?.lens || <span style={{ color: C.muted3, fontStyle: 'italic' }}>{t.noLensSelected}</span>}
             </div>
 
             {/* Pred SE/Refr + Target */}
             <div style={{ display: 'flex', gap: 16, alignItems: 'center', background: C.surface, padding: '8px 16px', borderRadius: 14, border: `1px solid ${C.border}40`, width: '100%', justifyContent: 'center' }}>
               <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
                 {(() => {
-                  let label = 'PRED SE';
+                  let label = language === 'ru' ? 'ПРОГНОЗ. СЭ' : 'PRED SE';
                   let valDisplay = predSE != null ? (predSE > 0 ? '+' : '') + predSE.toFixed(2) : '—';
                   let valSize = 16;
 
@@ -267,7 +268,7 @@ export function CalcTab() {
                       const valStr = (finalVal > 0 ? '+' : '') + finalVal.toFixed(2);
                       const axis = match.res_axis || tr.total_steep_axis;
 
-                      label = 'PRED SE';
+                      label = language === 'ru' ? 'ПРОГНОЗ. СЭ' : 'PRED SE';
                       valDisplay = `${valStr} @ ${axis}°`;
                       valSize = 16;
                     }
@@ -295,7 +296,7 @@ export function CalcTab() {
           <div style={{ display: 'flex', gap: 6, marginTop: 10, paddingBottom: 2 }}>
             <EditChip field="bio_al" label="AL" val={bio.al} unit="mm" isBio readOnly />
             <EditChip field="bio_acd" label="ACD" val={bio.acd} unit="mm" isBio readOnly />
-            <EditChip field="bio_lt" label="LT" val={bio.lt} unit="mm" isBio readOnly />
+            <EditChip field="bio_lt" label="A-CONST" val={(iolResult as any)?.aConst ?? null} unit="" isBio readOnly />
           </div>
         </div>
       </div>
@@ -315,7 +316,7 @@ export function CalcTab() {
               {/* Table header */}
               <div style={{
                 display: 'grid', gridTemplateColumns: '1fr 1fr',
-                padding: '9px 12px', alignItems: 'center',
+                padding: '6px 10px', alignItems: 'center',
                 background: isMain ? C.surface : fColor + '08',
                 borderBottom: `1px solid ${C.border}`
               }}>
@@ -363,17 +364,17 @@ export function CalcTab() {
                         }}
                         style={{
                           display: 'grid', gridTemplateColumns: '1fr 1fr',
-                          padding: '12px 12px', alignItems: 'center', cursor: 'pointer',
+                          padding: '4px 10px', alignItems: 'center', cursor: 'pointer',
                           borderBottom: i === fResults.length - 1 ? 'none' : `1px solid ${C.border}30`,
                           background: isSel ? `${fColor}12` : 'transparent',
                           borderLeft: isSug && isMain && !selectedPowerNum ? `3px solid ${fColor}` : '3px solid transparent',
                           transition: 'background 0.15s',
                         }}
                       >
-                        <div style={{ fontSize: 16, fontWeight: 900, color: isSel ? fColor : C.text, fontFamily: F.mono }}>
+                        <div style={{ fontSize: 12, fontWeight: 900, color: isSel ? fColor : C.text, fontFamily: F.mono }}>
                           {r.power.toFixed(2)}
                         </div>
-                        <div style={{ textAlign: 'right', fontSize: 13, fontWeight: 800, color: diffColor, fontFamily: F.mono }}>
+                        <div style={{ textAlign: 'right', fontSize: 11, fontWeight: 800, color: diffColor, fontFamily: F.mono }}>
                           {(diff > 0 ? '+' : '') + diff.toFixed(2)}
                         </div>
                       </div>

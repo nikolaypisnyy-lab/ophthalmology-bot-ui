@@ -258,14 +258,25 @@ def get_inventory(lens: str = "", power: float = 0.0, tolerance: float = 0.5):
 # ──────────────────────────────────────────────────────────────────────────────
 # Статика
 # ──────────────────────────────────────────────────────────────────────────────
-if DIST_DIR.exists():
-    app.mount("/assets", StaticFiles(directory=str(DIST_DIR / "assets")), name="assets")
-
 NO_CACHE = {
     "Cache-Control": "no-store, no-cache, must-revalidate, max-age=0",
     "Pragma": "no-cache",
     "Expires": "0",
 }
+
+from starlette.middleware.base import BaseHTTPMiddleware
+from starlette.requests import Request as StarletteRequest
+
+class NoCacheMiddleware(BaseHTTPMiddleware):
+    async def dispatch(self, request: StarletteRequest, call_next):
+        response = await call_next(request)
+        response.headers.update(NO_CACHE)
+        return response
+
+app.add_middleware(NoCacheMiddleware)
+
+if DIST_DIR.exists():
+    app.mount("/assets", StaticFiles(directory=str(DIST_DIR / "assets")), name="assets")
 
 @app.get("/")
 def read_root():
@@ -638,7 +649,6 @@ def calculate_iol(payload: IolCalcRequest):
             if "error" in r:
                 errors.append(r["error"])
             else:
-                # Скраперы возвращают {"result": {eye: {p_emmetropia, table: [{power, ref}]}}}
                 eye_data = r.get(active_eye) or r.get("result", {}).get(active_eye) or {}
                 table = eye_data.get("table", []) if isinstance(eye_data, dict) else []
                 p_em = eye_data.get("p_emmetropia") if isinstance(eye_data, dict) else None
@@ -652,15 +662,50 @@ def calculate_iol(payload: IolCalcRequest):
                     })
                 if not results:
                     errors.append("No results returned for active eye")
+
+            # Всегда считаем Haigis вместе с Barrett/Kane
+            try:
+                from haigis import haigis_constants_from_a, calc_haigis
+                a_const = float(d.get("a_const") or 118.5)
+                h_consts = haigis_constants_from_a(a_const)
+                h_res = calc_haigis(
+                    al=float(d.get("al") or 0),
+                    acd=float(d.get("acd") or 0),
+                    k1=float(d.get("k1") or 0),
+                    k2=float(d.get("k2") or 0),
+                    constants=h_consts,
+                    target_rx=float(d.get("target_refr") or 0)
+                )
+                haigis_results = []
+                if not (isinstance(h_res, dict) and "error" in h_res):
+                    for idx, row in enumerate(getattr(h_res, 'table', [])):
+                        haigis_results.append({
+                            "power": row.power,
+                            "refraction": row.refraction,
+                            "is_emmetropia": idx == 3
+                        })
+            except Exception as he:
+                haigis_results = []
+                print(f"[CALC] Haigis alongside error: {he}")
+
     except Exception as e:
         errors.append(str(e))
+        haigis_results = []
 
-    status = "ok" if results else "error"
+    formula_label = "Kane" if "kane" in formula else ("Barrett" if "barrett" in formula else "Haigis")
+    status = "ok" if (results or haigis_results) else "error"
     detail = errors[0] if errors else None
-    
+
+    # Если считали Barrett/Kane — возвращаем словарь с обеими формулами
+    if formula_label in ("Barrett", "Kane"):
+        results_map = {formula_label: results}
+        if haigis_results:
+            results_map["Haigis"] = haigis_results
+        return {"status": status, "results": results_map, "toric": toric_data, "detail": detail}
+
     return {
-        "status": status, 
-        "data": results, 
+        "status": status,
+        "data": results,
         "toric": toric_data,
         "detail": detail
     }

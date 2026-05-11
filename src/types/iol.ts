@@ -74,6 +74,9 @@ export interface IOLEyeResult {
   toricPower?: number;
   toricAx?: number;
   toricResidual?: string;
+  // Линза для этого глаза (переопределяет верхний уровень IOLResult)
+  lens?: string;
+  aConst?: number;
 }
 
 /** Полный результат расчёта (оба глаза + метаданные) */

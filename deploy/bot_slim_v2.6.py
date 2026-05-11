@@ -52,7 +52,7 @@ USER_CONTEXT: Dict[int, Dict[str, Any]] = {}
 MSG_PENDING: Dict[int, Dict[str, Any]] = {}
 
 def get_ctx(uid: int) -> Dict[str, Any]:
-    if uid not in USER_CONTEXT:
+    if uid not in USER_CONTEXT or USER_CONTEXT[uid].get("cid") is None:
         # Загружаем первую доступную клинику из базы
         u = master_db.get_user_clinic(uid)
         if u:
@@ -95,12 +95,6 @@ def main_menu_markup(uid: int):
     if cid:
         url = f"{WEBAPP_URL}?clinic={cid}" if "?" not in WEBAPP_URL else f"{WEBAPP_URL}&clinic={cid}"
         
-    kb.row(types.KeyboardButton("🚀 Открыть RefMaster", web_app=types.WebAppInfo(url)))
-    
-    clinics = master_db.get_user_clinics(uid)
-    if len(clinics) > 1:
-        kb.row("🏥 Сменить клинику")
-    
     if cid:
         u = master_db.get_user_clinic(uid, cid)
         if u and (u["role"] == "admin" or uid in ADMIN_IDS):
@@ -108,7 +102,9 @@ def main_menu_markup(uid: int):
             kb.row("⚙️ Управление клиниками")
             kb.row("🔗 Пригласить дистрибьютора")
             kb.row("📋 Все пользователи", "📢 Рассылка")
-    
+        else:
+            kb.row("✉️ Написать администратору")
+
     return kb
 
 # ================= HANDLERS =================
@@ -185,6 +181,10 @@ def start_cmd(message):
 # {admin_id: {'uid': requester_uid, 'name': requester_name}}
 _PENDING_REQUESTS: Dict[int, Dict] = {}
 
+# Пользователи, ожидающие ввода названия своей клиники
+_WAITING_CLINIC_INPUT: Dict[int, dict] = {}  # user_id → {'name': str, 'username': str}
+_WAITING_MSG_TO_ADMIN: set = set()  # user_ids ожидающих ввода сообщения для админа
+
 def _get_clinics():
     if hasattr(master_db, 'get_all_clinics'):
         c = master_db.get_all_clinics()
@@ -207,25 +207,42 @@ def _build_clinic_keyboard(requester_uid: int) -> types.InlineKeyboardMarkup:
 
 @bot.callback_query_handler(func=lambda c: c.data.startswith("req_access:"))
 def handle_access_request(c):
-    requester_uid = c.from_user.id
-    name = f"{c.from_user.first_name or ''} {c.from_user.last_name or ''}".strip() or f"User_{requester_uid}"
-    username = c.from_user.username or "—"
-
-    text = (
-        f"📥 <b>Новая заявка на доступ</b>\n\n"
-        f"👤 {html.escape(name)}\n"
-        f"🆔 <code>{requester_uid}</code>  @{username}\n\n"
-        f"Выберите клинику для назначения:"
-    )
-    kb = _build_clinic_keyboard(requester_uid)
-    for admin_id in ADMIN_IDS:
-        bot.send_message(admin_id, text, reply_markup=kb)
-        _PENDING_REQUESTS[admin_id] = {'uid': requester_uid, 'name': name}
-
+    """Шаг 1: просим пользователя написать название своей клиники."""
+    bot.answer_callback_query(c.id)
+    uid = c.from_user.id
+    name = f"{c.from_user.first_name or ''} {c.from_user.last_name or ''}".strip() or f"User_{uid}"
+    _WAITING_CLINIC_INPUT[uid] = {'name': name, 'username': c.from_user.username or ''}
     bot.edit_message_text(
-        "✅ Запрос отправлен администратору. Ожидайте уведомления.",
+        "🏥 Напишите название вашей клиники:",
         c.message.chat.id, c.message.message_id
     )
+
+@bot.message_handler(func=lambda m: m.from_user.id in _WAITING_CLINIC_INPUT)
+def handle_user_clinic_text(message):
+    """Шаг 2: получили название клиники — отправляем запрос админу."""
+    uid = message.from_user.id
+    clinic_typed = (message.text or '').strip()
+    if not clinic_typed:
+        msg = bot.send_message(uid, "⚠️ Пожалуйста, введите название клиники:")
+        bot.register_next_step_handler(msg, lambda m: handle_user_clinic_text(m))
+        return
+    info = _WAITING_CLINIC_INPUT.pop(uid, {})
+    name = info.get('name', f"User_{uid}")
+    username = info.get('username', '')
+
+    uname_str = f"@{username}" if username else f"<code>{uid}</code>"
+    text = (
+        f"📥 <b>Новая заявка на доступ</b>\n\n"
+        f"👤 {html.escape(name)}  {uname_str}\n"
+        f"🏥 Клиника: <b>{html.escape(clinic_typed)}</b>\n\n"
+        f"Выберите клинику для назначения:"
+    )
+    kb = _build_clinic_keyboard(uid)
+    for admin_id in ADMIN_IDS:
+        bot.send_message(admin_id, text, reply_markup=kb)
+        _PENDING_REQUESTS[admin_id] = {'uid': uid, 'name': name}
+
+    bot.send_message(uid, "✅ Запрос отправлен администратору. Ожидайте уведомления.")
 
 @bot.callback_query_handler(func=lambda c: c.data.startswith("adm_sel:"))
 def handle_admin_select_clinic(c):
@@ -363,6 +380,10 @@ def handle_admin_grant(c):
     except: pass
 
     master_db.add_user(target_uid, cid, role, name)
+    master_db.set_active_clinic(target_uid, cid)
+    # Сбрасываем кэш контекста чтобы при следующем /start перечитать из БД
+    USER_CONTEXT.pop(target_uid, None)
+    load_clinic(target_uid, force_cid=cid)
     _PENDING_REQUESTS.pop(c.from_user.id, None)
 
     role_label = "Хирург" if role == "surgeon" else "Диагностика"
@@ -479,6 +500,7 @@ def _cl_list_keyboard() -> types.InlineKeyboardMarkup:
             callback_data=f"cl_pick:{cl['clinic_id']}"
         ))
     kb.add(types.InlineKeyboardButton("➕ Создать клинику", callback_data="cl_new"))
+    kb.add(types.InlineKeyboardButton("🔄 Сменить клинику", callback_data="cl_switch"))
     kb.add(types.InlineKeyboardButton("📦 Бэкап базы", callback_data="cl_backup_db"))
     return kb
 
@@ -490,6 +512,21 @@ def admin_clinics(message):
         "🏥 <b>Управление клиниками</b>\n\nВыберите клинику:",
         reply_markup=_cl_list_keyboard()
     )
+
+@bot.callback_query_handler(func=lambda c: c.data == "cl_switch")
+def cl_switch_cb(c):
+    bot.answer_callback_query(c.id)
+    uid = c.from_user.id
+    clinics = master_db.get_user_clinics(uid)
+    if not clinics:
+        bot.send_message(uid, "У вас нет доступа к клиникам.")
+        return
+    current_cid = get_ctx(uid)["cid"]
+    kb = types.InlineKeyboardMarkup()
+    for cl in clinics:
+        prefix = "✅ " if cl['clinic_id'] == current_cid else ""
+        kb.add(types.InlineKeyboardButton(f"{prefix}{cl['clinic_name']}", callback_data=f"set_active_cl:{cl['clinic_id']}"))
+    bot.send_message(uid, "<b>Выберите клинику для работы:</b>", reply_markup=kb)
 
 @bot.callback_query_handler(func=lambda c: c.data == "cl_backup_db")
 def cl_backup_db_cb(c):
@@ -1131,6 +1168,53 @@ def admin_backup(message):
 def info_handler(message):
     bot.send_message(message.chat.id, "<b>RefMaster SLIM v2.6.1</b>\n\nЛегкий бот-коннектор для авторизации персонала и управления базами данных.")
 
+@bot.message_handler(func=lambda m: m.text == "✉️ Написать администратору")
+def contact_admin_handler(message):
+    uid = message.from_user.id
+    _WAITING_MSG_TO_ADMIN.add(uid)
+    kb = types.InlineKeyboardMarkup()
+    kb.add(types.InlineKeyboardButton("❌ Отмена", callback_data="cancel_msg_admin"))
+    bot.send_message(uid, "✏️ Напишите ваше сообщение администратору:", reply_markup=kb)
+
+@bot.callback_query_handler(func=lambda c: c.data == "cancel_msg_admin")
+def cancel_msg_admin(c):
+    _WAITING_MSG_TO_ADMIN.discard(c.from_user.id)
+    bot.answer_callback_query(c.id, "Отменено")
+    bot.delete_message(c.message.chat.id, c.message.message_id)
+
+@bot.message_handler(
+    func=lambda m: m.from_user.id in _WAITING_MSG_TO_ADMIN,
+    content_types=['text', 'photo', 'video', 'document', 'voice']
+)
+def forward_msg_to_admin(message):
+    uid = message.from_user.id
+    _WAITING_MSG_TO_ADMIN.discard(uid)
+    admin_id = next(iter(ADMIN_IDS), None)
+    if not admin_id:
+        bot.send_message(uid, "❌ Администратор не найден.")
+        return
+
+    name = f"{message.from_user.first_name or ''} {message.from_user.last_name or ''}".strip()
+    username_str = f" @{message.from_user.username}" if message.from_user.username else ''
+    ctx = get_ctx(uid)
+    clinic = ctx.get('name') or '—'
+    header = f"✉️ <b>Сообщение от {html.escape(name)}{username_str}</b>\n🏥 {html.escape(clinic)}\n\n"
+
+    try:
+        if message.text:
+            bot.send_message(admin_id, header + html.escape(message.text))
+        elif message.photo:
+            bot.send_photo(admin_id, message.photo[-1].file_id, caption=header + html.escape(message.caption or ''))
+        elif message.video:
+            bot.send_video(admin_id, message.video.file_id, caption=header + html.escape(message.caption or ''))
+        elif message.document:
+            bot.send_document(admin_id, message.document.file_id, caption=header + html.escape(message.caption or ''))
+        elif message.voice:
+            bot.send_voice(admin_id, message.voice.file_id, caption=header)
+        bot.send_message(uid, "✅ Сообщение отправлено администратору.")
+    except Exception as e:
+        bot.send_message(uid, f"❌ Ошибка отправки: {e}")
+
 @bot.message_handler(commands=['move'])
 def move_patient_cmd(message):
     uid = message.from_user.id
@@ -1699,30 +1783,48 @@ def all_users_cmd(message):
     all_users = master_db.get_all_users() or []
     dists = master_db.get_all_distributors() or []
 
-    lines = [f"👥 <b>Все пользователи ({len(all_users)} чел.)</b>\n"]
+    # Исключаем самого админа из подсчёта и списка
+    other_users = [u for u in all_users if u.get('telegram_id') != uid]
 
-    # Группируем по клиникам
+    # Уникальные пользователи (по telegram_id) для общего счётчика
+    unique_ids = {u['telegram_id'] for u in other_users}
+
+    lines = [f"👥 <b>Все пользователи ({len(unique_ids)} чел.)</b>\n"]
+
     from collections import defaultdict
     by_clinic: dict = defaultdict(list)
-    for u in all_users:
+    for u in other_users:
         by_clinic[u.get('clinic_name', u.get('clinic_id', '?'))].append(u)
 
     for clinic_name, users in sorted(by_clinic.items()):
         lines.append(f"🏥 <b>{html.escape(clinic_name)}</b>")
         for u in users:
             icon = ROLES_ICON.get(u.get('role', ''), '👤')
-            username = f" @{u['username']}" if u.get('username') else ''
-            lines.append(f"  {icon} {html.escape(u['name'])}{username} · <code>{u['telegram_id']}</code>")
+            name = html.escape(u['name'] or '—')
+            tid = u['telegram_id']
+            uname = u.get('username')
+            if uname:
+                msg_link = f'<a href="https://t.me/{uname}">✉️</a>'
+            else:
+                msg_link = f'<a href="tg://user?id={tid}">✉️</a>'
+            username_str = f" @{uname}" if uname else ''
+            lines.append(f"  {icon} {name}{username_str} {msg_link}")
         lines.append("")
 
     if dists:
-        lines.append(f"📦 <b>Дистрибьюторы ({len(dists)} чел.)</b>")
-        for d in dists:
+        other_dists = [d for d in dists if d.get('telegram_id') != uid]
+        lines.append(f"📦 <b>Дистрибьюторы ({len(other_dists)} чел.)</b>")
+        for d in other_dists:
             contact = f" {html.escape(d.get('contact') or '')}" if d.get('contact') else ''
-            lines.append(f"  📦 {html.escape(d['name'])}{contact} · <code>{d['telegram_id']}</code>")
+            tid = d['telegram_id']
+            uname = d.get('username') or d.get('contact', '').lstrip('@') if d.get('contact', '').startswith('@') else None
+            if uname:
+                msg_link = f'<a href="https://t.me/{uname}">✉️</a>'
+            else:
+                msg_link = f'<a href="tg://user?id={tid}">✉️</a>'
+            lines.append(f"  📦 {html.escape(d['name'])}{contact} {msg_link}")
 
     text = "\n".join(lines)
-    # Разбиваем если длинный
     if len(text) > 4000:
         for i in range(0, len(text), 4000):
             bot.send_message(uid, text[i:i+4000])
@@ -1745,7 +1847,7 @@ def broadcast_init(message):
     bot.send_message(uid,
         f"📢 <b>Рассылка всем пользователям</b>\n\n"
         f"Получателей: <b>{total}</b> (хирурги + дистрибьюторы)\n\n"
-        f"Введите текст сообщения:",
+        f"Отправьте текст, фото, видео или документ:",
         reply_markup=kb
     )
 
@@ -1755,7 +1857,10 @@ def broadcast_cancel(c):
     bot.answer_callback_query(c.id, "Отменено")
     bot.delete_message(c.message.chat.id, c.message.message_id)
 
-@bot.message_handler(func=lambda m: m.from_user.id in BROADCAST_PENDING and m.from_user.id in ADMIN_IDS)
+@bot.message_handler(
+    func=lambda m: m.from_user.id in BROADCAST_PENDING and m.from_user.id in ADMIN_IDS,
+    content_types=['text', 'photo', 'video', 'document', 'audio', 'voice']
+)
 def broadcast_send(message):
     uid = message.from_user.id
     BROADCAST_PENDING.pop(uid, None)
@@ -1763,20 +1868,29 @@ def broadcast_send(message):
     all_users = master_db.get_all_users() or []
     dists = master_db.get_all_distributors() or []
 
-    # Все уникальные получатели (исключая самого отправителя)
     recipients = set(u['telegram_id'] for u in all_users if u['telegram_id'] != uid)
     recipients.update(d['telegram_id'] for d in dists if d['telegram_id'] != uid)
 
-    text_to_send = (
-        f"📢 <b>Сообщение от администратора:</b>\n\n"
-        f"{html.escape(message.text or '')}"
-    )
+    caption_prefix = "📢 <b>Сообщение от администратора:</b>\n\n"
+    raw_caption = message.caption or message.text or ''
+    caption = caption_prefix + html.escape(raw_caption)
 
     sent = 0
     failed = 0
     for rid in recipients:
         try:
-            bot.send_message(rid, text_to_send)
+            if message.video:
+                bot.send_video(rid, message.video.file_id, caption=caption)
+            elif message.photo:
+                bot.send_photo(rid, message.photo[-1].file_id, caption=caption)
+            elif message.document:
+                bot.send_document(rid, message.document.file_id, caption=caption)
+            elif message.audio:
+                bot.send_audio(rid, message.audio.file_id, caption=caption)
+            elif message.voice:
+                bot.send_voice(rid, message.voice.file_id, caption=caption)
+            else:
+                bot.send_message(rid, caption)
             sent += 1
         except Exception:
             failed += 1

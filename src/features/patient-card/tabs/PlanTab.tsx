@@ -173,16 +173,23 @@ function CataractPlanTab() {
                 displayVal = `${(finalVal > 0 ? '+' : '') + finalVal.toFixed(2)} @ ${axis}°`;
               }
 
-              return [
-                { label: language === 'ru' ? 'ЦЕЛЬ' : 'TARGET', val: draft.targetRefr || '0.00', color: ec.color },
-                { label: language === 'ru' ? 'ФОРМУЛА' : 'FORMULA', val: activeFormula.toUpperCase(), color: C.indigo },
-                { label: language === 'ru' ? 'ПРОГНОЗ' : 'PRED. REF', val: displayVal, color: C.green },
-              ].map(l => (
-                <div key={l.label} style={{ background: 'rgba(255,255,255,0.02)', borderRadius: 12, padding: '10px 4px', border: `1px solid ${C.border}40`, textAlign: 'center' }}>
-                  <div style={{ fontSize: 7, fontWeight: 900, color: C.muted3, textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 4 }}>{l.label}</div>
-                  <div style={{ fontFamily: F.mono, fontSize: l.val.includes('@') ? 10.5 : 13, fontWeight: 800, color: l.color }}>{l.val}</div>
-                </div>
-              ));
+              const aConst = (iolResult as any)?.[planEye]?.aConst || (iolResult as any)?.aConst;
+
+              return (
+                <>
+                  {[
+                    { label: language === 'ru' ? 'ЦЕЛЬ' : 'TARGET', val: draft.targetRefr || '0.00', color: ec.color, sub: null },
+                    { label: language === 'ru' ? 'ФОРМУЛА' : 'FORMULA', val: activeFormula.toUpperCase(), color: C.indigo, sub: aConst ? `A=${aConst}` : null },
+                    { label: language === 'ru' ? 'ПРОГНОЗ' : 'PRED. REF', val: displayVal, color: C.green, sub: null },
+                  ].map(l => (
+                    <div key={l.label} style={{ background: 'rgba(255,255,255,0.02)', borderRadius: 12, padding: '10px 4px', border: `1px solid ${C.border}40`, textAlign: 'center' }}>
+                      <div style={{ fontSize: 7, fontWeight: 900, color: C.muted3, textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 4 }}>{l.label}</div>
+                      <div style={{ fontFamily: F.mono, fontSize: l.val.includes('@') ? 10.5 : 13, fontWeight: 800, color: l.color }}>{l.val}</div>
+                      {l.sub && <div style={{ fontFamily: F.mono, fontSize: 10, fontWeight: 700, color: C.muted3, marginTop: 2 }}>{l.sub}</div>}
+                    </div>
+                  ))}
+                </>
+              );
             })()}
           </div>
         </div>
@@ -696,7 +703,7 @@ export function PlanTab({ onSave, isSaving }: { onSave?: () => void, isSaving?: 
             <svg width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2.5"><path d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2-2v12a2 2 0 002 2z" /></svg>
             {draft.date ? (language === 'ru' ? `ОПЕРАЦИЯ: ${dateStr}` : `SURGERY: ${dateStr}`) : (language === 'ru' ? 'НАЗНАЧИТЬ ОПЕРАЦИЮ' : 'SCHEDULE SURGERY')}
           </button>
-          {showCalendar && <Calendar selectedDate={draft.date || null} onSelect={iso => { haptic.success(); setDraft({ date: iso, status: 'planned', isEnhancement: false }); setShowCalendar(false); }} />}
+          {showCalendar && <Calendar selectedDate={draft.date || null} language={language} onSelect={iso => { haptic.success(); setDraft({ date: iso, status: 'planned', isEnhancement: false }); setShowCalendar(false); }} />}
         </div>
 
         {/* BIG GREEN SAVE BUTTON */}

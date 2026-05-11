@@ -262,13 +262,14 @@ export function EnhancementTab() {
             {draft.date ? `${(language === 'ru' ? 'ОПЕРАЦИЯ: ' : 'SURGERY: ') + new Date(draft.date).toLocaleDateString()}` : (language === 'ru' ? 'ЗАПИСАТЬ НА ДОКОРРЕКЦИЮ' : 'SCHEDULE ENHANCEMENT')}
           </button>
           {showCalendar && (
-            <Calendar 
-              selectedDate={draft.date || null} 
-              onSelect={iso => { 
-                haptic.success(); 
-                setDraft({ date: iso, status: 'planned', isEnhancement: true }); 
-                setShowCalendar(false); 
-              }} 
+            <Calendar
+              selectedDate={draft.date || null}
+              language={language}
+              onSelect={iso => {
+                haptic.success();
+                setDraft({ date: iso, status: 'planned', isEnhancement: true });
+                setShowCalendar(false);
+              }}
             />
           )}
         </div>

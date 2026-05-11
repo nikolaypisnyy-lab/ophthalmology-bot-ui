@@ -53,9 +53,13 @@ class MasterDB:
                 PRIMARY KEY (telegram_id, clinic_id)
             )
         """, commit=True)
-        # Migration: ensure is_active exists if table already existed
+        # Migrations
         try:
             self.execute("ALTER TABLE users ADD COLUMN is_active INTEGER DEFAULT 0", commit=True)
+        except:
+            pass
+        try:
+            self.execute("ALTER TABLE users ADD COLUMN username TEXT", commit=True)
         except:
             pass
 
@@ -70,6 +74,8 @@ class MasterDB:
         return cid
 
     def get_all_clinics(self) -> list:
+        try: self.conn.commit()
+        except: pass
         rows = self.execute("SELECT * FROM clinics").fetchall()
         return [dict(r) for r in rows]
 
@@ -88,14 +94,22 @@ class MasterDB:
         self.execute("DELETE FROM clinics WHERE clinic_id = ?", (cid,), commit=True)
         return db_file
 
-    def add_user(self, user_id: int, clinic_id: str, role: str, name: str = ""):
+    def add_user(self, user_id: int, clinic_id: str, role: str, name: str = "", username: str = None):
         self.execute(
-            "INSERT OR REPLACE INTO users (telegram_id, clinic_id, role, name) VALUES (?, ?, ?, ?)",
-            (user_id, clinic_id, role, name),
+            "INSERT OR REPLACE INTO users (telegram_id, clinic_id, role, name, username) VALUES (?, ?, ?, ?, ?)",
+            (user_id, clinic_id, role, name, username),
             commit=True
         )
 
+    def update_username(self, user_id: int, username: str):
+        self.execute(
+            "UPDATE users SET username = ? WHERE telegram_id = ?",
+            (username, user_id), commit=True
+        )
+
     def get_user_clinic(self, user_id: int, clinic_id: str = None) -> dict:
+        try: self.conn.commit()
+        except: pass
         query = """
             SELECT u.*, c.name as clinic_name, c.db_file 
             FROM users u
@@ -114,8 +128,10 @@ class MasterDB:
         self.execute("UPDATE users SET is_active = 1 WHERE telegram_id = ? AND clinic_id = ?", (user_id, clinic_id), commit=True)
 
     def get_user_clinics(self, user_id: int) -> list:
+        try: self.conn.commit()  # закрываем старую read-транзакцию чтобы видеть свежие данные
+        except: pass
         rows = self.execute("""
-            SELECT u.*, c.name as clinic_name, c.db_file 
+            SELECT u.*, c.name as clinic_name, c.db_file
             FROM users u
             JOIN clinics c ON u.clinic_id = c.clinic_id
             WHERE u.telegram_id = ?

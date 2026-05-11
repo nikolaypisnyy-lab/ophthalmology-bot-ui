@@ -104,6 +104,9 @@ export interface UpdatePatientRequest {
   flapDiamOS?: string;
   capOrFlap?: string;
   capOrFlapOS?: string;
+  sia?: string;
+  siaAx?: string;
+  incAx?: string;
   isCustomViewOD?: boolean;
   isCustomViewOS?: boolean;
   od?: any;
@@ -182,6 +185,9 @@ export async function savePatientMeta(patient: Partial<Patient>): Promise<SaveRe
       flapDiamOS: (patient as any).flapDiamOS,
       capOrFlap: (patient as any).capOrFlap,
       capOrFlapOS: (patient as any).capOrFlapOS,
+      sia: (patient as any).sia,
+      siaAx: (patient as any).siaAx,
+      incAx: (patient as any).incAx,
       isCustomViewOD: patient.isCustomViewOD,
       isCustomViewOS: patient.isCustomViewOS,
       od: patient.od,

@@ -11,14 +11,15 @@ import { ManualModal } from './ManualModal';
 export function SettingsModal() {
   const { haptic } = useTelegram();
   const { settingsOpen, closeSettings, openManual } = useUIStore();
-  const { 
-    clinics, activeClinicId, activeName, activeLaser, switchClinic, setActiveLaser, 
+  const {
+    clinics, activeClinicId, activeName, activeLaser, switchClinic, setActiveLaser,
     language, setLanguage, theme, setTheme, defaultFlap, setDefaultFlap,
     activeRefNomo, setRefNomo, activeRefNomoCyl, setRefNomoCyl,
     recommendedNomo, recommendedNomoCyl, nomoDismissed
   } = useClinicStore();
   const [loading, setLoading] = useState(false);
   const [msg, setMsg] = useState<{ text: string; type: 'info' | 'error' } | null>(null);
+  const [clinicsExpanded, setClinicsExpanded] = useState(false);
   const t = T(language);
 
   const handleSwitchClinic = (id: string) => {
@@ -218,41 +219,6 @@ export function SettingsModal() {
             </div>
             {t.uploadDb}
           </label>
-
-          {clinics.length > 1 && (
-            <div style={{ marginTop: 8 }}>
-              <div style={{ paddingBottom: 8, borderBottom: `1px solid ${C.border}`, marginBottom: 8 }}>
-                <span style={{ fontSize: 11, fontWeight: 800, color: C.muted, textTransform: 'uppercase', letterSpacing: '.05em' }}>{t.clinic}</span>
-              </div>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-                {clinics.map(c => {
-                  const active = c.clinic_id === activeClinicId;
-                  return (
-                    <button
-                      key={c.clinic_id}
-                      onClick={() => handleSwitchClinic(c.clinic_id)}
-                      style={{
-                        padding: '10px 14px', borderRadius: 14,
-                        background: active ? C.accentLt : C.surface2,
-                        border: `1px solid ${active ? C.accent : C.border}`,
-                        color: active ? C.accent : C.text,
-                        fontFamily: F.sans, fontSize: 13, fontWeight: active ? 700 : 500,
-                        display: 'flex', alignItems: 'center', gap: 10,
-                        cursor: active ? 'default' : 'pointer', textAlign: 'left',
-                      }}
-                    >
-                      <div style={{
-                        width: 8, height: 8, borderRadius: '50%',
-                        background: active ? C.accent : C.border, flexShrink: 0,
-                      }} />
-                      <span style={{ flex: 1 }}>{c.clinic_name}</span>
-                      <span style={{ fontSize: 10, opacity: 0.6 }}>{c.role}</span>
-                    </button>
-                  );
-                })}
-              </div>
-            </div>
-          )}
 
           <div style={{ marginTop: 8 }}>
             <div style={{ paddingBottom: 8, borderBottom: `1px solid ${C.border}`, marginBottom: 8 }}>
@@ -458,6 +424,50 @@ export function SettingsModal() {
               {language === 'ru' ? 'Руководство пользователя' : 'User Manual'}
             </button>
           </div>
+
+          {clinics.length > 1 && (
+            <div style={{ marginTop: 8 }}>
+              <button
+                onClick={() => setClinicsExpanded(v => !v)}
+                style={{
+                  width: '100%', padding: '10px 14px', borderRadius: 14,
+                  background: 'transparent', border: `1px dashed ${C.border}`,
+                  color: C.muted, fontFamily: F.sans, fontSize: 12, fontWeight: 600,
+                  display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                  cursor: 'pointer',
+                }}
+              >
+                <span>{language === 'ru' ? 'Сменить клинику' : 'Switch clinic'}</span>
+                <span style={{ fontSize: 10, opacity: 0.6 }}>{clinicsExpanded ? '▲' : '▼'}</span>
+              </button>
+              {clinicsExpanded && (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 6, marginTop: 8 }}>
+                  {clinics.map(c => {
+                    const active = c.clinic_id === activeClinicId;
+                    return (
+                      <button
+                        key={c.clinic_id}
+                        onClick={() => handleSwitchClinic(c.clinic_id)}
+                        style={{
+                          padding: '10px 14px', borderRadius: 14,
+                          background: active ? C.accentLt : C.surface2,
+                          border: `1px solid ${active ? C.accent : C.border}`,
+                          color: active ? C.accent : C.text,
+                          fontFamily: F.sans, fontSize: 13, fontWeight: active ? 700 : 500,
+                          display: 'flex', alignItems: 'center', gap: 10,
+                          cursor: active ? 'default' : 'pointer', textAlign: 'left',
+                        }}
+                      >
+                        <div style={{ width: 8, height: 8, borderRadius: '50%', background: active ? C.accent : C.border, flexShrink: 0 }} />
+                        <span style={{ flex: 1 }}>{c.clinic_name}</span>
+                        <span style={{ fontSize: 10, opacity: 0.6 }}>{c.role}</span>
+                      </button>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+          )}
 
           <div style={{ marginTop: 20, textAlign: 'center', color: C.muted, fontSize: 12, fontFamily: F.sans, opacity: 0.6 }}>
             RefMaster Surgical OCR v2.3.1

@@ -135,7 +135,7 @@ const getNavItems = (t: any) => [
 ];
 
 function AppHeader({ title }: { title: string }) {
-  const { openSettings, openPatientId, settingsOpen } = useUIStore();
+  const { openSettings, openPatientId, settingsOpen, showNewPatientModal } = useUIStore();
   const { activeName } = useClinicStore();
   const { haptic } = useTelegram();
   return (
@@ -170,7 +170,7 @@ function AppHeader({ title }: { title: string }) {
           {title}
         </div>
       </div>
-      {!openPatientId && !settingsOpen && (
+      {!openPatientId && !settingsOpen && !showNewPatientModal && (
         <div 
           onClick={() => { haptic.light(); openSettings(); }}
           style={{

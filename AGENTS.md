@@ -17,7 +17,7 @@
 Обычные пуши в `main` разворачиваются автоматически. Если нужно задеплоить вручную с локальной машины, отправляйте фронтенд НАПРЯМУЮ в рабочую папку сервера:
 1. Сделайте билд: `npm run build`
 2. Отправьте `dist`: `rsync -av --delete dist/ root@92.38.48.231:/root/medeye/api/dist/`
-3. Перезапустите службы: `ssh root@92.38.48.231 "systemctl restart medeye-app medeye medeye_bot"`
+3. Перезапустите службы: `ssh root@92.38.48.231 "systemctl restart refmaster-app refmaster-bot"`
 *(Внимание: папка `/root/medeye_bot/` используется только как промежуточная при авто-деплое, для ручного деплоя используйте `/root/medeye/api/dist/`)*
 
 ## Ключевые файлы

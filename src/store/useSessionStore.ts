@@ -124,11 +124,9 @@ export const useSessionStore = create<SessionStore>()(
         // lastActiveFormula — последнее что видел пользователь, приоритетнее сохранённого на сервере
         const restoredFormula = _get().lastActiveFormula ?? patient.activeFormula ?? undefined;
 
-        // Авто-инициализируем comparisonFormulas из доступных результатов
         const activeF = restoredFormula || 'Barrett';
-        const autoComparison = ['Haigis', 'Barrett', 'Kane'].filter(
-          f => f !== activeF && (formulaResults.od[f] || formulaResults.od[f.toLowerCase()])?.length > 0
-        );
+        const haigisHasResults = (formulaResults.od['Haigis'] || formulaResults.od['haigis'] || []).length > 0;
+        const autoComparison: string[] = (activeF !== 'Haigis' && haigisHasResults) ? ['Haigis'] : [];
 
         set({
           draft: { ...patient, flapTech: patient.flapTech ?? 'fs', toricMode: !!hasToric, activeFormula: restoredFormula as any },
@@ -302,14 +300,29 @@ export const useSessionStore = create<SessionStore>()(
         });
       },
 
-      toggleComparisonFormula: (f) => set(state => {
+      toggleComparisonFormula: (f) => {
+        const state = _get();
         const exists = state.comparisonFormulas.includes(f);
-        return {
-          comparisonFormulas: exists
-            ? state.comparisonFormulas.filter(x => x !== f)
-            : state.comparisonFormulas.length < 2 ? [...state.comparisonFormulas, f] : state.comparisonFormulas,
-        };
-      }),
+        if (exists) {
+          const newComps = state.comparisonFormulas.filter(x => x !== f);
+          // Если остался пустой список — авто-добавляем следующую доступную
+          if (newComps.length === 0) {
+            const activeF = state.draft?.activeFormula || 'Barrett';
+            const eyeRes = (state.formulaResults as any)?.[Object.keys(state.formulaResults || {})[0]] || {};
+            const hasRes = (formula: string) => ((eyeRes[formula] || eyeRes[formula.toLowerCase()]) || []).length > 0;
+            const next = ['Haigis', 'Barrett', 'Kane'].find(x => x !== f && x !== activeF && hasRes(x));
+            set({ comparisonFormulas: next ? [next] : [] });
+          } else {
+            set({ comparisonFormulas: newComps });
+          }
+        } else {
+          set({
+            comparisonFormulas: state.comparisonFormulas.length < 2
+              ? [...state.comparisonFormulas, f]
+              : state.comparisonFormulas,
+          });
+        }
+      },
 
       setIOLLoading: (loading, progress = 0) => set({ iolLoading: loading, iolProgress: progress }),
       setIOLError: (error) => set({ iolError: error }),

@@ -17,6 +17,37 @@
 Любой `git push` в `main` → автоматический деплой через `.github/workflows/deploy.yml`.
 **deploy_medeye.sh НЕ использовать** — устарел.
 
+### Прямой деплой на сервер (если GitHub Actions не работает)
+SSH-ключ: `~/.ssh/id_ed25519_refmaster`
+Сервер: `root@92.38.48.231`
+
+| Файл | Путь на сервере |
+|------|----------------|
+| `deploy/bot_slim_v2.6.py` | `/root/medeye/api/bot_slim_v2.6.py` |
+| `deploy/api.py` | `/root/medeye/api/api.py` |
+| `deploy/*.py` | `/root/medeye/api/` |
+| фронтенд `dist/` | `/root/medeye/api/dist/` |
+
+Сервисы на сервере (актуально):
+- `refmaster-app.service` — FastAPI (api.py), порт 8000
+- `refmaster-bot.service` — Telegram Bot (bot_slim_v2.6.py)
+
+```bash
+# Деплой бота
+rsync -az -e "ssh -i ~/.ssh/id_ed25519_refmaster" deploy/bot_slim_v2.6.py root@92.38.48.231:/root/medeye/api/
+ssh -i ~/.ssh/id_ed25519_refmaster root@92.38.48.231 "systemctl restart refmaster-bot"
+
+# Деплой API
+rsync -az -e "ssh -i ~/.ssh/id_ed25519_refmaster" deploy/api.py root@92.38.48.231:/root/medeye/api/
+ssh -i ~/.ssh/id_ed25519_refmaster root@92.38.48.231 "systemctl restart refmaster-app"
+
+# Деплой фронтенда
+rsync -az -e "ssh -i ~/.ssh/id_ed25519_refmaster" dist/ root@92.38.48.231:/root/medeye/api/dist/
+
+# Перезапуск всего
+ssh -i ~/.ssh/id_ed25519_refmaster root@92.38.48.231 "systemctl restart refmaster-app refmaster-bot"
+```
+
 ## Ключевые файлы
 
 ### Бэкенд (`deploy/`)

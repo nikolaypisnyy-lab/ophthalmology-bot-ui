@@ -192,9 +192,9 @@ function ResultCard({ patient, onOpen }: { patient: PatientSummary; onOpen: () =
                 if (pwr === undefined || pwr === null || pwr === '—') return null;
                 const fmtPwr = typeof pwr === 'number' ? pwr.toFixed(2) : pwr;
                 return (
-                  <div key={eye} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
-                    <span style={{ fontSize: 6, fontWeight: 900, color: eye === 'od' ? C.od : C.os, textTransform: 'uppercase' }}>{eye}</span>
-                    <span style={{ fontFamily: F.mono, fontSize: 12, fontWeight: 900, color: C.primary, lineHeight: 1.1 }}>
+                  <div key={eye} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 2 }}>
+                    <span style={{ fontSize: 9, fontWeight: 900, color: eye === 'od' ? C.od : C.os, textTransform: 'uppercase', lineHeight: 1, marginBottom: 5 }}>{eye.toUpperCase()}</span>
+                    <span style={{ fontFamily: F.mono, fontSize: 12, fontWeight: 900, color: C.primary, lineHeight: 1 }}>
                       {fmtPwr}D
                     </span>
                   </div>

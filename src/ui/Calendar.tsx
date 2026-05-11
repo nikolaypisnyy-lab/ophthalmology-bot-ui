@@ -4,9 +4,10 @@ import { C, F } from '../constants/design';
 interface CalendarProps {
   selectedDate: string | null;
   onSelect: (isoDate: string) => void;
+  language?: 'ru' | 'en';
 }
 
-export function Calendar({ selectedDate, onSelect }: CalendarProps) {
+export function Calendar({ selectedDate, onSelect, language = 'en' }: CalendarProps) {
   const initDate = selectedDate ? new Date(selectedDate) : new Date();
   const [currentMonth, setCurrentMonth] = useState(initDate);
 
@@ -21,8 +22,12 @@ export function Calendar({ selectedDate, onSelect }: CalendarProps) {
   // Shift to start week on Monday
   const startDay = firstDayIndex === 0 ? 6 : firstDayIndex - 1;
 
-  const monthNames = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
-  const dayNames = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+  const monthNames = language === 'ru'
+    ? ['Январь', 'Февраль', 'Март', 'Апрель', 'Май', 'Июнь', 'Июль', 'Август', 'Сентябрь', 'Октябрь', 'Ноябрь', 'Декабрь']
+    : ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
+  const dayNames = language === 'ru'
+    ? ['Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб', 'Вс']
+    : ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
 
   const handlePrevMonth = (e: React.MouseEvent) => {
     e.stopPropagation();

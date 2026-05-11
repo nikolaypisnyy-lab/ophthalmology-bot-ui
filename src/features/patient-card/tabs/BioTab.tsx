@@ -350,8 +350,8 @@ export function BioTab({ onSave, isSaving }: { onSave?: () => void, isSaving?: b
         k1: parseFloat(bio.k1 || '0'),
         k2: parseFloat(bio.k2 || '0'),
         k1_ax: parseFloat(bio.k1_ax || '0'),
-        lens: latestIOL?.lens || 'AcrySof IQ',
-        a_const: latestIOL?.aConst || 119.3,
+        lens: (latestIOL as any)?.[activeEye]?.lens || latestIOL?.lens || 'AcrySof IQ',
+        a_const: (latestIOL as any)?.[activeEye]?.aConst || latestIOL?.aConst || 119.3,
         formula: formula,
         target_refr: parseFloat(latestTarget || '0'),
         toricMode: draft.toricMode,
@@ -377,6 +377,12 @@ export function BioTab({ onSave, isSaving }: { onSave?: () => void, isSaving?: b
         };
         setFormulaResults(newResults);
         setLastCalc(new Date().toLocaleTimeString());
+
+        // Если Haigis пришёл вместе с расчётом — добавляем в comparison автоматически
+        if (formula !== 'Haigis' && (updatedFormulaMap as any)['Haigis']?.length > 0) {
+          const { comparisonFormulas, toggleComparisonFormula } = useSessionStore.getState();
+          if (!comparisonFormulas.includes('Haigis')) toggleComparisonFormula('Haigis');
+        }
 
         if (res.toric) {
           setToricResults({
@@ -1000,7 +1006,7 @@ export function BioTab({ onSave, isSaving }: { onSave?: () => void, isSaving?: b
       )}
 
       {isLensModalOpen && (
-        <LensModal isOpen={isLensModalOpen} onClose={() => setIsLensModalOpen(false)} />
+        <LensModal isOpen={isLensModalOpen} onClose={() => setIsLensModalOpen(false)} activeEye={activeEye} />
       )}
 
       {/* BIG GREEN SAVE BUTTON */}

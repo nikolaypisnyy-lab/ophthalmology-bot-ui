@@ -66,3 +66,4 @@ restore_emergency.sh
 restore_full_from_local.sh
 backup_all_to_local.sh
 deploy.sh
+deploy/.env
