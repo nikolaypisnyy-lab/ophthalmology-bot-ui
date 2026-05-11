@@ -48,6 +48,9 @@ def acquire_lock():
 # Используем глобальный словарь вместо threading.local для сохранения контекста между запросами
 USER_CONTEXT: Dict[int, Dict[str, Any]] = {}
 
+# Ожидающие отправки сообщений: {admin_uid: {"target_uid": int, "target_name": str}}
+MSG_PENDING: Dict[int, Dict[str, Any]] = {}
+
 def get_ctx(uid: int) -> Dict[str, Any]:
     if uid not in USER_CONTEXT:
         # Загружаем первую доступную клинику из базы
@@ -102,11 +105,10 @@ def main_menu_markup(uid: int):
         u = master_db.get_user_clinic(uid, cid)
         if u and (u["role"] == "admin" or uid in ADMIN_IDS):
             kb.row("👥 Управление доступом")
-            kb.row("⚙️ Управление клиниками", "🛡️ Бэкап прав")
-            kb.row("📦 Бэкап базы")
+            kb.row("⚙️ Управление клиниками")
             kb.row("🔗 Пригласить дистрибьютора")
+            kb.row("📋 Все пользователи", "📢 Рассылка")
     
-    kb.row("ℹ️ Инфо")
     return kb
 
 # ================= HANDLERS =================
@@ -134,6 +136,10 @@ def start_cmd(message):
         else:
             bot.send_message(uid, "❌ Ссылка недействительна или уже использована.")
             return
+
+    # Обновляем username при каждом входе
+    if message.from_user.username:
+        master_db.update_username(uid, message.from_user.username)
 
     ctx = get_ctx(uid)
     cid = ctx.get("cid")
@@ -473,6 +479,7 @@ def _cl_list_keyboard() -> types.InlineKeyboardMarkup:
             callback_data=f"cl_pick:{cl['clinic_id']}"
         ))
     kb.add(types.InlineKeyboardButton("➕ Создать клинику", callback_data="cl_new"))
+    kb.add(types.InlineKeyboardButton("📦 Бэкап базы", callback_data="cl_backup_db"))
     return kb
 
 @bot.message_handler(func=lambda m: m.text == "⚙️ Управление клиниками")
@@ -483,6 +490,26 @@ def admin_clinics(message):
         "🏥 <b>Управление клиниками</b>\n\nВыберите клинику:",
         reply_markup=_cl_list_keyboard()
     )
+
+@bot.callback_query_handler(func=lambda c: c.data == "cl_backup_db")
+def cl_backup_db_cb(c):
+    if c.from_user.id not in ADMIN_IDS: return
+    bot.answer_callback_query(c.id, "⏳ Формирую бэкап...")
+    uid = c.from_user.id
+    context = get_ctx(uid)
+    cid = context.get("cid")
+    cl = master_db.get_clinic_by_id(cid) if cid else None
+    if not cl:
+        bot.send_message(c.message.chat.id, "❌ Клиника не выбрана.")
+        return
+    db_file = cl["db_file"]
+    paths = [db_file, f"/root/medeye/data/{db_file}", f"./{db_file}"]
+    for p in paths:
+        if os.path.exists(p):
+            with open(p, "rb") as f:
+                bot.send_document(c.message.chat.id, f, caption=f"🔐 Бэкап {cl['name']}")
+            return
+    bot.send_message(c.message.chat.id, "❌ Файл базы не найден.")
 
 # ── Клиника → действия ────────────────────────────────────────────────────────
 @bot.callback_query_handler(func=lambda c: c.data.startswith("cl_pick:"))
@@ -498,7 +525,11 @@ def cl_pick(c):
     # Считаем сотрудников
     all_users = master_db.get_all_users() or []
     cnt = sum(1 for u in all_users if u.get("clinic_id") == cid)
+    uid = c.from_user.id
+    already_in = any(u.get("telegram_id") == uid and u.get("clinic_id") == cid for u in all_users)
     kb = types.InlineKeyboardMarkup(row_width=1)
+    if not already_in:
+        kb.add(types.InlineKeyboardButton("➕ Добавить себя как админа", callback_data=f"cl_add_me:{cid}"))
     kb.add(types.InlineKeyboardButton("✏️ Переименовать",  callback_data=f"cl_ren:{cid}"))
     kb.add(types.InlineKeyboardButton("🗑 Удалить клинику", callback_data=f"cl_del:{cid}"))
     kb.add(types.InlineKeyboardButton("← Назад",            callback_data="cl_back"))
@@ -507,6 +538,28 @@ def cl_pick(c):
         f"🆔 <code>{cid}</code>  ·  👥 {cnt} сотр.",
         c.message.chat.id, c.message.message_id, reply_markup=kb
     )
+
+@bot.callback_query_handler(func=lambda c: c.data.startswith("cl_add_me:"))
+def cl_add_me(c):
+    if c.from_user.id not in ADMIN_IDS: return
+    bot.answer_callback_query(c.id)
+    uid = c.from_user.id
+    cid = c.data.split(":", 1)[1]
+    name = f"{c.from_user.first_name or ''} {c.from_user.last_name or ''}".strip() or f"Admin {uid}"
+    master_db.add_user(uid, cid, "admin", name)
+    master_db.set_active_clinic(uid, cid)
+    load_clinic(uid, force_cid=cid)
+    clinic_name = cid
+    try:
+        row = master_db.execute("SELECT name FROM clinics WHERE clinic_id=?", (cid,)).fetchone()
+        if row: clinic_name = row[0]
+    except: pass
+    bot.send_message(uid,
+        f"✅ Вы добавлены как <b>Админ</b> в клинику <b>{html_escape(clinic_name)}</b>.\n"
+        f"Клиника активна и доступна в «Сменить клинику».",
+        reply_markup=main_menu_markup(uid)
+    )
+    bot.edit_message_reply_markup(c.message.chat.id, c.message.message_id, reply_markup=None)
 
 @bot.callback_query_handler(func=lambda c: c.data == "cl_back")
 def cl_back(c):
@@ -669,6 +722,7 @@ def _acc_main_keyboard() -> types.InlineKeyboardMarkup:
         f"📦 Дистрибьюторы IOL  · {len(dists)} чел.",
         callback_data="acc_dists"
     ))
+    kb.add(types.InlineKeyboardButton("🛡️ Бэкап прав", callback_data="acc_backup_rights"))
     return kb
 
 @bot.message_handler(func=lambda m: m.text == "👥 Управление доступом")
@@ -678,6 +732,21 @@ def admin_users(message):
         message.chat.id,
         "🏥 <b>Управление доступом</b>\n\nВыберите раздел:",
         reply_markup=_acc_main_keyboard()
+    )
+
+@bot.callback_query_handler(func=lambda c: c.data == "acc_backup_rights")
+def acc_backup_rights_cb(c):
+    if c.from_user.id not in ADMIN_IDS: return
+    bot.answer_callback_query(c.id)
+    kb = types.InlineKeyboardMarkup(row_width=1)
+    kb.add(types.InlineKeyboardButton("📤 Скачать бэкап прав",    callback_data="acbk_export"))
+    kb.add(types.InlineKeyboardButton("📥 Восстановить из бэкапа", callback_data="acbk_restore_init"))
+    bot.send_message(
+        c.message.chat.id,
+        "🛡️ <b>Бэкап прав доступа</b>\n\n"
+        "📤 <b>Скачать</b> — получить текущий master.db с правами\n"
+        "📥 <b>Восстановить</b> — загрузить JSON-бэкап прав",
+        reply_markup=kb
     )
 
 # ── Клиника → список врачей ───────────────────────────────────────────────────
@@ -740,7 +809,7 @@ def acc_dist_detail(c):
     stock = master_db.get_stock_by_distributor(dist_id)
     kb = types.InlineKeyboardMarkup(row_width=1)
     kb.add(
-        types.InlineKeyboardButton("✉️ Написать в Telegram", url=f"tg://user?id={dist_id}"),
+        types.InlineKeyboardButton("✉️ Написать в Telegram", url=f"https://t.me/{d['contact'].lstrip('@')}" if d.get('contact','').startswith('@') else f"tg://user?id={dist_id}"),
         types.InlineKeyboardButton("❌ Отозвать доступ", callback_data=f"acc_dist_rev:{dist_id}"),
         types.InlineKeyboardButton("← Назад к дистрибьюторам", callback_data="acc_dists"),
     )
@@ -826,12 +895,62 @@ def acc_show_doctor(c):
         f"🏥 {html_escape(doc.get('clinic_name', cid))}\n"
         f"🎭 {role_label}  ·  🆔 <code>{doc_uid}</code>"
     )
+    # Профиль — ссылка в тексте (кнопки с tg://user?id= дают BUTTON_USER_PRIVACY_RESTRICTED)
+    if doc.get('username'):
+        profile_link = f'<a href="https://t.me/{doc["username"]}">👤 Открыть профиль</a>'
+    else:
+        profile_link = f'<a href="tg://user?id={doc_uid}">👤 Открыть профиль</a>'
+    text += f"\n\n{profile_link}"
+
     kb = types.InlineKeyboardMarkup(row_width=1)
-    kb.add(types.InlineKeyboardButton("✉️ Написать в Telegram",         url=f"tg://user?id={doc_uid}"))
+    kb.add(types.InlineKeyboardButton("✉️ Написать через бота",         callback_data=f"msg_to:{doc_uid}:{doc['name']}"))
     kb.add(types.InlineKeyboardButton("🔄 Перенести в другую клинику", callback_data=f"acc_mv:{doc_uid}:{cid}"))
     kb.add(types.InlineKeyboardButton("🗑 Отозвать доступ",            callback_data=f"acc_rev:{doc_uid}:{cid}"))
     kb.add(types.InlineKeyboardButton("← Назад",                       callback_data=f"acc_cl:{cid}"))
-    bot.edit_message_text(text, c.message.chat.id, c.message.message_id, reply_markup=kb)
+    bot.edit_message_text(text, c.message.chat.id, c.message.message_id, reply_markup=kb, disable_web_page_preview=True)
+
+# ── Написать сообщение пользователю через бота ───────────────────────────────
+@bot.callback_query_handler(func=lambda c: c.data.startswith("msg_to:"))
+def msg_to_init(c):
+    if c.from_user.id not in ADMIN_IDS: return
+    bot.answer_callback_query(c.id)
+    parts = c.data.split(":", 2)
+    target_uid = int(parts[1])
+    target_name = parts[2] if len(parts) > 2 else f"ID {target_uid}"
+    MSG_PENDING[c.from_user.id] = {"target_uid": target_uid, "target_name": target_name}
+    kb = types.InlineKeyboardMarkup()
+    kb.add(types.InlineKeyboardButton("❌ Отмена", callback_data="msg_cancel"))
+    bot.send_message(c.from_user.id,
+        f"✉️ Напишите сообщение для <b>{html.escape(target_name)}</b>:\n\n"
+        f"(следующее сообщение будет переслано)",
+        reply_markup=kb
+    )
+
+@bot.callback_query_handler(func=lambda c: c.data == "msg_cancel")
+def msg_cancel(c):
+    bot.answer_callback_query(c.id, "Отменено")
+    MSG_PENDING.pop(c.from_user.id, None)
+    bot.delete_message(c.message.chat.id, c.message.message_id)
+
+@bot.message_handler(func=lambda m: m.from_user.id in MSG_PENDING and m.from_user.id in ADMIN_IDS)
+def msg_to_send(message):
+    uid = message.from_user.id
+    pending = MSG_PENDING.pop(uid, None)
+    if not pending: return
+    target_uid = pending["target_uid"]
+    target_name = pending["target_name"]
+    sender_name = f"{message.from_user.first_name or ''} {message.from_user.last_name or ''}".strip() or "Администратор"
+    try:
+        bot.send_message(target_uid,
+            f"📩 Сообщение от <b>{html.escape(sender_name)}</b>:\n\n"
+            f"{html.escape(message.text or '')}"
+        )
+        bot.send_message(uid, f"✅ Сообщение отправлено → <b>{html.escape(target_name)}</b>")
+    except Exception as e:
+        bot.send_message(uid,
+            f"❌ Не удалось отправить сообщение <b>{html.escape(target_name)}</b>.\n"
+            f"Возможно пользователь не запускал бота.\n<code>{e}</code>"
+        )
 
 # ── Отозвать доступ ───────────────────────────────────────────────────────────
 @bot.callback_query_handler(func=lambda c: c.data.startswith("acc_rev:"))
@@ -1564,6 +1683,109 @@ def handle_distributor_csv(message):
         bot.send_message(uid, "❌ Ошибка кодировки. Сохраните файл в UTF-8 и попробуйте снова.")
     except Exception as e:
         bot.send_message(uid, f"❌ Ошибка обработки: {e}")
+
+
+# ═══════════════════════════════════════════════════════════════
+# СПИСОК ПОЛЬЗОВАТЕЛЕЙ + РАССЫЛКА
+# ═══════════════════════════════════════════════════════════════
+
+BROADCAST_PENDING: Dict[int, bool] = {}  # admin_uid: True если ждём текст рассылки
+
+@bot.message_handler(func=lambda m: m.text == "📋 Все пользователи")
+def all_users_cmd(message):
+    uid = message.from_user.id
+    if uid not in ADMIN_IDS: return
+
+    all_users = master_db.get_all_users() or []
+    dists = master_db.get_all_distributors() or []
+
+    lines = [f"👥 <b>Все пользователи ({len(all_users)} чел.)</b>\n"]
+
+    # Группируем по клиникам
+    from collections import defaultdict
+    by_clinic: dict = defaultdict(list)
+    for u in all_users:
+        by_clinic[u.get('clinic_name', u.get('clinic_id', '?'))].append(u)
+
+    for clinic_name, users in sorted(by_clinic.items()):
+        lines.append(f"🏥 <b>{html.escape(clinic_name)}</b>")
+        for u in users:
+            icon = ROLES_ICON.get(u.get('role', ''), '👤')
+            username = f" @{u['username']}" if u.get('username') else ''
+            lines.append(f"  {icon} {html.escape(u['name'])}{username} · <code>{u['telegram_id']}</code>")
+        lines.append("")
+
+    if dists:
+        lines.append(f"📦 <b>Дистрибьюторы ({len(dists)} чел.)</b>")
+        for d in dists:
+            contact = f" {html.escape(d.get('contact') or '')}" if d.get('contact') else ''
+            lines.append(f"  📦 {html.escape(d['name'])}{contact} · <code>{d['telegram_id']}</code>")
+
+    text = "\n".join(lines)
+    # Разбиваем если длинный
+    if len(text) > 4000:
+        for i in range(0, len(text), 4000):
+            bot.send_message(uid, text[i:i+4000])
+    else:
+        bot.send_message(uid, text)
+
+
+@bot.message_handler(func=lambda m: m.text == "📢 Рассылка")
+def broadcast_init(message):
+    uid = message.from_user.id
+    if uid not in ADMIN_IDS: return
+
+    all_users = master_db.get_all_users() or []
+    dists = master_db.get_all_distributors() or []
+    total = len(set(u['telegram_id'] for u in all_users)) + len(dists)
+
+    BROADCAST_PENDING[uid] = True
+    kb = types.InlineKeyboardMarkup()
+    kb.add(types.InlineKeyboardButton("❌ Отмена", callback_data="broadcast_cancel"))
+    bot.send_message(uid,
+        f"📢 <b>Рассылка всем пользователям</b>\n\n"
+        f"Получателей: <b>{total}</b> (хирурги + дистрибьюторы)\n\n"
+        f"Введите текст сообщения:",
+        reply_markup=kb
+    )
+
+@bot.callback_query_handler(func=lambda c: c.data == "broadcast_cancel")
+def broadcast_cancel(c):
+    BROADCAST_PENDING.pop(c.from_user.id, None)
+    bot.answer_callback_query(c.id, "Отменено")
+    bot.delete_message(c.message.chat.id, c.message.message_id)
+
+@bot.message_handler(func=lambda m: m.from_user.id in BROADCAST_PENDING and m.from_user.id in ADMIN_IDS)
+def broadcast_send(message):
+    uid = message.from_user.id
+    BROADCAST_PENDING.pop(uid, None)
+
+    all_users = master_db.get_all_users() or []
+    dists = master_db.get_all_distributors() or []
+
+    # Все уникальные получатели (исключая самого отправителя)
+    recipients = set(u['telegram_id'] for u in all_users if u['telegram_id'] != uid)
+    recipients.update(d['telegram_id'] for d in dists if d['telegram_id'] != uid)
+
+    text_to_send = (
+        f"📢 <b>Сообщение от администратора:</b>\n\n"
+        f"{html.escape(message.text or '')}"
+    )
+
+    sent = 0
+    failed = 0
+    for rid in recipients:
+        try:
+            bot.send_message(rid, text_to_send)
+            sent += 1
+        except Exception:
+            failed += 1
+
+    bot.send_message(uid,
+        f"✅ Рассылка завершена!\n\n"
+        f"📤 Отправлено: <b>{sent}</b>\n"
+        f"❌ Не доставлено: <b>{failed}</b>"
+    )
 
 
 if __name__ == "__main__":
