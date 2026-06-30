@@ -120,8 +120,8 @@ async def handle_voice(update: Update, context: ContextTypes.DEFAULT_TYPE):
         reply = await asyncio.to_thread(_send_audio, audio_bytes)
 
         # Сохраняем в историю как текст
-        sessions[uid].append(types.Content(role="user", parts=[types.Part.from_text("[голосовое]")]))
-        sessions[uid].append(types.Content(role="model", parts=[types.Part.from_text(reply)]))
+        sessions[uid].append(types.Content(role="user", parts=[types.Part(text="[голосовое]")]))
+        sessions[uid].append(types.Content(role="model", parts=[types.Part(text=reply)]))
     except Exception as e:
         reply = f"Ошибка обработки голосового: {e}"
 
