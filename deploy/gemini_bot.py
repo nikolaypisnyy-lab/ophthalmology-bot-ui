@@ -452,15 +452,32 @@ async def cmd_model(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 
 def _generate_image(prompt: str) -> bytes:
-    response = client.models.generate_images(
-        model=IMAGE_MODEL,
-        prompt=prompt,
-        config=types.GenerateImagesConfig(
-            number_of_images=1,
-            aspect_ratio="1:1",
+    # Try Imagen 3 first
+    try:
+        response = client.models.generate_images(
+            model=IMAGE_MODEL,
+            prompt=prompt,
+            config=types.GenerateImagesConfig(
+                number_of_images=1,
+                aspect_ratio="1:1",
+            ),
+        )
+        return response.generated_images[0].image.image_bytes
+    except Exception as e:
+        print(f"Imagen failed ({e}), trying gemini-2.0-flash-exp...")
+
+    # Fallback: gemini-2.0-flash-exp with image output
+    response = client.models.generate_content(
+        model="gemini-2.0-flash-exp",
+        contents=prompt,
+        config=types.GenerateContentConfig(
+            response_modalities=["TEXT", "IMAGE"],
         ),
     )
-    return response.generated_images[0].image.image_bytes
+    for part in response.candidates[0].content.parts:
+        if hasattr(part, "inline_data") and part.inline_data:
+            return part.inline_data.data
+    raise RuntimeError("Ни Imagen, ни Gemini не вернули изображение")
 
 
 async def send_image(update: Update, prompt: str):
@@ -488,7 +505,18 @@ def _send_text(history: list, user_text: str):
     return response.text, list(chat.history)
 
 
-def _send_audio(audio_bytes: bytes):
+def _transcribe_audio(audio_bytes: bytes) -> str:
+    """Transcribe only — return the spoken text without answering."""
+    audio_part = types.Part.from_bytes(data=audio_bytes, mime_type="audio/ogg")
+    response = client.models.generate_content(
+        model=MODEL_NAME,
+        contents=[audio_part, "Транскрибируй это голосовое сообщение. Верни ТОЛЬКО текст речи, без ответа на него."],
+    )
+    return response.text.strip()
+
+
+def _send_audio(audio_bytes: bytes) -> str:
+    """Transcribe and answer."""
     audio_part = types.Part.from_bytes(data=audio_bytes, mime_type="audio/ogg")
     response = client.models.generate_content(
         model=MODEL_NAME,
@@ -537,11 +565,27 @@ async def handle_voice(update: Update, context: ContextTypes.DEFAULT_TYPE):
     try:
         tg_file = await context.bot.get_file(update.message.voice.file_id)
         audio_bytes = bytes(await tg_file.download_as_bytearray())
+
+        # Transcribe first
+        transcribed = await asyncio.to_thread(_transcribe_audio, audio_bytes)
+
+        # Route to image generation if needed
+        if IMAGE_KEYWORDS.search(transcribed):
+            await update.message.reply_text(f"🎤 «{transcribed}»")
+            prompt_en, _ = await asyncio.to_thread(_send_text, [],
+                f"Переведи этот запрос на изображение на английский язык для нейросети, "
+                f"верни ТОЛЬКО промпт без пояснений: {transcribed}")
+            await send_image(update, prompt_en.strip())
+            return
+
+        # Normal voice reply
         reply = await asyncio.to_thread(_send_audio, audio_bytes)
-        sessions[uid].append(types.Content(role="user", parts=[types.Part(text="[голосовое]")]))
+        sessions[uid].append(types.Content(role="user", parts=[types.Part(text=f"[голосовое: {transcribed}]")]))
         sessions[uid].append(types.Content(role="model", parts=[types.Part(text=reply)]))
     except Exception as e:
         reply = f"Ошибка обработки голосового: {e}"
+        await update.message.reply_text(reply)
+        return
 
     await send_reply(update, reply)
 
