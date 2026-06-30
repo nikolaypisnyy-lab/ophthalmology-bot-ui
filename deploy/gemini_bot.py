@@ -72,17 +72,23 @@ AVAILABLE_MODELS = [
 ]
 
 IMAGE_MODEL = "imagen-3.0-generate-002"
-IMAGE_TRIGGER_WORDS = [
-    "нарисуй", "нарисуй мне", "сгенерируй картин", "сгенерируй изображен",
-    "сгенерируй фото", "создай картин", "создай изображен", "создай рисун",
-    "создай фото", "покажи как выглядит", "generate image", "create image",
-    "draw ", "make image", "imagine ",
-]
+
+_IMAGE_VERBS_RU = ["нарисуй", "нарисуйте", "нарисовать", "нарисуй-ка"]
+_IMAGE_ACTIONS_RU = ["сгенерируй", "сгенерировать", "создай", "создать",
+                     "покажи", "сделай", "сделать", "придумай"]
+_IMAGE_NOUNS_RU = ["картинк", "изображени", "рисун", "иллюстрац", "постер",
+                   "арт", "фото ", "фотограф"]
 
 
 def is_image_request(text: str) -> bool:
     t = text.lower()
-    return any(kw in t for kw in IMAGE_TRIGGER_WORDS)
+    if any(v in t for v in _IMAGE_VERBS_RU):
+        return True
+    if any(a in t for a in _IMAGE_ACTIONS_RU) and any(n in t for n in _IMAGE_NOUNS_RU):
+        return True
+    if re.search(r'\b(draw|paint|generate image|create image|make image|imagine|picture of)\b', t):
+        return True
+    return False
 
 EXT_MAP = {
     "python": "py", "py": "py",
@@ -574,13 +580,7 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     # Detect image generation request
     if is_image_request(user_text):
-        # Ask Gemini to extract/translate the prompt to English for better results
-        prompt_reply, _ = await asyncio.to_thread(
-            _send_text, [],
-            f"Переведи этот запрос на изображение на английский язык для нейросети, "
-            f"верни ТОЛЬКО промпт без пояснений: {user_text}"
-        )
-        await send_image(update, prompt_reply.strip())
+        await send_image(update, user_text)
         return
 
     try:
@@ -608,10 +608,7 @@ async def handle_voice(update: Update, context: ContextTypes.DEFAULT_TYPE):
         # Route to image generation if needed
         if is_image_request(transcribed):
             await update.message.reply_text(f"🎤 «{transcribed}»")
-            prompt_en, _ = await asyncio.to_thread(_send_text, [],
-                f"Переведи этот запрос на изображение на английский язык для нейросети, "
-                f"верни ТОЛЬКО промпт без пояснений: {transcribed}")
-            await send_image(update, prompt_en.strip())
+            await send_image(update, transcribed)
             return
 
         # Normal voice reply
