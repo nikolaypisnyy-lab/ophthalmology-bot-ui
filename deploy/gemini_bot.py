@@ -13,6 +13,8 @@ from telegram.request import HTTPXRequest
 from google import genai
 from google.genai import types
 
+import time
+
 load_dotenv()
 
 BOT_TOKEN = os.getenv("GEMINI_BOT_TOKEN", "")
@@ -38,6 +40,25 @@ LUCY_BOT_PATH = "/opt/lucybot/bot.py"
 LUCY_SERVICE = "lucy_bot"
 
 client = genai.Client(api_key=GEMINI_API_KEY)
+
+
+def _retry(fn, *args, retries=4, **kwargs):
+    """Retry fn on 503/429 with exponential backoff."""
+    delay = 2
+    last_err = None
+    for attempt in range(retries):
+        try:
+            return fn(*args, **kwargs)
+        except Exception as e:
+            msg = str(e)
+            if any(code in msg for code in ("503", "429", "UNAVAILABLE", "RESOURCE_EXHAUSTED")):
+                last_err = e
+                print(f"Gemini {msg[:60]} — retry {attempt+1}/{retries} in {delay}s")
+                time.sleep(delay)
+                delay *= 2
+            else:
+                raise
+    raise last_err
 
 sessions: dict[int, list] = {}
 pending_edits: dict[int, dict] = {}  # uid -> {path, new_code, service}
@@ -459,30 +480,34 @@ async def cmd_model(update: Update, context: ContextTypes.DEFAULT_TYPE):
 def _generate_image(prompt: str) -> bytes:
     # Try Imagen 3 first
     try:
-        response = client.models.generate_images(
-            model=IMAGE_MODEL,
-            prompt=prompt,
-            config=types.GenerateImagesConfig(
-                number_of_images=1,
-                aspect_ratio="1:1",
-            ),
-        )
-        return response.generated_images[0].image.image_bytes
+        def _imagen():
+            response = client.models.generate_images(
+                model=IMAGE_MODEL,
+                prompt=prompt,
+                config=types.GenerateImagesConfig(
+                    number_of_images=1,
+                    aspect_ratio="1:1",
+                ),
+            )
+            return response.generated_images[0].image.image_bytes
+        return _retry(_imagen)
     except Exception as e:
         print(f"Imagen failed ({e}), trying gemini-2.0-flash-exp...")
 
     # Fallback: gemini-2.0-flash-exp with image output
-    response = client.models.generate_content(
-        model="gemini-2.0-flash-exp",
-        contents=prompt,
-        config=types.GenerateContentConfig(
-            response_modalities=["TEXT", "IMAGE"],
-        ),
-    )
-    for part in response.candidates[0].content.parts:
-        if hasattr(part, "inline_data") and part.inline_data:
-            return part.inline_data.data
-    raise RuntimeError("Ни Imagen, ни Gemini не вернули изображение")
+    def _flash():
+        response = client.models.generate_content(
+            model="gemini-2.0-flash-exp",
+            contents=prompt,
+            config=types.GenerateContentConfig(
+                response_modalities=["TEXT", "IMAGE"],
+            ),
+        )
+        for part in response.candidates[0].content.parts:
+            if hasattr(part, "inline_data") and part.inline_data:
+                return part.inline_data.data
+        raise RuntimeError("Ни Imagen, ни Gemini не вернули изображение")
+    return _retry(_flash)
 
 
 async def send_image(update: Update, prompt: str):
@@ -505,30 +530,36 @@ async def cmd_img(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 
 def _send_text(history: list, user_text: str):
-    chat = client.chats.create(model=MODEL_NAME, history=history, config=make_config())
-    response = chat.send_message(user_text)
-    return response.text, list(chat.history)
+    def _call():
+        chat = client.chats.create(model=MODEL_NAME, history=history, config=make_config())
+        response = chat.send_message(user_text)
+        return response.text, list(chat.history)
+    return _retry(_call)
 
 
 def _transcribe_audio(audio_bytes: bytes) -> str:
     """Transcribe only — return the spoken text without answering."""
     audio_part = types.Part.from_bytes(data=audio_bytes, mime_type="audio/ogg")
-    response = client.models.generate_content(
-        model=MODEL_NAME,
-        contents=[audio_part, "Транскрибируй это голосовое сообщение. Верни ТОЛЬКО текст речи, без ответа на него."],
-    )
-    return response.text.strip()
+    def _call():
+        response = client.models.generate_content(
+            model=MODEL_NAME,
+            contents=[audio_part, "Транскрибируй это голосовое сообщение. Верни ТОЛЬКО текст речи, без ответа на него."],
+        )
+        return response.text.strip()
+    return _retry(_call)
 
 
 def _send_audio(audio_bytes: bytes) -> str:
     """Transcribe and answer."""
     audio_part = types.Part.from_bytes(data=audio_bytes, mime_type="audio/ogg")
-    response = client.models.generate_content(
-        model=MODEL_NAME,
-        contents=[audio_part, "Это голосовое сообщение. Распознай речь и ответь на неё."],
-        config=make_config(),
-    )
-    return response.text
+    def _call():
+        response = client.models.generate_content(
+            model=MODEL_NAME,
+            contents=[audio_part, "Это голосовое сообщение. Распознай речь и ответь на неё."],
+            config=make_config(),
+        )
+        return response.text
+    return _retry(_call)
 
 
 async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
