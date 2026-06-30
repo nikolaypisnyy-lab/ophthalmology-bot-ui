@@ -19,7 +19,7 @@ load_dotenv()
 
 BOT_TOKEN = os.getenv("GEMINI_BOT_TOKEN", "")
 GEMINI_API_KEY = os.getenv("GEMINI_API_KEY", "")
-MODEL_NAME = os.getenv("GEMINI_MODEL", "gemini-2.5-flash")
+MODEL_NAME = os.getenv("GEMINI_MODEL", "gemini-2.0-flash")
 SYSTEM_PROMPT = os.getenv(
     "GEMINI_SYSTEM_PROMPT",
     "Ты умный и полезный ИИ-ассистент. "
@@ -43,7 +43,7 @@ client = genai.Client(api_key=GEMINI_API_KEY)
 
 
 def _retry(fn, *args, retries=4, **kwargs):
-    """Retry fn on 503/429 with exponential backoff."""
+    """Retry fn on temporary 503 errors. Daily quota (429) is not retried."""
     delay = 2
     last_err = None
     for attempt in range(retries):
@@ -51,7 +51,10 @@ def _retry(fn, *args, retries=4, **kwargs):
             return fn(*args, **kwargs)
         except Exception as e:
             msg = str(e)
-            if any(code in msg for code in ("503", "429", "UNAVAILABLE", "RESOURCE_EXHAUSTED")):
+            # Daily quota exhausted — no point retrying
+            if "PerDay" in msg or "per_day" in msg.lower():
+                raise
+            if any(code in msg for code in ("503", "UNAVAILABLE")):
                 last_err = e
                 print(f"Gemini {msg[:60]} — retry {attempt+1}/{retries} in {delay}s")
                 time.sleep(delay)
@@ -64,11 +67,11 @@ sessions: dict[int, list] = {}
 pending_edits: dict[int, dict] = {}  # uid -> {path, new_code, service}
 
 AVAILABLE_MODELS = [
-    "gemini-2.5-flash",
-    "gemini-2.5-pro",
+    "gemini-2.0-flash",       # 200 RPD free
+    "gemini-1.5-flash",       # 1500 RPD free
+    "gemini-2.5-flash",       # 20 RPD free / unlimited paid
     "gemini-2.5-flash-lite",
-    "gemini-3.0-pro",
-    "gemini-3.0-flash",
+    "gemini-2.5-pro",
 ]
 
 IMAGE_MODEL = "imagen-3.0-generate-002"
