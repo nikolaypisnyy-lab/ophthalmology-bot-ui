@@ -136,24 +136,32 @@ def make_config():
 
 
 async def send_reply(update: Update, reply: str, want_pdf: bool = False):
-    """Send text + any code blocks as file attachments."""
+    """Send text + code blocks as files. If want_pdf, always send a PDF."""
     for chunk in split_text(reply):
         await update.message.reply_text(chunk)
 
-    for i, (lang, code) in enumerate(extract_code_blocks(reply), 1):
+    blocks = extract_code_blocks(reply)
+
+    # Send code blocks as source files
+    for i, (lang, code) in enumerate(blocks, 1):
         ext = EXT_MAP.get(lang, "txt")
         filename = f"file_{i}.{ext}" if ext != "Dockerfile" else "Dockerfile"
-
-        # Send as source file
         buf = io.BytesIO(code.encode("utf-8"))
         await update.message.reply_document(document=buf, filename=filename)
 
-        # Also send as PDF if requested or if content is text/markdown
-        if want_pdf or lang in PDF_LANGS:
-            pdf_buf = await asyncio.to_thread(_markdown_to_pdf, code, filename)
-            if pdf_buf:
-                pdf_name = f"file_{i}.pdf"
-                await update.message.reply_document(document=pdf_buf, filename=pdf_name)
+    # Generate PDF: from first code block if available, else from full reply
+    if want_pdf:
+        pdf_content = blocks[0][1] if blocks else reply
+        pdf_buf = await asyncio.to_thread(_markdown_to_pdf, pdf_content, "document")
+        if pdf_buf:
+            await update.message.reply_document(document=pdf_buf, filename="document.pdf")
+    elif blocks:
+        # Auto-PDF for markdown/text blocks even without explicit request
+        for i, (lang, code) in enumerate(blocks, 1):
+            if lang in PDF_LANGS:
+                pdf_buf = await asyncio.to_thread(_markdown_to_pdf, code, f"file_{i}")
+                if pdf_buf:
+                    await update.message.reply_document(document=pdf_buf, filename=f"file_{i}.pdf")
 
 
 async def cmd_start(update: Update, context: ContextTypes.DEFAULT_TYPE):
