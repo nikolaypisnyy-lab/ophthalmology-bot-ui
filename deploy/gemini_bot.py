@@ -3,6 +3,8 @@ import os
 import io
 import re
 import asyncio
+import subprocess
+import tempfile
 from dotenv import load_dotenv
 from telegram import Update, BotCommand
 from telegram.ext import Application, CommandHandler, MessageHandler, filters, ContextTypes
@@ -19,8 +21,10 @@ MODEL_NAME = os.getenv("GEMINI_MODEL", "gemini-2.5-flash")
 SYSTEM_PROMPT = os.getenv(
     "GEMINI_SYSTEM_PROMPT",
     "Ты умный и полезный ИИ-ассистент. "
-    "Когда тебя просят создать файл или написать код — оборачивай содержимое файла в блок ```язык ... ```. "
-    "Например: ```python\n...\n``` или ```html\n...\n```. Это позволит автоматически отправить файл пользователю."
+    "Когда тебя просят создать файл, код или документ — всегда оборачивай содержимое в блок с языком. "
+    "Примеры: ```python\n...\n```, ```html\n...\n```, ```markdown\n...\n```. "
+    "Когда просят PDF или документ — создавай содержимое в блоке ```markdown\n...\n```, бот сам сконвертирует в PDF. "
+    "Никогда не говори что не можешь создать файл — всегда выдавай содержимое в блоке кода."
 )
 
 client = genai.Client(api_key=GEMINI_API_KEY)
@@ -38,6 +42,67 @@ EXT_MAP = {
     "xml": "xml", "csv": "csv", "toml": "toml", "ini": "ini",
     "dockerfile": "Dockerfile",
 }
+
+# Languages whose content should also be converted to PDF
+PDF_LANGS = {"markdown", "md", "text", "txt", ""}
+
+FONT_PATHS = [
+    "/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf",
+    "/usr/share/fonts/truetype/liberation/LiberationSans-Regular.ttf",
+    "/usr/share/fonts/truetype/freefont/FreeSans.ttf",
+]
+
+
+def _find_font() -> str | None:
+    return next((p for p in FONT_PATHS if os.path.exists(p)), None)
+
+
+def _markdown_to_pdf(content: str, filename: str) -> io.BytesIO | None:
+    """Convert markdown/text to PDF via pandoc if available, else fpdf2."""
+    # Try pandoc first (best quality)
+    if subprocess.run(["which", "pandoc"], capture_output=True).returncode == 0:
+        with tempfile.NamedTemporaryFile(suffix=".md", delete=False, mode="w", encoding="utf-8") as f:
+            f.write(content)
+            md_path = f.name
+        pdf_path = md_path.replace(".md", ".pdf")
+        try:
+            result = subprocess.run(
+                ["pandoc", md_path, "-o", pdf_path, "--pdf-engine=xelatex",
+                 "-V", "mainfont=DejaVu Sans", "-V", "geometry:margin=2cm"],
+                capture_output=True, timeout=30
+            )
+            if result.returncode == 0 and os.path.exists(pdf_path):
+                buf = io.BytesIO(open(pdf_path, "rb").read())
+                buf.seek(0)
+                return buf
+        except Exception:
+            pass
+        finally:
+            for p in [md_path, pdf_path]:
+                try: os.unlink(p)
+                except: pass
+
+    # Fallback: fpdf2
+    try:
+        from fpdf import FPDF
+        pdf = FPDF()
+        pdf.add_page()
+        font = _find_font()
+        if font:
+            pdf.add_font("uni", "", font)
+            pdf.set_font("uni", size=11)
+        else:
+            pdf.set_font("Helvetica", size=11)
+        pdf.set_auto_page_break(auto=True, margin=15)
+        for line in content.splitlines():
+            line = line.strip("*#>`")  # strip basic markdown
+            pdf.multi_cell(0, 6, line or " ")
+        buf = io.BytesIO()
+        pdf.output(buf)
+        buf.seek(0)
+        return buf
+    except Exception:
+        return None
 
 
 def extract_code_blocks(text: str) -> list[tuple[str, str]]:
@@ -65,7 +130,7 @@ def make_config():
     return types.GenerateContentConfig(system_instruction=SYSTEM_PROMPT)
 
 
-async def send_reply(update: Update, reply: str):
+async def send_reply(update: Update, reply: str, want_pdf: bool = False):
     """Send text + any code blocks as file attachments."""
     for chunk in split_text(reply):
         await update.message.reply_text(chunk)
@@ -73,9 +138,17 @@ async def send_reply(update: Update, reply: str):
     for i, (lang, code) in enumerate(extract_code_blocks(reply), 1):
         ext = EXT_MAP.get(lang, "txt")
         filename = f"file_{i}.{ext}" if ext != "Dockerfile" else "Dockerfile"
+
+        # Send as source file
         buf = io.BytesIO(code.encode("utf-8"))
-        buf.name = filename
         await update.message.reply_document(document=buf, filename=filename)
+
+        # Also send as PDF if requested or if content is text/markdown
+        if want_pdf or lang in PDF_LANGS:
+            pdf_buf = await asyncio.to_thread(_markdown_to_pdf, code, filename)
+            if pdf_buf:
+                pdf_name = f"file_{i}.pdf"
+                await update.message.reply_document(document=pdf_buf, filename=pdf_name)
 
 
 async def cmd_start(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -138,12 +211,15 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     await context.bot.send_chat_action(chat_id=update.effective_chat.id, action=ChatAction.TYPING)
 
+    user_text = update.message.text
+    want_pdf = bool(re.search(r'\bpdf\b', user_text, re.IGNORECASE))
+
     try:
-        reply, sessions[uid] = await asyncio.to_thread(_send_text, sessions[uid], update.message.text)
+        reply, sessions[uid] = await asyncio.to_thread(_send_text, sessions[uid], user_text)
     except Exception as e:
         reply = f"Ошибка Gemini: {e}"
 
-    await send_reply(update, reply)
+    await send_reply(update, reply, want_pdf=want_pdf)
 
 
 async def handle_voice(update: Update, context: ContextTypes.DEFAULT_TYPE):
