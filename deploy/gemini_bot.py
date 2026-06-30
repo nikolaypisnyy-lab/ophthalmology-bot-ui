@@ -33,6 +33,10 @@ REFMASTER_API_PATH = "/root/medeye/api/api.py"
 REFMASTER_SERVICE = "refmaster-bot"
 REFMASTER_API_SERVICE = "refmaster-app"
 
+# Lucy Clinic settings
+LUCY_BOT_PATH = "/opt/lucybot/bot.py"
+LUCY_SERVICE = "lucy_bot"
+
 client = genai.Client(api_key=GEMINI_API_KEY)
 
 sessions: dict[int, list] = {}
@@ -305,6 +309,41 @@ async def _edit_file(update: Update, task: str, path: str, service: str, hint: s
         await update.message.reply_text(f"Ошибка: {e}")
 
 
+async def cmd_lucy(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    args = " ".join(context.args or []).strip()
+
+    if not args:
+        status = _service_status(LUCY_SERVICE)
+        await update.message.reply_text(
+            f"LucyClinic Bot статус: {status}\n\n"
+            f"Команды:\n"
+            f"/lucy логи — последние логи\n"
+            f"/lucy правки: <задача> — изменить bot.py\n"
+            f"/lucy перезапуск — перезапустить бота"
+        )
+        return
+
+    low = args.lower()
+
+    if low in ("логи", "logs", "log"):
+        logs = await asyncio.to_thread(_service_logs, LUCY_SERVICE)
+        for chunk in split_text(logs):
+            await update.message.reply_text(f"```\n{chunk}\n```", parse_mode="Markdown")
+        return
+
+    if low in ("перезапуск", "restart"):
+        subprocess.run(["systemctl", "restart", LUCY_SERVICE])
+        await update.message.reply_text("LucyClinic бот перезапущен ✅")
+        return
+
+    if low.startswith("правки:"):
+        task = args[7:].strip()
+        await _edit_file(update, task, LUCY_BOT_PATH, LUCY_SERVICE, "bot.py (LucyClinic)")
+        return
+
+    await update.message.reply_text("Неизвестная команда. Напиши /lucy для справки.")
+
+
 async def callback_model(update: Update, context: ContextTypes.DEFAULT_TYPE):
     global MODEL_NAME
     query = update.callback_query
@@ -513,6 +552,7 @@ async def post_init(app: Application):
         BotCommand("reset", "Сбросить историю диалога"),
         BotCommand("img", "Сгенерировать изображение"),
         BotCommand("rx", "Управление RefMaster"),
+        BotCommand("lucy", "Управление LucyClinic Bot"),
         BotCommand("model", "Текущая модель Gemini"),
         BotCommand("help", "Помощь"),
     ])
@@ -539,6 +579,7 @@ def main():
     app.add_handler(CommandHandler("model", cmd_model))
     app.add_handler(CommandHandler("img", cmd_img))
     app.add_handler(CommandHandler("rx", cmd_rx))
+    app.add_handler(CommandHandler("lucy", cmd_lucy))
     app.add_handler(CallbackQueryHandler(callback_model, pattern="^model_"))
     app.add_handler(CallbackQueryHandler(callback_rx, pattern="^rx_"))
     app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_message))
