@@ -1,0 +1,55 @@
+name: Deploy Gemini CLI to Server
+
+on:
+  workflow_dispatch:
+    inputs:
+      action:
+        description: 'Action to perform'
+        required: true
+        default: 'install'
+        type: choice
+        options:
+          - install
+          - update
+          - status
+
+jobs:
+  deploy-gemini-cli:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Upload setup script
+        uses: appleboy/scp-action@master
+        with:
+          host: ${{ secrets.SERVER_IP }}
+          username: ${{ secrets.SERVER_USER }}
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          source: "deploy/setup_gemini_cli.sh"
+          target: "/root/app/"
+          strip_components: 1
+
+      - name: Install / Update Gemini CLI
+        if: ${{ inputs.action == 'install' || inputs.action == 'update' }}
+        uses: appleboy/ssh-action@master
+        with:
+          host: ${{ secrets.SERVER_IP }}
+          username: ${{ secrets.SERVER_USER }}
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          script: |
+            chmod +x /root/app/setup_gemini_cli.sh
+            bash /root/app/setup_gemini_cli.sh
+
+      - name: Check status
+        if: ${{ inputs.action == 'status' }}
+        uses: appleboy/ssh-action@master
+        with:
+          host: ${{ secrets.SERVER_IP }}
+          username: ${{ secrets.SERVER_USER }}
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          script: |
+            echo "=== Node.js ===" && node --version
+            echo "=== npm ===" && npm --version
+            echo "=== Gemini CLI ===" && which gemini && gemini --version 2>/dev/null || echo "not installed"
+            echo "=== API Key ===" && grep -q GEMINI_API_KEY /etc/environment && echo "configured" || echo "NOT set"
