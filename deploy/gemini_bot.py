@@ -46,6 +46,14 @@ AVAILABLE_MODELS = [
     "gemini-3.0-flash",
 ]
 
+IMAGE_MODEL = "imagen-3.0-generate-002"
+IMAGE_KEYWORDS = re.compile(
+    r"(нарисуй|нарисуй мне|создай (картинку|изображение|фото|рисунок)|"
+    r"сгенерируй (картинку|изображение|фото)|покажи как выглядит|"
+    r"draw|generate image|create image|make image|imagine)",
+    re.IGNORECASE
+)
+
 EXT_MAP = {
     "python": "py", "py": "py",
     "javascript": "js", "js": "js", "typescript": "ts", "ts": "ts",
@@ -376,7 +384,9 @@ async def cmd_help(update: Update, context: ContextTypes.DEFAULT_TYPE):
         "/rx правки: <задача> — изменить код бота\n"
         "/rx апи правки: <задача> — изменить api.py\n"
         "/rx перезапуск — перезапустить бота\n\n"
-        "Также: текст, голосовые, генерация файлов и PDF"
+        "Изображения:\n"
+        "/img <промпт> — сгенерировать картинку\n"
+        "или просто: «нарисуй закат над морем»"
     )
 
 
@@ -400,6 +410,37 @@ async def cmd_model(update: Update, context: ContextTypes.DEFAULT_TYPE):
         f"Текущая модель: {MODEL_NAME}\n\nВыбери или напиши /model <название>:",
         reply_markup=keyboard
     )
+
+
+def _generate_image(prompt: str) -> bytes:
+    response = client.models.generate_images(
+        model=IMAGE_MODEL,
+        prompt=prompt,
+        config=types.GenerateImagesConfig(
+            number_of_images=1,
+            aspect_ratio="1:1",
+        ),
+    )
+    return response.generated_images[0].image.image_bytes
+
+
+async def send_image(update: Update, prompt: str):
+    await update.message.reply_chat_action(ChatAction.UPLOAD_PHOTO)
+    try:
+        image_bytes = await asyncio.to_thread(_generate_image, prompt)
+        buf = io.BytesIO(image_bytes)
+        buf.name = "image.png"
+        await update.message.reply_photo(photo=buf, caption=f"🎨 {prompt[:200]}")
+    except Exception as e:
+        await update.message.reply_text(f"Ошибка генерации изображения: {e}")
+
+
+async def cmd_img(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    prompt = " ".join(context.args or []).strip()
+    if not prompt:
+        await update.message.reply_text("Укажи что нарисовать: /img закат над горами")
+        return
+    await send_image(update, prompt)
 
 
 def _send_text(history: list, user_text: str):
@@ -427,6 +468,17 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     user_text = update.message.text
     want_pdf = bool(re.search(r'\bpdf\b', user_text, re.IGNORECASE))
+
+    # Detect image generation request
+    if IMAGE_KEYWORDS.search(user_text):
+        # Ask Gemini to extract/translate the prompt to English for better results
+        prompt_reply, _ = await asyncio.to_thread(
+            _send_text, [],
+            f"Переведи этот запрос на изображение на английский язык для нейросети, "
+            f"верни ТОЛЬКО промпт без пояснений: {user_text}"
+        )
+        await send_image(update, prompt_reply.strip())
+        return
 
     try:
         reply, sessions[uid] = await asyncio.to_thread(_send_text, sessions[uid], user_text)
@@ -459,6 +511,7 @@ async def post_init(app: Application):
     await app.bot.set_my_commands([
         BotCommand("start", "Начать / приветствие"),
         BotCommand("reset", "Сбросить историю диалога"),
+        BotCommand("img", "Сгенерировать изображение"),
         BotCommand("rx", "Управление RefMaster"),
         BotCommand("model", "Текущая модель Gemini"),
         BotCommand("help", "Помощь"),
@@ -484,6 +537,7 @@ def main():
     app.add_handler(CommandHandler("reset", cmd_reset))
     app.add_handler(CommandHandler("help", cmd_help))
     app.add_handler(CommandHandler("model", cmd_model))
+    app.add_handler(CommandHandler("img", cmd_img))
     app.add_handler(CommandHandler("rx", cmd_rx))
     app.add_handler(CallbackQueryHandler(callback_model, pattern="^model_"))
     app.add_handler(CallbackQueryHandler(callback_rx, pattern="^rx_"))
