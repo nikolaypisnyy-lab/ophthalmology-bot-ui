@@ -1,5 +1,7 @@
 #!/usr/bin/env python3
 import os
+import io
+import re
 import asyncio
 from dotenv import load_dotenv
 from telegram import Update, BotCommand
@@ -14,12 +16,34 @@ load_dotenv()
 BOT_TOKEN = os.getenv("GEMINI_BOT_TOKEN", "")
 GEMINI_API_KEY = os.getenv("GEMINI_API_KEY", "")
 MODEL_NAME = os.getenv("GEMINI_MODEL", "gemini-2.5-flash")
-SYSTEM_PROMPT = os.getenv("GEMINI_SYSTEM_PROMPT", "Ты умный и полезный ИИ-ассистент.")
+SYSTEM_PROMPT = os.getenv(
+    "GEMINI_SYSTEM_PROMPT",
+    "Ты умный и полезный ИИ-ассистент. "
+    "Когда тебя просят создать файл или написать код — оборачивай содержимое файла в блок ```язык ... ```. "
+    "Например: ```python\n...\n``` или ```html\n...\n```. Это позволит автоматически отправить файл пользователю."
+)
 
 client = genai.Client(api_key=GEMINI_API_KEY)
 
-# user_id -> list of types.Content
 sessions: dict[int, list] = {}
+
+EXT_MAP = {
+    "python": "py", "py": "py",
+    "javascript": "js", "js": "js", "typescript": "ts", "ts": "ts",
+    "html": "html", "css": "css",
+    "json": "json", "yaml": "yaml", "yml": "yml",
+    "bash": "sh", "shell": "sh", "sh": "sh",
+    "sql": "sql", "markdown": "md", "md": "md",
+    "rust": "rs", "go": "go", "java": "java", "cpp": "cpp", "c": "c",
+    "xml": "xml", "csv": "csv", "toml": "toml", "ini": "ini",
+    "dockerfile": "Dockerfile",
+}
+
+
+def extract_code_blocks(text: str) -> list[tuple[str, str]]:
+    """Return list of (lang, code) from ```lang\\n...\\n``` blocks."""
+    pattern = r"```(\w*)\n(.*?)```"
+    return [(m.group(1).lower(), m.group(2)) for m in re.finditer(pattern, text, re.DOTALL)]
 
 
 def split_text(text: str, limit: int = 4000) -> list[str]:
@@ -41,13 +65,26 @@ def make_config():
     return types.GenerateContentConfig(system_instruction=SYSTEM_PROMPT)
 
 
+async def send_reply(update: Update, reply: str):
+    """Send text + any code blocks as file attachments."""
+    for chunk in split_text(reply):
+        await update.message.reply_text(chunk)
+
+    for i, (lang, code) in enumerate(extract_code_blocks(reply), 1):
+        ext = EXT_MAP.get(lang, "txt")
+        filename = f"file_{i}.{ext}" if ext != "Dockerfile" else "Dockerfile"
+        buf = io.BytesIO(code.encode("utf-8"))
+        buf.name = filename
+        await update.message.reply_document(document=buf, filename=filename)
+
+
 async def cmd_start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     uid = update.effective_user.id
     sessions[uid] = []
     name = update.effective_user.first_name or "друг"
     await update.message.reply_text(
         f"Привет, {name}! Я Gemini AI 🤖\n\n"
-        f"Пиши или отправляй голосовые — отвечу.\n"
+        f"Пиши, отправляй голосовые или проси создать файлы.\n"
         f"/reset — сбросить историю\n"
         f"/model — текущая модель\n"
         f"/help — помощь"
@@ -67,7 +104,10 @@ async def cmd_help(update: Update, context: ContextTypes.DEFAULT_TYPE):
         "/reset — сбросить историю\n"
         "/model — текущая модель\n"
         "/help — это сообщение\n\n"
-        "Поддерживаю текст и голосовые сообщения 🎤"
+        "Поддерживаю:\n"
+        "• Текстовые сообщения\n"
+        "• Голосовые сообщения 🎤\n"
+        "• Генерацию файлов (попроси написать код или файл)"
     )
 
 
@@ -103,8 +143,7 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
     except Exception as e:
         reply = f"Ошибка Gemini: {e}"
 
-    for chunk in split_text(reply):
-        await update.message.reply_text(chunk)
+    await send_reply(update, reply)
 
 
 async def handle_voice(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -119,14 +158,12 @@ async def handle_voice(update: Update, context: ContextTypes.DEFAULT_TYPE):
         audio_bytes = bytes(await tg_file.download_as_bytearray())
         reply = await asyncio.to_thread(_send_audio, audio_bytes)
 
-        # Сохраняем в историю как текст
         sessions[uid].append(types.Content(role="user", parts=[types.Part(text="[голосовое]")]))
         sessions[uid].append(types.Content(role="model", parts=[types.Part(text=reply)]))
     except Exception as e:
         reply = f"Ошибка обработки голосового: {e}"
 
-    for chunk in split_text(reply):
-        await update.message.reply_text(chunk)
+    await send_reply(update, reply)
 
 
 async def post_init(app: Application):
