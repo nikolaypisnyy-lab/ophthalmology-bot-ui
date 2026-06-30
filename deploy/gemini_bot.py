@@ -1,12 +1,13 @@
 #!/usr/bin/env python3
 import os
 import asyncio
-import tempfile
 from dotenv import load_dotenv
 from telegram import Update, BotCommand
 from telegram.ext import Application, CommandHandler, MessageHandler, filters, ContextTypes
 from telegram.constants import ChatAction
-import google.generativeai as genai
+from telegram.request import HTTPXRequest
+from google import genai
+from google.genai import types
 
 load_dotenv()
 
@@ -15,21 +16,13 @@ GEMINI_API_KEY = os.getenv("GEMINI_API_KEY", "")
 MODEL_NAME = os.getenv("GEMINI_MODEL", "gemini-2.5-flash")
 SYSTEM_PROMPT = os.getenv("GEMINI_SYSTEM_PROMPT", "Ты умный и полезный ИИ-ассистент.")
 
-genai.configure(api_key=GEMINI_API_KEY)
+client = genai.Client(api_key=GEMINI_API_KEY)
 
-# user_id -> list of Content objects (conversation history)
+# user_id -> list of types.Content
 sessions: dict[int, list] = {}
 
 
-def get_model():
-    return genai.GenerativeModel(
-        model_name=MODEL_NAME,
-        system_instruction=SYSTEM_PROMPT,
-    )
-
-
 def split_text(text: str, limit: int = 4000) -> list[str]:
-    """Split long text into Telegram-safe chunks."""
     if len(text) <= limit:
         return [text]
     parts = []
@@ -44,14 +37,18 @@ def split_text(text: str, limit: int = 4000) -> list[str]:
     return parts
 
 
+def make_config():
+    return types.GenerateContentConfig(system_instruction=SYSTEM_PROMPT)
+
+
 async def cmd_start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     uid = update.effective_user.id
     sessions[uid] = []
     name = update.effective_user.first_name or "друг"
     await update.message.reply_text(
         f"Привет, {name}! Я Gemini AI 🤖\n\n"
-        f"Пиши мне что угодно — отвечу.\n"
-        f"/reset — сбросить историю диалога\n"
+        f"Пиши или отправляй голосовые — отвечу.\n"
+        f"/reset — сбросить историю\n"
         f"/model — текущая модель\n"
         f"/help — помощь"
     )
@@ -68,8 +65,9 @@ async def cmd_help(update: Update, context: ContextTypes.DEFAULT_TYPE):
         "Команды:\n"
         "/start — начать заново\n"
         "/reset — сбросить историю\n"
-        "/model — показать модель\n"
-        "/help — это сообщение"
+        "/model — текущая модель\n"
+        "/help — это сообщение\n\n"
+        "Поддерживаю текст и голосовые сообщения 🎤"
     )
 
 
@@ -77,23 +75,31 @@ async def cmd_model(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.message.reply_text(f"Текущая модель: {MODEL_NAME}")
 
 
+def _send_text(history: list, user_text: str):
+    chat = client.chats.create(model=MODEL_NAME, history=history, config=make_config())
+    response = chat.send_message(user_text)
+    return response.text, list(chat.history)
+
+
+def _send_audio(audio_bytes: bytes):
+    audio_part = types.Part.from_bytes(data=audio_bytes, mime_type="audio/ogg")
+    response = client.models.generate_content(
+        model=MODEL_NAME,
+        contents=[audio_part, "Это голосовое сообщение. Распознай речь и ответь на неё."],
+        config=make_config(),
+    )
+    return response.text
+
+
 async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
     uid = update.effective_user.id
-    user_text = update.message.text
-
     if uid not in sessions:
         sessions[uid] = []
 
-    await context.bot.send_chat_action(
-        chat_id=update.effective_chat.id, action=ChatAction.TYPING
-    )
+    await context.bot.send_chat_action(chat_id=update.effective_chat.id, action=ChatAction.TYPING)
 
     try:
-        model = get_model()
-        chat = model.start_chat(history=sessions[uid])
-        response = await asyncio.to_thread(chat.send_message, user_text)
-        sessions[uid] = chat.history
-        reply = response.text
+        reply, sessions[uid] = await asyncio.to_thread(_send_text, sessions[uid], update.message.text)
     except Exception as e:
         reply = f"Ошибка Gemini: {e}"
 
@@ -103,33 +109,19 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 async def handle_voice(update: Update, context: ContextTypes.DEFAULT_TYPE):
     uid = update.effective_user.id
-
     if uid not in sessions:
         sessions[uid] = []
 
-    await context.bot.send_chat_action(
-        chat_id=update.effective_chat.id, action=ChatAction.TYPING
-    )
+    await context.bot.send_chat_action(chat_id=update.effective_chat.id, action=ChatAction.TYPING)
 
     try:
-        voice = update.message.voice
-        tg_file = await context.bot.get_file(voice.file_id)
-        audio_bytes = await tg_file.download_as_bytearray()
+        tg_file = await context.bot.get_file(update.message.voice.file_id)
+        audio_bytes = bytes(await tg_file.download_as_bytearray())
+        reply = await asyncio.to_thread(_send_audio, audio_bytes)
 
-        audio_part = {"mime_type": "audio/ogg", "data": bytes(audio_bytes)}
-        prompt = "Это голосовое сообщение пользователя. Распознай речь и ответь на неё."
-
-        model = get_model()
-        # Send audio + history context as separate call, then add to history as text
-        response = await asyncio.to_thread(
-            model.generate_content, [audio_part, prompt]
-        )
-        reply = response.text
-
-        # Add to chat history as text so context is preserved
-        sessions[uid].append({"role": "user", "parts": ["[голосовое сообщение]"]})
-        sessions[uid].append({"role": "model", "parts": [reply]})
-
+        # Сохраняем в историю как текст
+        sessions[uid].append(types.Content(role="user", parts=[types.Part.from_text("[голосовое]")]))
+        sessions[uid].append(types.Content(role="model", parts=[types.Part.from_text(reply)]))
     except Exception as e:
         reply = f"Ошибка обработки голосового: {e}"
 
@@ -152,9 +144,11 @@ def main():
     if not GEMINI_API_KEY:
         raise RuntimeError("GEMINI_API_KEY не задан в .env")
 
+    request = HTTPXRequest(connect_timeout=30, read_timeout=60)
     app = (
         Application.builder()
         .token(BOT_TOKEN)
+        .request(request)
         .post_init(post_init)
         .build()
     )
