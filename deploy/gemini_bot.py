@@ -51,12 +51,17 @@ AVAILABLE_MODELS = [
 ]
 
 IMAGE_MODEL = "imagen-3.0-generate-002"
-IMAGE_KEYWORDS = re.compile(
-    r"(нарисуй|нарисуй мне|создай (картинку|изображение|фото|рисунок)|"
-    r"сгенерируй (картинку|изображение|фото)|покажи как выглядит|"
-    r"draw|generate image|create image|make image|imagine)",
-    re.IGNORECASE
-)
+IMAGE_TRIGGER_WORDS = [
+    "нарисуй", "нарисуй мне", "сгенерируй картин", "сгенерируй изображен",
+    "сгенерируй фото", "создай картин", "создай изображен", "создай рисун",
+    "создай фото", "покажи как выглядит", "generate image", "create image",
+    "draw ", "make image", "imagine ",
+]
+
+
+def is_image_request(text: str) -> bool:
+    t = text.lower()
+    return any(kw in t for kw in IMAGE_TRIGGER_WORDS)
 
 EXT_MAP = {
     "python": "py", "py": "py",
@@ -537,7 +542,7 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
     want_pdf = bool(re.search(r'\bpdf\b', user_text, re.IGNORECASE))
 
     # Detect image generation request
-    if IMAGE_KEYWORDS.search(user_text):
+    if is_image_request(user_text):
         # Ask Gemini to extract/translate the prompt to English for better results
         prompt_reply, _ = await asyncio.to_thread(
             _send_text, [],
@@ -570,7 +575,7 @@ async def handle_voice(update: Update, context: ContextTypes.DEFAULT_TYPE):
         transcribed = await asyncio.to_thread(_transcribe_audio, audio_bytes)
 
         # Route to image generation if needed
-        if IMAGE_KEYWORDS.search(transcribed):
+        if is_image_request(transcribed):
             await update.message.reply_text(f"🎤 «{transcribed}»")
             prompt_en, _ = await asyncio.to_thread(_send_text, [],
                 f"Переведи этот запрос на изображение на английский язык для нейросети, "
