@@ -3,8 +3,6 @@ import os
 import io
 import re
 import asyncio
-import subprocess
-import tempfile
 from dotenv import load_dotenv
 from telegram import Update, BotCommand
 from telegram.ext import Application, CommandHandler, MessageHandler, filters, ContextTypes
@@ -58,50 +56,57 @@ def _find_font() -> str | None:
 
 
 def _markdown_to_pdf(content: str, filename: str) -> io.BytesIO | None:
-    """Convert markdown/text to PDF via pandoc if available, else fpdf2."""
-    # Try pandoc first (best quality)
-    if subprocess.run(["which", "pandoc"], capture_output=True).returncode == 0:
-        with tempfile.NamedTemporaryFile(suffix=".md", delete=False, mode="w", encoding="utf-8") as f:
-            f.write(content)
-            md_path = f.name
-        pdf_path = md_path.replace(".md", ".pdf")
-        try:
-            result = subprocess.run(
-                ["pandoc", md_path, "-o", pdf_path, "--pdf-engine=xelatex",
-                 "-V", "mainfont=DejaVu Sans", "-V", "geometry:margin=2cm"],
-                capture_output=True, timeout=30
-            )
-            if result.returncode == 0 and os.path.exists(pdf_path):
-                buf = io.BytesIO(open(pdf_path, "rb").read())
-                buf.seek(0)
-                return buf
-        except Exception:
-            pass
-        finally:
-            for p in [md_path, pdf_path]:
-                try: os.unlink(p)
-                except: pass
-
-    # Fallback: fpdf2
+    """Convert markdown/text to PDF using reportlab (pure Python, Cyrillic-safe)."""
     try:
-        from fpdf import FPDF
-        pdf = FPDF()
-        pdf.add_page()
+        from reportlab.lib.pagesizes import A4
+        from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
+        from reportlab.lib.units import cm
+        from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer
+        from reportlab.pdfbase import pdfmetrics
+        from reportlab.pdfbase.ttfonts import TTFont
+
+        # Register Unicode font for Cyrillic
         font = _find_font()
+        font_name = "DejaVu"
         if font:
-            pdf.add_font("uni", "", font)
-            pdf.set_font("uni", size=11)
+            pdfmetrics.registerFont(TTFont(font_name, font))
         else:
-            pdf.set_font("Helvetica", size=11)
-        pdf.set_auto_page_break(auto=True, margin=15)
-        for line in content.splitlines():
-            line = line.strip("*#>`")  # strip basic markdown
-            pdf.multi_cell(0, 6, line or " ")
+            font_name = "Helvetica"
+
         buf = io.BytesIO()
-        pdf.output(buf)
+        doc = SimpleDocTemplate(buf, pagesize=A4,
+                                leftMargin=2*cm, rightMargin=2*cm,
+                                topMargin=2*cm, bottomMargin=2*cm)
+
+        styles = getSampleStyleSheet()
+        normal = ParagraphStyle("normal", fontName=font_name, fontSize=11, leading=16,
+                                spaceAfter=4)
+        h1 = ParagraphStyle("h1", fontName=font_name, fontSize=16, leading=20,
+                            spaceBefore=10, spaceAfter=6, textColor="#1a1a2e")
+        h2 = ParagraphStyle("h2", fontName=font_name, fontSize=13, leading=18,
+                            spaceBefore=8, spaceAfter=4)
+
+        story = []
+        for line in content.splitlines():
+            stripped = line.strip()
+            if not stripped:
+                story.append(Spacer(1, 6))
+            elif stripped.startswith("## "):
+                story.append(Paragraph(stripped[3:].strip(), h2))
+            elif stripped.startswith("# "):
+                story.append(Paragraph(stripped[2:].strip(), h1))
+            else:
+                # Strip basic markdown symbols
+                text = re.sub(r'\*\*(.*?)\*\*', r'<b>\1</b>', stripped)
+                text = re.sub(r'\*(.*?)\*', r'<i>\1</i>', text)
+                text = re.sub(r'^[-*•]\s+', '• ', text)
+                story.append(Paragraph(text, normal))
+
+        doc.build(story)
         buf.seek(0)
         return buf
-    except Exception:
+    except Exception as e:
+        print(f"PDF error: {e}")
         return None
 
 
