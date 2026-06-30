@@ -1,10 +1,11 @@
 #!/usr/bin/env python3
 import os
 import asyncio
+import tempfile
 from dotenv import load_dotenv
 from telegram import Update, BotCommand
 from telegram.ext import Application, CommandHandler, MessageHandler, filters, ContextTypes
-from telegram.constants import ChatAction, ParseMode
+from telegram.constants import ChatAction
 import google.generativeai as genai
 
 load_dotenv()
@@ -100,6 +101,42 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await update.message.reply_text(chunk)
 
 
+async def handle_voice(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    uid = update.effective_user.id
+
+    if uid not in sessions:
+        sessions[uid] = []
+
+    await context.bot.send_chat_action(
+        chat_id=update.effective_chat.id, action=ChatAction.TYPING
+    )
+
+    try:
+        voice = update.message.voice
+        tg_file = await context.bot.get_file(voice.file_id)
+        audio_bytes = await tg_file.download_as_bytearray()
+
+        audio_part = {"mime_type": "audio/ogg", "data": bytes(audio_bytes)}
+        prompt = "Это голосовое сообщение пользователя. Распознай речь и ответь на неё."
+
+        model = get_model()
+        # Send audio + history context as separate call, then add to history as text
+        response = await asyncio.to_thread(
+            model.generate_content, [audio_part, prompt]
+        )
+        reply = response.text
+
+        # Add to chat history as text so context is preserved
+        sessions[uid].append({"role": "user", "parts": ["[голосовое сообщение]"]})
+        sessions[uid].append({"role": "model", "parts": [reply]})
+
+    except Exception as e:
+        reply = f"Ошибка обработки голосового: {e}"
+
+    for chunk in split_text(reply):
+        await update.message.reply_text(chunk)
+
+
 async def post_init(app: Application):
     await app.bot.set_my_commands([
         BotCommand("start", "Начать / приветствие"),
@@ -127,6 +164,7 @@ def main():
     app.add_handler(CommandHandler("help", cmd_help))
     app.add_handler(CommandHandler("model", cmd_model))
     app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_message))
+    app.add_handler(MessageHandler(filters.VOICE, handle_voice))
 
     print(f"Bot started | model: {MODEL_NAME}")
     app.run_polling(drop_pending_updates=True)
