@@ -2,10 +2,12 @@
 import os
 import io
 import re
+import shutil
 import asyncio
+import subprocess
 from dotenv import load_dotenv
-from telegram import Update, BotCommand
-from telegram.ext import Application, CommandHandler, MessageHandler, filters, ContextTypes
+from telegram import Update, BotCommand, InlineKeyboardButton, InlineKeyboardMarkup
+from telegram.ext import Application, CommandHandler, MessageHandler, CallbackQueryHandler, filters, ContextTypes
 from telegram.constants import ChatAction
 from telegram.request import HTTPXRequest
 from google import genai
@@ -25,9 +27,16 @@ SYSTEM_PROMPT = os.getenv(
     "Никогда не говори что не можешь создать файл — всегда выдавай содержимое в блоке кода."
 )
 
+# RefMaster settings
+REFMASTER_BOT_PATH = "/root/medeye/api/bot_slim_v2.6.py"
+REFMASTER_API_PATH = "/root/medeye/api/api.py"
+REFMASTER_SERVICE = "refmaster-bot"
+REFMASTER_API_SERVICE = "refmaster-app"
+
 client = genai.Client(api_key=GEMINI_API_KEY)
 
 sessions: dict[int, list] = {}
+pending_edits: dict[int, dict] = {}  # uid -> {path, new_code, service}
 
 EXT_MAP = {
     "python": "py", "py": "py",
@@ -41,7 +50,6 @@ EXT_MAP = {
     "dockerfile": "Dockerfile",
 }
 
-# Languages whose content should also be converted to PDF
 PDF_LANGS = {"markdown", "md", "text", "txt", ""}
 
 FONT_PATHS = [
@@ -56,16 +64,14 @@ def _find_font() -> str | None:
 
 
 def _markdown_to_pdf(content: str, filename: str) -> io.BytesIO | None:
-    """Convert markdown/text to PDF using reportlab (pure Python, Cyrillic-safe)."""
     try:
         from reportlab.lib.pagesizes import A4
-        from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
+        from reportlab.lib.styles import ParagraphStyle
         from reportlab.lib.units import cm
         from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer
         from reportlab.pdfbase import pdfmetrics
         from reportlab.pdfbase.ttfonts import TTFont
 
-        # Register Unicode font for Cyrillic
         font = _find_font()
         font_name = "DejaVu"
         if font:
@@ -78,13 +84,9 @@ def _markdown_to_pdf(content: str, filename: str) -> io.BytesIO | None:
                                 leftMargin=2*cm, rightMargin=2*cm,
                                 topMargin=2*cm, bottomMargin=2*cm)
 
-        styles = getSampleStyleSheet()
-        normal = ParagraphStyle("normal", fontName=font_name, fontSize=11, leading=16,
-                                spaceAfter=4)
-        h1 = ParagraphStyle("h1", fontName=font_name, fontSize=16, leading=20,
-                            spaceBefore=10, spaceAfter=6, textColor="#1a1a2e")
-        h2 = ParagraphStyle("h2", fontName=font_name, fontSize=13, leading=18,
-                            spaceBefore=8, spaceAfter=4)
+        normal = ParagraphStyle("normal", fontName=font_name, fontSize=11, leading=16, spaceAfter=4)
+        h1 = ParagraphStyle("h1", fontName=font_name, fontSize=16, leading=20, spaceBefore=10, spaceAfter=6)
+        h2 = ParagraphStyle("h2", fontName=font_name, fontSize=13, leading=18, spaceBefore=8, spaceAfter=4)
 
         story = []
         for line in content.splitlines():
@@ -96,7 +98,6 @@ def _markdown_to_pdf(content: str, filename: str) -> io.BytesIO | None:
             elif stripped.startswith("# "):
                 story.append(Paragraph(stripped[2:].strip(), h1))
             else:
-                # Strip basic markdown symbols
                 text = re.sub(r'\*\*(.*?)\*\*', r'<b>\1</b>', stripped)
                 text = re.sub(r'\*(.*?)\*', r'<i>\1</i>', text)
                 text = re.sub(r'^[-*•]\s+', '• ', text)
@@ -111,7 +112,6 @@ def _markdown_to_pdf(content: str, filename: str) -> io.BytesIO | None:
 
 
 def extract_code_blocks(text: str) -> list[tuple[str, str]]:
-    """Return list of (lang, code) from ```lang\\n...\\n``` blocks."""
     pattern = r"```(\w*)\n(.*?)```"
     return [(m.group(1).lower(), m.group(2)) for m in re.finditer(pattern, text, re.DOTALL)]
 
@@ -136,33 +136,197 @@ def make_config():
 
 
 async def send_reply(update: Update, reply: str, want_pdf: bool = False):
-    """Send text + code blocks as files. If want_pdf, always send a PDF."""
     for chunk in split_text(reply):
         await update.message.reply_text(chunk)
 
     blocks = extract_code_blocks(reply)
 
-    # Send code blocks as source files
     for i, (lang, code) in enumerate(blocks, 1):
         ext = EXT_MAP.get(lang, "txt")
         filename = f"file_{i}.{ext}" if ext != "Dockerfile" else "Dockerfile"
         buf = io.BytesIO(code.encode("utf-8"))
         await update.message.reply_document(document=buf, filename=filename)
 
-    # Generate PDF: from first code block if available, else from full reply
     if want_pdf:
         pdf_content = blocks[0][1] if blocks else reply
         pdf_buf = await asyncio.to_thread(_markdown_to_pdf, pdf_content, "document")
         if pdf_buf:
             await update.message.reply_document(document=pdf_buf, filename="document.pdf")
     elif blocks:
-        # Auto-PDF for markdown/text blocks even without explicit request
         for i, (lang, code) in enumerate(blocks, 1):
             if lang in PDF_LANGS:
                 pdf_buf = await asyncio.to_thread(_markdown_to_pdf, code, f"file_{i}")
                 if pdf_buf:
                     await update.message.reply_document(document=pdf_buf, filename=f"file_{i}.pdf")
 
+
+# ── RefMaster управление ──────────────────────────────────────────────────────
+
+def _service_status(name: str) -> str:
+    r = subprocess.run(["systemctl", "is-active", name], capture_output=True, text=True)
+    return r.stdout.strip()
+
+
+def _service_logs(name: str, lines: int = 30) -> str:
+    r = subprocess.run(
+        ["journalctl", "-u", name, f"-n{lines}", "--no-pager", "-l"],
+        capture_output=True, text=True
+    )
+    return r.stdout.strip() or "(нет логов)"
+
+
+def _read_file(path: str) -> str:
+    with open(path, encoding="utf-8") as f:
+        return f.read()
+
+
+def _ask_gemini_edit(current_code: str, task: str, file_hint: str) -> str:
+    prompt = (
+        f"Ты редактируешь Python-файл Telegram бота: {file_hint}\n\n"
+        f"Текущий код:\n```python\n{current_code}\n```\n\n"
+        f"Задача: {task}\n\n"
+        f"Верни ТОЛЬКО полный исправленный Python-код в блоке ```python```. "
+        f"Никаких пояснений до или после блока."
+    )
+    response = client.models.generate_content(
+        model=MODEL_NAME,
+        contents=[prompt],
+        config=types.GenerateContentConfig(system_instruction="Ты senior Python разработчик."),
+    )
+    return response.text
+
+
+async def cmd_rx(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    args = " ".join(context.args or []).strip()
+
+    # /rx без аргументов — показать статус
+    if not args:
+        bot_status = _service_status(REFMASTER_SERVICE)
+        api_status = _service_status(REFMASTER_API_SERVICE)
+        await update.message.reply_text(
+            f"RefMaster статус:\n"
+            f"• Bot ({REFMASTER_SERVICE}): {bot_status}\n"
+            f"• API ({REFMASTER_API_SERVICE}): {api_status}\n\n"
+            f"Команды:\n"
+            f"/rx логи — последние логи бота\n"
+            f"/rx апи логи — логи API\n"
+            f"/rx правки: <задача> — изменить bot_slim_v2.6.py\n"
+            f"/rx апи правки: <задача> — изменить api.py\n"
+            f"/rx перезапуск — перезапустить бот\n"
+        )
+        return
+
+    low = args.lower()
+
+    # Логи
+    if low in ("логи", "logs", "log"):
+        logs = await asyncio.to_thread(_service_logs, REFMASTER_SERVICE)
+        for chunk in split_text(logs):
+            await update.message.reply_text(f"```\n{chunk}\n```", parse_mode="Markdown")
+        return
+
+    if low in ("апи логи", "api logs", "api log"):
+        logs = await asyncio.to_thread(_service_logs, REFMASTER_API_SERVICE)
+        for chunk in split_text(logs):
+            await update.message.reply_text(f"```\n{chunk}\n```", parse_mode="Markdown")
+        return
+
+    # Перезапуск
+    if low in ("перезапуск", "restart"):
+        subprocess.run(["systemctl", "restart", REFMASTER_SERVICE])
+        await update.message.reply_text("RefMaster бот перезапущен ✅")
+        return
+
+    # Редактирование бота
+    if low.startswith("правки:"):
+        task = args[7:].strip()
+        await _edit_file(update, task, REFMASTER_BOT_PATH, REFMASTER_SERVICE, "bot_slim_v2.6.py")
+        return
+
+    # Редактирование API
+    if low.startswith("апи правки:"):
+        task = args[11:].strip()
+        await _edit_file(update, task, REFMASTER_API_PATH, REFMASTER_API_SERVICE, "api.py")
+        return
+
+    await update.message.reply_text("Неизвестная команда. Напиши /rx для справки.")
+
+
+async def _edit_file(update: Update, task: str, path: str, service: str, hint: str):
+    uid = update.effective_user.id
+    await update.message.reply_text(f"Читаю {hint} и отправляю в Gemini...")
+    await update.message.reply_chat_action(ChatAction.TYPING)
+
+    try:
+        current_code = await asyncio.to_thread(_read_file, path)
+        reply = await asyncio.to_thread(_ask_gemini_edit, current_code, task, hint)
+        blocks = extract_code_blocks(reply)
+
+        if not blocks:
+            await update.message.reply_text(f"Gemini не вернул код:\n\n{reply[:1000]}")
+            return
+
+        new_code = blocks[0][1]
+        pending_edits[uid] = {"path": path, "new_code": new_code, "service": service}
+
+        # Показываем diff (первые/последние строки нового кода)
+        preview = new_code[:800] + ("\n..." if len(new_code) > 800 else "")
+        await update.message.reply_text(
+            f"Gemini предлагает изменения в {hint}.\n\nПревью:\n```python\n{preview}\n```",
+            parse_mode="Markdown"
+        )
+
+        keyboard = InlineKeyboardMarkup([[
+            InlineKeyboardButton("✅ Применить", callback_data="rx_apply"),
+            InlineKeyboardButton("❌ Отмена", callback_data="rx_cancel"),
+        ]])
+        await update.message.reply_text(
+            "Применить изменения и перезапустить сервис?",
+            reply_markup=keyboard
+        )
+
+    except Exception as e:
+        await update.message.reply_text(f"Ошибка: {e}")
+
+
+async def callback_rx(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    query = update.callback_query
+    uid = query.from_user.id
+    await query.answer()
+
+    if query.data == "rx_cancel":
+        pending_edits.pop(uid, None)
+        await query.edit_message_text("Отменено.")
+        return
+
+    if query.data == "rx_apply":
+        edit = pending_edits.pop(uid, None)
+        if not edit:
+            await query.edit_message_text("Нет ожидающих изменений.")
+            return
+
+        path = edit["path"]
+        new_code = edit["new_code"]
+        service = edit["service"]
+        backup = path + ".bak"
+
+        try:
+            shutil.copy2(path, backup)
+            with open(path, "w", encoding="utf-8") as f:
+                f.write(new_code)
+            result = subprocess.run(["systemctl", "restart", service], capture_output=True, text=True)
+
+            if result.returncode == 0:
+                await query.edit_message_text(f"✅ Изменения применены, {service} перезапущен.\nБэкап: {backup}")
+            else:
+                shutil.copy2(backup, path)
+                subprocess.run(["systemctl", "restart", service])
+                await query.edit_message_text(f"❌ Сервис не запустился. Восстановлен бэкап.\n{result.stderr[:500]}")
+        except Exception as e:
+            await query.edit_message_text(f"❌ Ошибка: {e}")
+
+
+# ── Стандартные обработчики ───────────────────────────────────────────────────
 
 async def cmd_start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     uid = update.effective_user.id
@@ -171,8 +335,8 @@ async def cmd_start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.message.reply_text(
         f"Привет, {name}! Я Gemini AI 🤖\n\n"
         f"Пиши, отправляй голосовые или проси создать файлы.\n"
+        f"/rx — управление RefMaster ботом\n"
         f"/reset — сбросить историю\n"
-        f"/model — текущая модель\n"
         f"/help — помощь"
     )
 
@@ -190,10 +354,13 @@ async def cmd_help(update: Update, context: ContextTypes.DEFAULT_TYPE):
         "/reset — сбросить историю\n"
         "/model — текущая модель\n"
         "/help — это сообщение\n\n"
-        "Поддерживаю:\n"
-        "• Текстовые сообщения\n"
-        "• Голосовые сообщения 🎤\n"
-        "• Генерацию файлов (попроси написать код или файл)"
+        "RefMaster:\n"
+        "/rx — статус сервисов\n"
+        "/rx логи — логи бота\n"
+        "/rx правки: <задача> — изменить код бота\n"
+        "/rx апи правки: <задача> — изменить api.py\n"
+        "/rx перезапуск — перезапустить бота\n\n"
+        "Также: текст, голосовые, генерация файлов и PDF"
     )
 
 
@@ -246,7 +413,6 @@ async def handle_voice(update: Update, context: ContextTypes.DEFAULT_TYPE):
         tg_file = await context.bot.get_file(update.message.voice.file_id)
         audio_bytes = bytes(await tg_file.download_as_bytearray())
         reply = await asyncio.to_thread(_send_audio, audio_bytes)
-
         sessions[uid].append(types.Content(role="user", parts=[types.Part(text="[голосовое]")]))
         sessions[uid].append(types.Content(role="model", parts=[types.Part(text=reply)]))
     except Exception as e:
@@ -259,6 +425,7 @@ async def post_init(app: Application):
     await app.bot.set_my_commands([
         BotCommand("start", "Начать / приветствие"),
         BotCommand("reset", "Сбросить историю диалога"),
+        BotCommand("rx", "Управление RefMaster"),
         BotCommand("model", "Текущая модель Gemini"),
         BotCommand("help", "Помощь"),
     ])
@@ -283,6 +450,8 @@ def main():
     app.add_handler(CommandHandler("reset", cmd_reset))
     app.add_handler(CommandHandler("help", cmd_help))
     app.add_handler(CommandHandler("model", cmd_model))
+    app.add_handler(CommandHandler("rx", cmd_rx))
+    app.add_handler(CallbackQueryHandler(callback_rx, pattern="^rx_"))
     app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_message))
     app.add_handler(MessageHandler(filters.VOICE, handle_voice))
 
