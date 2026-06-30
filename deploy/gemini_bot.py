@@ -38,6 +38,14 @@ client = genai.Client(api_key=GEMINI_API_KEY)
 sessions: dict[int, list] = {}
 pending_edits: dict[int, dict] = {}  # uid -> {path, new_code, service}
 
+AVAILABLE_MODELS = [
+    "gemini-2.5-flash",
+    "gemini-2.5-pro",
+    "gemini-2.5-flash-lite",
+    "gemini-3.0-pro",
+    "gemini-3.0-flash",
+]
+
 EXT_MAP = {
     "python": "py", "py": "py",
     "javascript": "js", "js": "js", "typescript": "ts", "ts": "ts",
@@ -289,6 +297,14 @@ async def _edit_file(update: Update, task: str, path: str, service: str, hint: s
         await update.message.reply_text(f"Ошибка: {e}")
 
 
+async def callback_model(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    global MODEL_NAME
+    query = update.callback_query
+    await query.answer()
+    MODEL_NAME = query.data[len("model_"):]
+    await query.edit_message_text(f"Модель переключена на: {MODEL_NAME}")
+
+
 async def callback_rx(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
     uid = query.from_user.id
@@ -365,7 +381,25 @@ async def cmd_help(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 
 async def cmd_model(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    await update.message.reply_text(f"Текущая модель: {MODEL_NAME}")
+    global MODEL_NAME
+    args = " ".join(context.args or []).strip()
+
+    if args:
+        MODEL_NAME = args
+        await update.message.reply_text(f"Модель переключена на: {MODEL_NAME}")
+        return
+
+    keyboard = InlineKeyboardMarkup([
+        [InlineKeyboardButton(
+            f"{'✅ ' if m == MODEL_NAME else ''}{m}",
+            callback_data=f"model_{m}"
+        )]
+        for m in AVAILABLE_MODELS
+    ])
+    await update.message.reply_text(
+        f"Текущая модель: {MODEL_NAME}\n\nВыбери или напиши /model <название>:",
+        reply_markup=keyboard
+    )
 
 
 def _send_text(history: list, user_text: str):
@@ -451,6 +485,7 @@ def main():
     app.add_handler(CommandHandler("help", cmd_help))
     app.add_handler(CommandHandler("model", cmd_model))
     app.add_handler(CommandHandler("rx", cmd_rx))
+    app.add_handler(CallbackQueryHandler(callback_model, pattern="^model_"))
     app.add_handler(CallbackQueryHandler(callback_rx, pattern="^rx_"))
     app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_message))
     app.add_handler(MessageHandler(filters.VOICE, handle_voice))
