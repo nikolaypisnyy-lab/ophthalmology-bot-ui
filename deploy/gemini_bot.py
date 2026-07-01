@@ -542,7 +542,11 @@ def _send_text(history: list, user_text: str):
     def _call():
         chat = client.chats.create(model=MODEL_NAME, history=history, config=make_config())
         response = chat.send_message(user_text)
-        return response.text, list(chat.history)
+        new_history = history + [
+            types.Content(role="user", parts=[types.Part(text=user_text)]),
+            types.Content(role="model", parts=[types.Part(text=response.text)]),
+        ]
+        return response.text, new_history
     return _retry(_call)
 
 
